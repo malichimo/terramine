@@ -13,8 +13,8 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "vite": "^6.2.0",
+    "@eslint/js": "^9.21",
     "@vitejs/plugin-react": "^4.3.3",
-    "@eslint/js": "^9.21"
+    "vite": "^6.2.0"
   }
 }
