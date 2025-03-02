@@ -68,53 +68,52 @@ function App() {
     }
   };
 
-  // ✅ Handle Check-In
   const handleCheckIn = async () => {
-    if (!user) {
-      setCheckInStatus("Please sign in to check in.");
+  if (!user) {
+    setCheckInStatus("Please sign in to check in.");
+    return;
+  }
+
+  if (!userLocation) {
+    setCheckInStatus("Location not found. Please enable location services.");
+    return;
+  }
+
+  try {
+    const terracreId = `terracre_${Math.floor(userLocation.lat * 1000)}_${Math.floor(userLocation.lng * 1000)}`;
+    const checkinRef = collection(db, "checkins");
+
+    // Check if the user already checked in today
+    const today = new Date().toISOString().split("T")[0];
+    const q = query(checkinRef, where("userId", "==", user.uid), where("terracreId", "==", terracreId));
+    const querySnapshot = await getDocs(q);
+
+    let alreadyCheckedIn = false;
+    querySnapshot.forEach((doc) => {
+      const checkinDate = doc.data().timestamp.toDate().toISOString().split("T")[0];
+      if (checkinDate === today) alreadyCheckedIn = true;
+    });
+
+    if (alreadyCheckedIn) {
+      setCheckInStatus("You can only check in once per day per location.");
       return;
     }
 
-    if (!userLocation) {
-      setCheckInStatus("Location not found. Please enable location services.");
-      return;
-    }
+    // Save check-in to Firestore
+    await addDoc(checkinRef, {
+      userId: user.uid,
+      username: user.displayName || user.email,
+      terracreId: terracreId,
+      timestamp: Timestamp.now(),
+      message: "Checked in!",
+    });
 
-    try {
-      const terracreId = `terracre_${Math.floor(userLocation.lat * 1000)}_${Math.floor(userLocation.lng * 1000)}`;
-      const checkinRef = collection(db, "checkins");
-
-      // ✅ Check if user already checked in today
-      const today = new Date().toISOString().split("T")[0];
-      const q = query(checkinRef, where("userId", "==", user.uid), where("terracreId", "==", terracreId));
-      const querySnapshot = await getDocs(q);
-
-      let alreadyCheckedIn = false;
-      querySnapshot.forEach((doc) => {
-        const checkinDate = doc.data().timestamp.toDate().toISOString().split("T")[0];
-        if (checkinDate === today) alreadyCheckedIn = true;
-      });
-
-      if (alreadyCheckedIn) {
-        setCheckInStatus("You can only check in once per day per location.");
-        return;
-      }
-
-      // ✅ Save check-in to Firestore
-      await addDoc(checkinRef, {
-        userId: user.uid,
-        username: user.displayName || user.email,
-        terracreId: terracreId,
-        timestamp: Timestamp.now(),
-        message: "Checked in!",
-      });
-
-      setCheckInStatus("Check-in successful! You earned 1 TB.");
-    } catch (error) {
-      console.error("Check-in failed:", error);
-      setCheckInStatus("Check-in failed. Try again.");
-    }
-  };
+    setCheckInStatus(`Check-in successful! Welcome, ${user.displayName || user.email}. You earned 1 TB.`);
+  } catch (error) {
+    console.error("Check-in failed:", error);
+    setCheckInStatus("Check-in failed. Try again.");
+  }
+};
 
   // ✅ Handle QR Scan
   const handleScan = (data) => {
@@ -181,6 +180,18 @@ function App() {
         <QrScanner delay={300} onError={handleError} onScan={handleScan} style={{ width: "100%" }} />
         {qrResult && <p>Scanned Code: {qrResult}</p>}
       </div>
+      {/* Show Signed-In User */}
+      <div>
+        {user ? (
+          <div>
+            <p>Welcome, <strong>{user.displayName || user.email}</strong>!</p>
+            <button onClick={handleSignOut}>Sign Out</button>
+          </div>
+        ) : (
+        <button onClick={handleGoogleSignIn}>Sign in with Google</button>
+        )}
+      </div>
+
     </div>
   );
 }
