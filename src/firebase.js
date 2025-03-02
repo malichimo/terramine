@@ -4,12 +4,12 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/
 
 const firebaseConfig = {
   apiKey: "AIzaSyDwh0aVmyCRil5vQTGRMUTER_W37r3r6sM",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "your-messaging-id",
-  appId: "your-app-id",
-};
+  authDomain: "terramine-3744d.firebaseapp.com",
+  projectId: "terramine-3744d",
+  storageBucket: "terramine-3744d.firebasestorage.app",
+  messagingSenderId: "746868896165",
+  appId: "1:746868896165:web:a76c230a68eb42b729784c"
+}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
