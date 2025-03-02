@@ -32,7 +32,14 @@ function App() {
         {userLocation && <Marker position={userLocation} />}
       </GoogleMap>
     </LoadScript>
-  );
+ <div>
+    <h1>Google Maps App</h1>
+    <LoadScript googleMapsApiKey="YOUR_GOOGLE_MAPS_API_KEY">
+      <GoogleMap mapContainerStyle={containerStyle} center={userLocation || defaultCenter} zoom={15}>
+        {userLocation && <Marker position={userLocation} />}
+      </GoogleMap>
+    </LoadScript>
+  </div>  );
 }
 
 export default App;
