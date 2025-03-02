@@ -2,31 +2,6 @@ import React, { useState, useEffect } from "react";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import QrScanner from "react-qr-scanner";
 
-const [qrResult, setQrResult] = useState("");
-
-const handleScan = (data) => {
-  if (data) {
-    setQrResult(data.text);
-    fetch("https://your-backend.com/api/qr-checkin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ qrCode: data.text }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        setCheckInStatus(data.message || "QR Check-in successful!");
-      })
-      .catch((error) => {
-        console.error("QR Check-in failed:", error);
-        setCheckInStatus("QR Check-in failed. Try again.");
-      });
-  }
-};
-
-const handleError = (error) => {
-  console.error(error);
-};
-
 const containerStyle = {
   width: "100%",
   height: "500px",
@@ -38,6 +13,7 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replac
 function App() {
   const [userLocation, setUserLocation] = useState(null);
   const [checkInStatus, setCheckInStatus] = useState("");
+  const [qrResult, setQrResult] = useState("");
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -81,6 +57,29 @@ function App() {
       });
   };
 
+  const handleScan = (data) => {
+    if (data) {
+      setQrResult(data.text);
+      fetch("https://your-backend.com/api/qr-checkin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qrCode: data.text }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          setCheckInStatus(data.message || "QR Check-in successful!");
+        })
+        .catch((error) => {
+          console.error("QR Check-in failed:", error);
+          setCheckInStatus("QR Check-in failed. Try again.");
+        });
+    }
+  };
+
+  const handleError = (error) => {
+    console.error(error);
+  };
+
   return (
     <div>
       <h1>TerraMine Check-In</h1>
@@ -97,19 +96,16 @@ function App() {
 
       {/* Display Check-In Status */}
       {checkInStatus && <p>{checkInStatus}</p>}
-    </div>
-    <div>
-  <h2>Scan QR Code to Check-In</h2>
-  <QrScanner
-    delay={300}
-    onError={handleError}
-    onScan={handleScan}
-    style={{ width: "100%" }}
-  />
-  {qrResult && <p>Scanned Code: {qrResult}</p>}
-</div>
 
+      {/* QR Code Scanner */}
+      <div>
+        <h2>Scan QR Code to Check-In</h2>
+        <QrScanner delay={300} onError={handleError} onScan={handleScan} style={{ width: "100%" }} />
+        {qrResult && <p>Scanned Code: {qrResult}</p>}
+      </div>
+    </div>
   );
 }
 
 export default App;
+
