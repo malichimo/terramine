@@ -1,6 +1,50 @@
 import React, { useState, useEffect } from "react";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import QrScanner from "react-qr-scanner";
+import { collection, addDoc, query, where, getDocs, Timestamp } from "firebase/firestore";
+import { db } from "./firebase";
+
+const handleCheckIn = async () => {
+  if (!userLocation) {
+    setCheckInStatus("Location not found. Please enable location services.");
+    return;
+  }
+
+  try {
+    const terracreId = `terracre_${Math.floor(userLocation.lat * 1000)}_${Math.floor(userLocation.lng * 1000)}`;
+    const checkinRef = collection(db, "checkins");
+
+    // Check if the user already checked in today
+    const today = new Date().toISOString().split("T")[0];
+    const q = query(checkinRef, where("userId", "==", "USER_ID"), where("terracreId", "==", terracreId));
+    const querySnapshot = await getDocs(q);
+
+    let alreadyCheckedIn = false;
+    querySnapshot.forEach((doc) => {
+      const checkinDate = doc.data().timestamp.toDate().toISOString().split("T")[0];
+      if (checkinDate === today) alreadyCheckedIn = true;
+    });
+
+    if (alreadyCheckedIn) {
+      setCheckInStatus("You can only check in once per day per location.");
+      return;
+    }
+
+    // Save check-in to Firestore
+    await addDoc(checkinRef, {
+      userId: "USER_ID",
+      terracreId: terracreId,
+      timestamp: Timestamp.now(),
+      message: "Checked in!",
+    });
+
+    setCheckInStatus("Check-in successful! You earned 1 TB.");
+  } catch (error) {
+    console.error("Check-in failed:", error);
+    setCheckInStatus("Check-in failed. Try again.");
+  }
+};
+
 
 const containerStyle = {
   width: "100%",
