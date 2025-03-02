@@ -164,8 +164,12 @@ function App() {
       </LoadScript>
 
       {/* Check-In Button */}
-      <button onClick={handleCheckIn} style={{ marginTop: "10px", padding: "10px", fontSize: "16px" }}>
-        Tap to Check-In
+      <button 
+        onClick={handleCheckIn} 
+        disabled={!user} 
+        style={{ marginTop: "10px", padding: "10px", fontSize: "16px", backgroundColor: user ? "#28a745" : "#ccc" }}
+      >
+        {user ? "Tap to Check-In" : "Sign in to Check-In"}
       </button>
 
       {/* Display Check-In Status */}
