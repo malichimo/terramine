@@ -34,7 +34,7 @@ function App() {
     </LoadScript>
  <div>
     <h1>Google Maps App</h1>
-    <LoadScript googleMapsApiKey="YOUR_GOOGLE_MAPS_API_KEY">
+    <LoadScript googleMapsApiKey="AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us">
       <GoogleMap mapContainerStyle={containerStyle} center={userLocation || defaultCenter} zoom={15}>
         {userLocation && <Marker position={userLocation} />}
       </GoogleMap>
