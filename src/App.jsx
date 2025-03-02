@@ -1,8 +1,36 @@
+import { auth, googleProvider, signInWithPopup, signOut } from "./firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import React, { useState, useEffect } from "react";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import QrScanner from "react-qr-scanner";
 import { collection, addDoc, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "./firebase";
+
+const [user, setUser] = useState(null);
+
+// Track user authentication state
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    setUser(currentUser);
+  });
+  return () => unsubscribe();
+}, []);
+
+const handleGoogleSignIn = async () => {
+  try {
+    await signInWithPopup(auth, googleProvider);
+  } catch (error) {
+    console.error("Error signing in:", error);
+  }
+};
+
+const handleSignOut = async () => {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error("Error signing out:", error);
+  }
+};
 
 const handleCheckIn = async () => {
   if (!userLocation) {
@@ -79,27 +107,52 @@ function App() {
     }
   }, []);
 
-  const handleCheckIn = () => {
-    if (!userLocation) {
-      setCheckInStatus("Location not found. Please enable location services.");
+const handleCheckIn = async () => {
+  if (!user) {
+    setCheckInStatus("Please sign in to check in.");
+    return;
+  }
+
+  if (!userLocation) {
+    setCheckInStatus("Location not found. Please enable location services.");
+    return;
+  }
+
+  try {
+    const terracreId = `terracre_${Math.floor(userLocation.lat * 1000)}_${Math.floor(userLocation.lng * 1000)}`;
+    const checkinRef = collection(db, "checkins");
+
+    // Check if the user already checked in today
+    const today = new Date().toISOString().split("T")[0];
+    const q = query(checkinRef, where("userId", "==", user.uid), where("terracreId", "==", terracreId));
+    const querySnapshot = await getDocs(q);
+
+    let alreadyCheckedIn = false;
+    querySnapshot.forEach((doc) => {
+      const checkinDate = doc.data().timestamp.toDate().toISOString().split("T")[0];
+      if (checkinDate === today) alreadyCheckedIn = true;
+    });
+
+    if (alreadyCheckedIn) {
+      setCheckInStatus("You can only check in once per day per location.");
       return;
     }
 
-    // Simulate a backend request (replace with actual API call)
-    fetch("https://your-backend.com/api/checkin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lat: userLocation.lat, lng: userLocation.lng }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        setCheckInStatus(data.message || "Check-in successful!");
-      })
-      .catch((error) => {
-        console.error("Check-in failed:", error);
-        setCheckInStatus("Check-in failed. Try again.");
-      });
-  };
+    // Save check-in to Firestore
+    await addDoc(checkinRef, {
+      userId: user.uid,
+      username: user.displayName || user.email,
+      terracreId: terracreId,
+      timestamp: Timestamp.now(),
+      message: "Checked in!",
+    });
+
+    setCheckInStatus("Check-in successful! You earned 1 TB.");
+  } catch (error) {
+    console.error("Check-in failed:", error);
+    setCheckInStatus("Check-in failed. Try again.");
+  }
+};
 
   const handleScan = (data) => {
     if (data) {
@@ -147,6 +200,16 @@ function App() {
         <QrScanner delay={300} onError={handleError} onScan={handleScan} style={{ width: "100%" }} />
         {qrResult && <p>Scanned Code: {qrResult}</p>}
       </div>
+      <div>
+        {user ? (
+        <div>
+          <p>Welcome, {user.displayName || user.email}</p>
+          <button onClick={handleSignOut}>Sign Out</button>
+        </div>
+      ) : (
+        <button onClick={handleGoogleSignIn}>Sign in with Google</button>
+      )}
+</div>
     </div>
   );
 }
