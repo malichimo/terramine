@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { auth, googleProvider, signInWithPopup, signOut } from "./firebase";
+import { auth, googleProvider } from "./firebase";
+import { signInWithPopup, signOut } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import QrScanner from "react-qr-scanner";
@@ -79,15 +80,7 @@ function App() {
     }
   }, []);
 
-  // ✅ Google Sign-In
-  const handleGoogleSignIn = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error("Error signing in:", error);
-    }
-  };
-
+ 
   // ✅ Sign Out
   const handleSignOut = async () => {
     try {
