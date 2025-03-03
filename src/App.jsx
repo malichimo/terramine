@@ -5,7 +5,36 @@ import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import QrScanner from "react-qr-scanner";
 import { collection, addDoc, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "./firebase";
+import { doc, setDoc, getDoc } from "firebase/firestore"; // Import Firestore functions
 
+const handleGoogleSignIn = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" }); // Forces account selection
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    // Reference to Firestore user document
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      // If user profile does not exist, create it
+      await setDoc(userRef, {
+        uid: user.uid,
+        name: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL || "", // Profile picture
+        createdAt: Timestamp.now(),
+        terrabucks: 0, // Starting balance
+      });
+    }
+
+    console.log("User signed in:", user);
+  } catch (error) {
+    console.error("Error signing in:", error.message);
+  }
+};
 const containerStyle = {
   width: "100%",
   height: "500px",
@@ -184,11 +213,12 @@ function App() {
       <div>
         {user ? (
           <div>
-            <p>Welcome, <strong>{user.displayName || user.email}</strong>!</p>
+            <img src={user.photoURL} alt="Profile" style={{ width: "50px", borderRadius: "50%" }} />
+            <p>Welcome, {user.displayName || user.email}</p>
             <button onClick={handleSignOut}>Sign Out</button>
           </div>
         ) : (
-        <button onClick={handleGoogleSignIn}>Sign in with Google</button>
+          <button onClick={handleGoogleSignIn}>Sign in with Google</button>
         )}
       </div>
 
