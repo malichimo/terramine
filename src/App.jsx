@@ -1,51 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { getAuth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
-import { getFirestore, collection, addDoc, query, where, getDocs, Timestamp, doc, setDoc, getDoc } from "firebase/firestore";
+import { auth, googleProvider } from "./firebase"; // ✅ Use correct Firebase imports
+import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { db } from "./firebase"; // ✅ Use Firestore from `firebase.js`
+import { collection, addDoc, query, where, getDocs, Timestamp, doc, setDoc, getDoc } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import QrScanner from "react-qr-scanner";
-import { db } from "./firebase"; // Ensure `firebase.js` is correctly configured
-
-// Initialize Firebase Auth
-const auth = getAuth();
-
-const handleGoogleSignIn = async () => {
-  try {
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" });
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
-
-    // Check if user profile exists in Firestore
-    const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-      await setDoc(userRef, {
-        uid: user.uid,
-        name: user.displayName,
-        email: user.email,
-        photoURL: user.photoURL || "",
-        createdAt: Timestamp.now(),
-        terrabucks: 0,
-      });
-    }
-
-    console.log("User signed in:", user);
-  } catch (error) {
-    console.error("Error signing in:", error.message);
-  }
-};
-
-const handleSignOut = async () => {
-  try {
-    await signOut(auth);
-  } catch (error) {
-    console.error("Error signing out:", error);
-  }
-};
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 }; // Default: San Francisco
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with actual API key
+const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // ✅ Replace with actual API key
 
 function App() {
   const [user, setUser] = useState(null);
@@ -54,24 +16,30 @@ function App() {
   const [qrResult, setQrResult] = useState("");
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        const userRef = doc(db, "users", currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) {
+          await setDoc(userRef, {
+            uid: currentUser.uid,
+            name: currentUser.displayName,
+            email: currentUser.email,
+            photoURL: currentUser.photoURL || "",
+            createdAt: Timestamp.now(),
+            terrabucks: 0, // ✅ Start with 0 TB
+          });
+        } else {
+          const userData = userSnap.data();
+          setUser({ ...currentUser, terrabucks: userData.terrabucks });
+        }
+      } else {
+        setUser(null);
+      }
     });
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      const userRef = doc(db, "users", user.uid);
-      getDoc(userRef).then((docSnap) => {
-        if (docSnap.exists()) {
-          const userData = docSnap.data();
-          setUser({ ...user, terrabucks: userData.terrabucks }); // Update state with TB balance
-        }
-      });
-    }
-  }, [user]);
-  
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -92,6 +60,22 @@ function App() {
     }
   }, []);
 
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Error signing in:", error);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
   const handleCheckIn = async () => {
     if (!user) {
       setCheckInStatus("Please sign in to check in.");
@@ -107,14 +91,13 @@ function App() {
       const terracreId = `terracre_${Math.floor(userLocation.lat * 1000)}_${Math.floor(userLocation.lng * 1000)}`;
       const checkinRef = collection(db, "checkins");
 
-      // Check if user already checked in today
       const today = new Date().toISOString().split("T")[0];
       const q = query(checkinRef, where("userId", "==", user.uid), where("terracreId", "==", terracreId));
       const querySnapshot = await getDocs(q);
 
       let alreadyCheckedIn = false;
       querySnapshot.forEach((doc) => {
-        const checkinDate = doc.data().timestamp.toDate().toISOString().split("T")[0];
+        const checkinDate = doc.data().timestamp.toDate().split("T")[0];
         if (checkinDate === today) alreadyCheckedIn = true;
       });
 
@@ -123,7 +106,6 @@ function App() {
         return;
       }
 
-      // Save check-in to Firestore
       await addDoc(checkinRef, {
         userId: user.uid,
         username: user.displayName || user.email,
@@ -166,11 +148,13 @@ function App() {
     <div>
       <h1>TerraMine Check-In</h1>
 
-      {/* Google Sign-In */}
       <div>
         {user ? (
           <div>
-            <p>Welcome, {user.displayName || user.email}</p>
+            <img src={user.photoURL} alt="Profile" style={{ width: "50px", borderRadius: "50%" }} />
+            <p><strong>Name:</strong> {user.displayName}</p>
+            <p><strong>Email:</strong> {user.email}</p>
+            <p><strong>Terrabucks:</strong> {user?.terrabucks ?? "Loading..."}</p>
             <button onClick={handleSignOut}>Sign Out</button>
           </div>
         ) : (
@@ -178,44 +162,27 @@ function App() {
         )}
       </div>
 
-      {/* Google Maps */}
       <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
         <GoogleMap mapContainerStyle={{ width: "100%", height: "500px" }} center={userLocation || defaultCenter} zoom={15}>
           {userLocation && <Marker position={userLocation} />}
         </GoogleMap>
       </LoadScript>
 
-      {/* Check-In Button */}
-      <button 
-        onClick={handleCheckIn} 
-        disabled={!user} 
-        style={{ marginTop: "10px", padding: "10px", fontSize: "16px", backgroundColor: user ? "#28a745" : "#ccc" }}
-      >
+      <button onClick={handleCheckIn} disabled={!user} style={{ marginTop: "10px", padding: "10px", fontSize: "16px", backgroundColor: user ? "#28a745" : "#ccc" }}>
         {user ? "Tap to Check-In" : "Sign in to Check-In"}
       </button>
 
-      {/* Display Check-In Status */}
       {checkInStatus && <p>{checkInStatus}</p>}
 
-      {/* QR Code Scanner */}
       <div>
         <h2>Scan QR Code to Check-In</h2>
         <QrScanner delay={300} onError={handleError} onScan={handleScan} style={{ width: "100%" }} />
         {qrResult && <p>Scanned Code: {qrResult}</p>}
       </div>
-
-      {/* Show Signed-In User */}
-     {user && (
-      <div>
-        <img src={user.photoURL} alt="Profile" style={{ width: "50px", borderRadius: "50%" }} />
-        <p><strong>Name:</strong> {user.displayName}</p>
-        <p><strong>Email:</strong> {user.email}</p>
-        <p><strong>Terrabucks:</strong> {user?.terrabucks ?? "Loading..."}</p> {/* ✅ Added here */}
-        <button onClick={handleSignOut}>Sign Out</button>
-      </div>
-    )} 
-  );
+    </div>
+  ); // ✅ Ensure JSX is properly returned and closed
 }
 
 export default App;
+
 
