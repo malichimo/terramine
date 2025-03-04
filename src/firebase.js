@@ -1,38 +1,47 @@
-// src/firebaseFunctions.js
-import { auth, googleProvider, db } from "./firebase";
+import { auth, googleProvider, db } from "./firebase"; // ✅ Ensure correct import paths
 import { signInWithPopup, signOut } from "firebase/auth";
 import { collection, addDoc, doc, getDoc, setDoc, query, where, getDocs, Timestamp } from "firebase/firestore";
 
-// ✅ Google Sign-In (Reusable for Web & Mobile)
+// ✅ Google Sign-In (Reusable)
 export const handleGoogleSignIn = async () => {
   try {
-    const result = await signInWithPopup(auth, googleProvider);
+    const result = await signInWithPopup(auth, googleProvider); // ✅ Use googleProvider here
     const user = result.user;
 
+    // ✅ Check if the user exists in Firestore
     const userRef = doc(db, "users", user.uid);
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
-      await setDoc(userRef, { uid: user.uid, name: user.displayName, email: user.email, photoURL: user.photoURL || "", terrabucks: 1000, createdAt: Timestamp.now() });
+      await setDoc(userRef, {
+        uid: user.uid,
+        name: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL || "",
+        terrabucks: 1000,
+        createdAt: Timestamp.now(),
+      });
     }
 
-    return user; // ✅ Return user object
+    console.log("User signed in:", user);
+    return user; // ✅ Return user object for state updates
   } catch (error) {
     console.error("Sign-in failed:", error);
     return null;
   }
 };
 
-// ✅ Sign-Out
+// ✅ Sign-Out Function
 export const handleSignOut = async () => {
   try {
     await signOut(auth);
+    console.log("User signed out");
   } catch (error) {
     console.error("Sign-out failed:", error);
   }
 };
 
-// ✅ Check-In Logic (Reusable in React Native)
+// ✅ Check-In Function
 export const handleCheckIn = async (user, userLocation) => {
   if (!user) return "Please sign in to check in.";
   if (!userLocation) return "Location not found. Please enable location services.";
@@ -56,7 +65,13 @@ export const handleCheckIn = async (user, userLocation) => {
 
     if (alreadyCheckedIn) return "You can only check in once per day per location.";
 
-    await addDoc(checkinRef, { userId: user.uid, username: user.displayName || user.email, terracreId: terracreId, timestamp: Timestamp.now(), message: "Checked in!" });
+    await addDoc(checkinRef, {
+      userId: user.uid,
+      username: user.displayName || user.email,
+      terracreId: terracreId,
+      timestamp: Timestamp.now(),
+      message: "Checked in!",
+    });
 
     return `Check-in successful! You earned 1 TB.`;
   } catch (error) {
@@ -64,4 +79,3 @@ export const handleCheckIn = async (user, userLocation) => {
     return "Check-in failed. Try again.";
   }
 };
-
