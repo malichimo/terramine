@@ -205,16 +205,15 @@ function App() {
       </div>
 
       {/* Show Signed-In User */}
-      {user && (
-        <div>
-          <img src={user.photoURL} alt="Profile" style={{ width: "50px", borderRadius: "50%" }} />
-          <p><strong>Name:</strong> {user.displayName}</p>
-          <p><strong>Email:</strong> {user.email}</p>
-          <p><strong>Terrabucks:</strong> (Fetching...)</p> {/* Placeholder for TB balance */}
-          <button onClick={handleSignOut}>Sign Out</button>
-        </div>
-      )}
-    </div>
+     {user && (
+      <div>
+        <img src={user.photoURL} alt="Profile" style={{ width: "50px", borderRadius: "50%" }} />
+        <p><strong>Name:</strong> {user.displayName}</p>
+        <p><strong>Email:</strong> {user.email}</p>
+        <p><strong>Terrabucks:</strong> {user?.terrabucks ?? "Loading..."}</p> {/* ✅ Added here */}
+        <button onClick={handleSignOut}>Sign Out</button>
+      </div>
+    )} 
   );
 }
 
