@@ -45,7 +45,7 @@ const handleSignOut = async () => {
 };
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 }; // Default: San Francisco
-const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace with actual API key
+const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with actual API key
 
 function App() {
   const [user, setUser] = useState(null);
