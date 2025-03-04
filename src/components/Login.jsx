@@ -1,13 +1,13 @@
 import React from "react";
-import { auth } from "./firebase";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "../firebase";
+import { signInWithPopup } from "firebase/auth";
 
 function Login({ onLoginSuccess }) {
   const handleLogin = async () => {
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      onLoginSuccess(result.user);
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      onLoginSuccess(user);
     } catch (error) {
       console.error("Login error:", error);
     }
@@ -24,6 +24,7 @@ function Login({ onLoginSuccess }) {
   );
 }
 
+// ✅ Simple styling
 const styles = {
   container: {
     display: "flex",
@@ -44,4 +45,5 @@ const styles = {
 };
 
 export default Login;
+
 
