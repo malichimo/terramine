@@ -1,13 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { auth, signInWithPopup, signOut, GoogleAuthProvider } from "firebase/auth";
+import { auth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
 import { db } from "./firebase"; // Firestore for user profiles
-import { signInWithPopup, signOut } from "firebase/auth";
-import { onAuthStateChanged } from "firebase/auth";
+import { collection, addDoc, query, where, getDocs, Timestamp, doc, setDoc, getDoc } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import QrScanner from "react-qr-scanner";
-import { collection, addDoc, query, where, getDocs, Timestamp } from "firebase/firestore";
-import { db } from "./firebase";
-import { doc, setDoc, getDoc } from "firebase/firestore"; // Import Firestore functions
 
 const handleGoogleSignIn = async () => {
   try {
