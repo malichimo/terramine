@@ -2,38 +2,42 @@ import React, { useState, useEffect } from "react";
 import { auth } from "./firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { db } from "./firebase";
-import { collection, getDocs, doc, getDoc, setDoc, query, where, addDoc, Timestamp } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import Login from "./Login.jsx"; // ✅ Import Login Screen
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with actual API key
+const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace with actual API key
 
 function App() {
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
-  const [checkInStatus, setCheckInStatus] = useState("");
 
   // ✅ Track user authentication
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       console.log("Auth State Changed:", currentUser);
       if (currentUser) {
-        const userRef = doc(db, "users", currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (!userSnap.exists()) {
-          await setDoc(userRef, { uid: currentUser.uid, terrabucks: 1000 });
+        try {
+          const userRef = doc(db, "users", currentUser.uid);
+          const userSnap = await getDoc(userRef);
+          if (!userSnap.exists()) {
+            await setDoc(userRef, { uid: currentUser.uid, terrabucks: 1000 });
+          }
+          setUser({ ...currentUser, terrabucks: userSnap.data()?.terrabucks ?? 1000 });
+        } catch (error) {
+          console.error("Error fetching user:", error);
         }
-        setUser({ ...currentUser, terrabucks: userSnap.data()?.terrabucks ?? 1000 });
       } else {
         setUser(null);
       }
     });
+
     return () => unsubscribe();
   }, []);
 
-  // ✅ If user is not signed in, show Login screen
+  // ✅ Show Login Screen if User is Not Authenticated
   if (!user) {
     return <Login onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />;
   }
@@ -61,14 +65,19 @@ function App() {
   // ✅ Fetch owned properties from Firestore
   useEffect(() => {
     const fetchOwnedTerracres = async () => {
-      const terracresRef = collection(db, "terracres");
-      const querySnapshot = await getDocs(terracresRef);
-      const properties = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setOwnedTerracres(properties);
+      try {
+        const terracresRef = collection(db, "terracres");
+        const querySnapshot = await getDocs(terracresRef);
+        const properties = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setOwnedTerracres(properties);
+      } catch (error) {
+        console.error("Error fetching terracres:", error);
+      }
     };
+
     fetchOwnedTerracres();
   }, []);
 
@@ -118,3 +127,4 @@ function App() {
 }
 
 export default App;
+
