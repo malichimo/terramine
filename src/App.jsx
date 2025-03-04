@@ -196,7 +196,9 @@ function App() {
       {user && (
         <div>
           <img src={user.photoURL} alt="Profile" style={{ width: "50px", borderRadius: "50%" }} />
-          <p>Welcome, {user.displayName || user.email}</p>
+          <p><strong>Name:</strong> {user.displayName}</p>
+          <p><strong>Email:</strong> {user.email}</p>
+          <p><strong>Terrabucks:</strong> (Fetching...)</p> {/* Placeholder for TB balance */}
           <button onClick={handleSignOut}>Sign Out</button>
         </div>
       )}
