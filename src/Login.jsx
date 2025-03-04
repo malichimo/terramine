@@ -1,14 +1,13 @@
 import React from "react";
-import { auth, googleProvider } from "./firebase";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { auth } from "./firebase";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 function Login({ onLoginSuccess }) {
   const handleLogin = async () => {
     try {
-      const provider = new GoogleAuthProvider(); // ✅ Create provider instance
+      const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      onLoginSuccess(user); // ✅ Ensure function is correctly used
+      onLoginSuccess(result.user);
     } catch (error) {
       console.error("Login error:", error);
     }
@@ -18,14 +17,14 @@ function Login({ onLoginSuccess }) {
     <div style={styles.container}>
       <h1>Welcome to TerraMine</h1>
       <p>Sign in to explore and check-in at properties!</p>
-      <button onClick={handleLogin} style={styles.button}> {/* ✅ FIXED */}
+      <button onClick={handleLogin} style={styles.button}>
         Sign in with Google
       </button>
     </div>
   );
 }
 
-// ✅ Simple styling
+// ✅ Styling
 const styles = {
   container: {
     display: "flex",
