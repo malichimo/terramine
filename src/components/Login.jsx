@@ -1,16 +1,10 @@
 import React from "react";
-import { auth, googleProvider } from "../firebase";
-import { signInWithPopup } from "firebase/auth";
+import { handleGoogleSignIn } from "../firebaseFunctions"; // ✅ Import the function
 
 function Login({ onLoginSuccess }) {
   const handleLogin = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      onLoginSuccess(user);
-    } catch (error) {
-      console.error("Login error:", error);
-    }
+    const user = await handleGoogleSignIn(); // ✅ Call function directly
+    if (user) onLoginSuccess(user);
   };
 
   return (
@@ -45,5 +39,3 @@ const styles = {
 };
 
 export default Login;
-
-
