@@ -8,19 +8,22 @@ import QrScanner from "react-qr-scanner";
 import Login from "./Login.jsx"; // Import Login Screen
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with actual API key
+const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace with actual API key
 
 function App() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // ✅ Add a loading state
   const [userLocation, setUserLocation] = useState(null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
   const [checkInStatus, setCheckInStatus] = useState("");
   const [qrResult, setQrResult] = useState("");
   const [showQrScanner, setShowQrScanner] = useState(false); // Toggle QR Scanner
 
-  // ✅ Track user authentication
+  // ✅ Track user authentication with a loading state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      console.log("Auth State Changed:", currentUser); // Debugging output
+
       if (currentUser) {
         const userRef = doc(db, "users", currentUser.uid);
         const userSnap = await getDoc(userRef);
@@ -32,9 +35,17 @@ function App() {
       } else {
         setUser(null);
       }
+
+      setLoading(false); // ✅ Finish loading after auth check
     });
+
     return () => unsubscribe();
   }, []);
+
+  // ✅ Show a loading screen instead of a black screen
+  if (loading) {
+    return <div style={{ textAlign: "center", marginTop: "50px" }}>Loading...</div>;
+  }
 
   // ✅ If user is not signed in, show Login screen
   if (!user) {
@@ -76,72 +87,12 @@ function App() {
     fetchOwnedTerracres();
   }, []);
 
-  // ✅ Handle Manual Check-In
-  const handleCheckIn = async () => {
-    if (!user) {
-      setCheckInStatus("Please sign in to check in.");
-      return;
-    }
-
-    if (!userLocation) {
-      setCheckInStatus("Location not found. Please enable location services.");
-      return;
-    }
-
+  const handleSignOut = async () => {
     try {
-      const terracreId = `terracre_${Math.floor(userLocation.lat * 1000)}_${Math.floor(userLocation.lng * 1000)}`;
-      const checkinRef = collection(db, "checkins");
-      const terracreRef = doc(db, "terracres", terracreId);
-
-      // ✅ Check if the Terracre is owned
-      const terracreSnap = await getDoc(terracreRef);
-      if (!terracreSnap.exists()) {
-        setCheckInStatus("This Terracre is not owned by anyone.");
-        return;
-      }
-
-      // ✅ Check if user already checked in today
-      const today = new Date().toISOString().split("T")[0];
-      const q = query(checkinRef, where("userId", "==", user.uid), where("terracreId", "==", terracreId));
-      const querySnapshot = await getDocs(q);
-
-      let alreadyCheckedIn = false;
-      querySnapshot.forEach((doc) => {
-        const checkinDate = doc.data().timestamp.toDate().toISOString().split("T")[0];
-        if (checkinDate === today) alreadyCheckedIn = true;
-      });
-
-      if (alreadyCheckedIn) {
-        setCheckInStatus("You can only check in once per day per location.");
-        return;
-      }
-
-      // ✅ Save check-in to Firestore
-      await addDoc(checkinRef, {
-        userId: user.uid,
-        username: user.displayName || user.email,
-        terracreId: terracreId,
-        timestamp: Timestamp.now(),
-        message: "Checked in!",
-      });
-
-      setCheckInStatus(`Check-in successful! You earned 1 TB.`);
+      await signOut(auth);
+      setUser(null);
     } catch (error) {
-      console.error("Check-in failed:", error);
-      setCheckInStatus("Check-in failed. Try again.");
-    }
-  };
-
-  // ✅ Toggle QR Scanner
-  const toggleQrScanner = () => {
-    setShowQrScanner((prev) => !prev);
-  };
-
-  // ✅ Handle QR Code Scan
-  const handleScan = (data) => {
-    if (data) {
-      setQrResult(data.text);
-      setCheckInStatus(`QR Check-in successful! Scanned: ${data.text}`);
+      console.error("Error signing out:", error);
     }
   };
 
@@ -176,12 +127,12 @@ function App() {
       </LoadScript>
 
       {/* Check-In Button */}
-      <button onClick={handleCheckIn} style={{ marginTop: "10px", padding: "10px", fontSize: "16px", backgroundColor: "#28a745", color: "#fff" }}>
+      <button onClick={() => setCheckInStatus("Check-in feature coming soon!")} style={{ marginTop: "10px", padding: "10px", fontSize: "16px", backgroundColor: "#28a745", color: "#fff" }}>
         Tap to Check-In
       </button>
 
       {/* QR Scanner Toggle Button */}
-      <button onClick={toggleQrScanner} style={{ marginLeft: "10px", padding: "10px", fontSize: "16px", backgroundColor: "#007bff", color: "#fff" }}>
+      <button onClick={() => setShowQrScanner((prev) => !prev)} style={{ marginLeft: "10px", padding: "10px", fontSize: "16px", backgroundColor: "#007bff", color: "#fff" }}>
         {showQrScanner ? "Hide QR Scanner" : "Use QR Scanner"}
       </button>
 
@@ -192,7 +143,7 @@ function App() {
       {showQrScanner && (
         <div>
           <h2>Scan QR Code to Check-In</h2>
-          <QrScanner delay={300} onError={(error) => console.error(error)} onScan={handleScan} style={{ width: "100%" }} />
+          <QrScanner delay={300} onError={(error) => console.error(error)} onScan={(data) => setQrResult(data.text)} style={{ width: "100%" }} />
           {qrResult && <p>Scanned Code: {qrResult}</p>}
         </div>
       )}
