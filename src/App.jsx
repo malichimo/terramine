@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { auth, googleProvider } from "./firebase";
+import { auth, signInWithPopup, signOut, GoogleAuthProvider } from "firebase/auth";
+import { db } from "./firebase"; // Firestore for user profiles
 import { signInWithPopup, signOut } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
@@ -10,35 +11,15 @@ import { doc, setDoc, getDoc } from "firebase/firestore"; // Import Firestore fu
 
 const handleGoogleSignIn = async () => {
   try {
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" }); // Forces account selection
+    const provider = new GoogleAuthProvider(); // ✅ Make sure GoogleAuthProvider is created
+    provider.setCustomParameters({ prompt: "select_account" }); // Force account selection
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
-
-    // Reference to Firestore user document
-    const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-      // If user profile does not exist, create it
-      await setDoc(userRef, {
-        uid: user.uid,
-        name: user.displayName,
-        email: user.email,
-        photoURL: user.photoURL || "", // Profile picture
-        createdAt: Timestamp.now(),
-        terrabucks: 0, // Starting balance
-      });
-    }
 
     console.log("User signed in:", user);
   } catch (error) {
     console.error("Error signing in:", error.message);
   }
-};
-const containerStyle = {
-  width: "100%",
-  height: "500px",
 };
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 }; // Default: San Francisco
