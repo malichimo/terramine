@@ -3,12 +3,14 @@ import { auth, googleProvider } from "./firebase";
 import { signInWithPopup } from "firebase/auth";
 
 function Login({ onLoginSuccess }) {
-  const handleGoogleSignIn = async () => {
+  const handleLogin = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      onLoginSuccess(result.user); // ✅ Notify parent when login is successful
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      onLoginSuccess(user); // ✅ Ensure this function is correctly used
     } catch (error) {
-      console.error("Error signing in:", error);
+      console.error("Login error:", error);
     }
   };
 
