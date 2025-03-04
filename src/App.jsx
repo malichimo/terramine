@@ -5,7 +5,7 @@ import { db } from "./firebase";
 import { collection, getDocs, doc, getDoc, setDoc, query, where, addDoc, Timestamp } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import QrScanner from "react-qr-scanner";
-import Login from "./Login"; // ✅ Import Login Screen
+import Login from "./Login.jsx"; // ✅ Import Login Screen
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with actual API key
