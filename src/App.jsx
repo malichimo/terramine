@@ -61,6 +61,18 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (user) {
+      const userRef = doc(db, "users", user.uid);
+      getDoc(userRef).then((docSnap) => {
+        if (docSnap.exists()) {
+          const userData = docSnap.data();
+          setUser({ ...user, terrabucks: userData.terrabucks }); // Update state with TB balance
+        }
+      });
+    }
+  }, [user]);
+  
+  useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
