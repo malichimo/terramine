@@ -53,24 +53,25 @@ function App() {
   }
 
   // ✅ Get user's location
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.error("Error retrieving location:", error);
-          setUserLocation(defaultCenter);
-        }
-      );
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    if (currentUser) {
+      const userRef = doc(db, "users", currentUser.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        await setDoc(userRef, { uid: currentUser.uid, terrabucks: 1000 });
+        setUser({ ...currentUser, terrabucks: 1000 }); // ✅ Ensure user is set with TB
+      } else {
+        setUser({ ...currentUser, terrabucks: userSnap.data().terrabucks });
+      }
     } else {
-      setUserLocation(defaultCenter);
+      setUser(null);
     }
-  }, []);
+  });
+
+  return () => unsubscribe();
+}, []);
 
   // ✅ Fetch owned properties from Firestore
   useEffect(() => {
