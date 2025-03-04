@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { auth, googleProvider } from "./firebase";
-import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { auth } from "./firebase";
+import { signOut, onAuthStateChanged } from "firebase/auth";
 import { db } from "./firebase";
 import { collection, getDocs, doc, getDoc, setDoc, query, where, addDoc, Timestamp } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
-import QrScanner from "react-qr-scanner"; 
+import QrScanner from "react-qr-scanner";
+import Login from "./Login"; // ✅ Import Login Screen
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with actual API key
@@ -16,7 +17,7 @@ function App() {
   const [checkInStatus, setCheckInStatus] = useState("");
   const [qrResult, setQrResult] = useState("");
 
-  // Track user authentication
+  // ✅ Track user authentication
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -34,7 +35,12 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // Get user's location
+  // ✅ If user is not signed in, show Login screen
+  if (!user) {
+    return <Login onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />;
+  }
+
+  // ✅ Get user's location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -54,7 +60,7 @@ function App() {
     }
   }, []);
 
-  // Fetch owned Terracres from Firestore
+  // ✅ Fetch owned properties from Firestore
   useEffect(() => {
     const fetchOwnedTerracres = async () => {
       const terracresRef = collection(db, "terracres");
@@ -69,120 +75,28 @@ function App() {
     fetchOwnedTerracres();
   }, []);
 
-  // ✅ Handle Google Sign-In
-  const handleGoogleSignIn = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error("Error signing in:", error);
-    }
-  };
-
-  // ✅ Handle Sign-Out
+  // ✅ Handle Sign Out
   const handleSignOut = async () => {
     try {
       await signOut(auth);
+      setUser(null);
     } catch (error) {
       console.error("Error signing out:", error);
     }
   };
 
-  // ✅ Handle Check-In
-  const handleCheckIn = async () => {
-    if (!user) {
-      setCheckInStatus("Please sign in to check in.");
-      return;
-    }
-
-    if (!userLocation) {
-      setCheckInStatus("Location not found. Please enable location services.");
-      return;
-    }
-
-    try {
-      const terracreId = `terracre_${Math.floor(userLocation.lat * 1000)}_${Math.floor(userLocation.lng * 1000)}`;
-      const checkinRef = collection(db, "checkins");
-      const terracreRef = doc(db, "terracres", terracreId);
-
-      // ✅ Check ownership of the Terracre
-      const terracreSnap = await getDoc(terracreRef);
-      if (terracreSnap.exists()) {
-        const terracreData = terracreSnap.data();
-        if (terracreData.ownerId === user.uid) {
-          setCheckInStatus("You cannot check into your own property.");
-          return;
-        }
-      } else {
-        setCheckInStatus("This Terracre is not owned by anyone.");
-        return;
-      }
-
-      // ✅ Check if the user already checked in today
-      const today = new Date().toISOString().split("T")[0];
-      const q = query(checkinRef, where("userId", "==", user.uid), where("terracreId", "==", terracreId));
-      const querySnapshot = await getDocs(q);
-
-      let alreadyCheckedIn = false;
-      querySnapshot.forEach((doc) => {
-        const checkinDate = doc.data().timestamp.toDate().toISOString().split("T")[0];
-        if (checkinDate === today) alreadyCheckedIn = true;
-      });
-
-      if (alreadyCheckedIn) {
-        setCheckInStatus("You can only check in once per day per location.");
-        return;
-      }
-
-      // ✅ Save check-in to Firestore
-      await addDoc(checkinRef, {
-        userId: user.uid,
-        username: user.displayName || user.email,
-        terracreId: terracreId,
-        timestamp: Timestamp.now(),
-        message: "Checked in!",
-      });
-
-      setCheckInStatus(`Check-in successful! You earned 1 TB.`);
-    } catch (error) {
-      console.error("Check-in failed:", error);
-      setCheckInStatus("Check-in failed. Try again.");
-    }
-  };
-
-  // ✅ Handle QR Scan Check-In
-  const handleScan = (data) => {
-    if (data) {
-      setQrResult(data.text);
-      fetch("https://your-backend.com/api/qr-checkin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qrCode: data.text }),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          setCheckInStatus(data.message || "QR Check-in successful!");
-        })
-        .catch((error) => {
-          console.error("QR Check-in failed:", error);
-          setCheckInStatus("QR Check-in failed. Try again.");
-        });
-    }
-  };
-
-  const handleError = (error) => {
-    console.error(error);
-  };
-
   return (
     <div>
-      <h1>TerraMine Check-In</h1>
+      <h1>TerraMine</h1>
 
-      {/* Sign-In Button */}
-      {!user && (
-        <button onClick={handleGoogleSignIn} style={{ padding: "10px", fontSize: "16px", backgroundColor: "#4285F4", color: "white", border: "none", cursor: "pointer" }}>
-          Sign in with Google
-        </button>
-      )}
+      {/* Show User Profile */}
+      <div>
+        <img src={user.photoURL} alt="Profile" style={{ width: "50px", borderRadius: "50%" }} />
+        <p><strong>Name:</strong> {user.displayName}</p>
+        <p><strong>Email:</strong> {user.email}</p>
+        <p><strong>Terrabucks:</strong> {user.terrabucks ?? "Loading..."}</p>
+        <button onClick={handleSignOut}>Sign Out</button>
+      </div>
 
       {/* Google Maps */}
       <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
@@ -201,19 +115,12 @@ function App() {
         </GoogleMap>
       </LoadScript>
 
-      {/* Check-In Button */}
-      {user && (
-        <button onClick={handleCheckIn} style={{ marginTop: "10px", padding: "10px", fontSize: "16px", backgroundColor: "#28a745", color: "white" }}>
-          Tap to Check-In
-        </button>
-      )}
-
       {checkInStatus && <p>{checkInStatus}</p>}
 
       {/* QR Code Scanner */}
       <div>
         <h2>Scan QR Code to Check-In</h2>
-        <QrScanner delay={300} onError={handleError} onScan={handleScan} style={{ width: "100%" }} />
+        <QrScanner delay={300} onError={(error) => console.error(error)} onScan={(data) => setQrResult(data?.text || "")} style={{ width: "100%" }} />
         {qrResult && <p>Scanned Code: {qrResult}</p>}
       </div>
     </div>
