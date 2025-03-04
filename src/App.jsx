@@ -7,24 +7,28 @@ import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import Login from "./Login.jsx"; // ✅ Import Login Screen
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with actual API key
+const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace with actual API key
 
 function App() {
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
+  const [isLoading, setIsLoading] = useState(true); // ✅ Prevents rendering before auth is checked
 
   // ✅ Track user authentication
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       console.log("Auth State Changed:", currentUser);
+
       if (currentUser) {
         try {
           const userRef = doc(db, "users", currentUser.uid);
           const userSnap = await getDoc(userRef);
+
           if (!userSnap.exists()) {
             await setDoc(userRef, { uid: currentUser.uid, terrabucks: 1000 });
           }
+          
           setUser({ ...currentUser, terrabucks: userSnap.data()?.terrabucks ?? 1000 });
         } catch (error) {
           console.error("Error fetching user:", error);
@@ -32,17 +36,24 @@ function App() {
       } else {
         setUser(null);
       }
+
+      setIsLoading(false); // ✅ Set loading state to false when done
     });
 
     return () => unsubscribe();
   }, []);
+
+  // ✅ Ensure no rendering happens before authentication is checked
+  if (isLoading) {
+    return <p>Loading...</p>;
+  }
 
   // ✅ Show Login Screen if User is Not Authenticated
   if (!user) {
     return <Login onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />;
   }
 
-  // ✅ Get user's location
+  // ✅ Get user's location (Runs only **once** when component mounts)
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -62,7 +73,7 @@ function App() {
     }
   }, []);
 
-  // ✅ Fetch owned properties from Firestore
+  // ✅ Fetch owned properties from Firestore (Runs **once**)
   useEffect(() => {
     const fetchOwnedTerracres = async () => {
       try {
@@ -127,4 +138,3 @@ function App() {
 }
 
 export default App;
-
