@@ -76,50 +76,76 @@ function App() {
     }
   };
 
-  const handleCheckIn = async () => {
-    if (!user) {
-      setCheckInStatus("Please sign in to check in.");
-      return;
-    }
+const handleCheckIn = async () => {
+  if (!user) {
+    setCheckInStatus("Please sign in to check in.");
+    return;
+  }
 
-    if (!userLocation) {
-      setCheckInStatus("Location not found. Please enable location services.");
-      return;
-    }
+  if (!userLocation) {
+    setCheckInStatus("Location not found. Please enable location services.");
+    return;
+  }
 
-    try {
-      const terracreId = `terracre_${Math.floor(userLocation.lat * 1000)}_${Math.floor(userLocation.lng * 1000)}`;
-      const checkinRef = collection(db, "checkins");
+  try {
+    const terracreId = `terracre_${Math.floor(userLocation.lat * 1000)}_${Math.floor(userLocation.lng * 1000)}`;
+    const checkinRef = collection(db, "checkins");
+    const terracreRef = doc(db, "terracres", terracreId);
 
-      const today = new Date().toISOString().split("T")[0];
-      const q = query(checkinRef, where("userId", "==", user.uid), where("terracreId", "==", terracreId));
-      const querySnapshot = await getDocs(q);
-
-      let alreadyCheckedIn = false;
-      querySnapshot.forEach((doc) => {
-        const checkinDate = doc.data().timestamp.toDate().split("T")[0];
-        if (checkinDate === today) alreadyCheckedIn = true;
-      });
-
-      if (alreadyCheckedIn) {
-        setCheckInStatus("You can only check in once per day per location.");
+    // ✅ Check who owns this Terracre
+    const terracreSnap = await getDoc(terracreRef);
+    if (terracreSnap.exists()) {
+      const terracreData = terracreSnap.data();
+      if (terracreData.ownerId === user.uid) {
+        setCheckInStatus("You cannot check into your own property.");
         return;
       }
-
-      await addDoc(checkinRef, {
-        userId: user.uid,
-        username: user.displayName || user.email,
-        terracreId: terracreId,
-        timestamp: Timestamp.now(),
-        message: "Checked in!",
-      });
-
-      setCheckInStatus(`Check-in successful! Welcome, ${user.displayName || user.email}. You earned 1 TB.`);
-    } catch (error) {
-      console.error("Check-in failed:", error);
-      setCheckInStatus("Check-in failed. Try again.");
+    } else {
+      setCheckInStatus("This Terracre is not owned by anyone.");
+      return;
     }
-  };
+
+    // ✅ Check if user already checked in today
+    const today = new Date().toISOString().split("T")[0];
+    const q = query(checkinRef, where("userId", "==", user.uid), where("terracreId", "==", terracreId));
+    const querySnapshot = await getDocs(q);
+
+    let alreadyCheckedIn = false;
+    querySnapshot.forEach((doc) => {
+      const checkinDate = doc.data().timestamp.toDate().split("T")[0];
+      if (checkinDate === today) alreadyCheckedIn = true;
+    });
+
+    if (alreadyCheckedIn) {
+      setCheckInStatus("You can only check in once per day per location.");
+      return;
+    }
+
+    // ✅ Save check-in to Firestore
+    await addDoc(checkinRef, {
+      userId: user.uid,
+      username: user.displayName || user.email,
+      terracreId: terracreId,
+      timestamp: Timestamp.now(),
+      message: "Checked in!",
+    });
+
+    // ✅ Update Terrabucks Balance
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      const newTerrabucks = (userData.terrabucks || 0) + 1;
+      await setDoc(userRef, { terrabucks: newTerrabucks }, { merge: true });
+      setUser((prevUser) => ({ ...prevUser, terrabucks: newTerrabucks }));
+    }
+
+    setCheckInStatus(`Check-in successful! Welcome, ${user.displayName || user.email}. You earned 1 TB.`);
+  } catch (error) {
+    console.error("Check-in failed:", error);
+    setCheckInStatus("Check-in failed. Try again.");
+  }
+};
 
   const handleScan = (data) => {
     if (data) {
