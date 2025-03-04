@@ -2,29 +2,31 @@ import React, { useState, useEffect } from "react";
 import { auth } from "./firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { db } from "./firebase";
-import { collection, getDocs, doc, getDoc, setDoc, query, where, addDoc, Timestamp } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, setDoc, query } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import QrScanner from "react-qr-scanner";
-import Login from "./Login.jsx"; // ✅ Import Login Screen
+import Login from "./Login.jsx"; // ✅ Login Screen
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with actual API key
+const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // ✅ Replace with actual API key
 
 function App() {
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
-  const [ownedTerracres, setOwnedTerracres] = useState([]);
+  const [ownedTerracres, setOwnedTerracres] = useState([]); // ✅ List of owned properties
   const [checkInStatus, setCheckInStatus] = useState("");
   const [qrResult, setQrResult] = useState("");
 
-  // ✅ Track user authentication
+  // ✅ Track user authentication and load user profile
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         const userRef = doc(db, "users", currentUser.uid);
         const userSnap = await getDoc(userRef);
+
         if (!userSnap.exists()) {
           await setDoc(userRef, { uid: currentUser.uid, terrabucks: 1000 });
+          setUser({ ...currentUser, terrabucks: 1000 });
         } else {
           setUser({ ...currentUser, terrabucks: userSnap.data().terrabucks });
         }
@@ -32,13 +34,28 @@ function App() {
         setUser(null);
       }
     });
+
     return () => unsubscribe();
   }, []);
 
-  // ✅ If user is not signed in, show Login screen
-  if (!user) {
-    return <Login onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />;
-  }
+  // ✅ Fetch owned properties from Firestore
+  useEffect(() => {
+    const fetchOwnedTerracres = async () => {
+      try {
+        const terracresRef = collection(db, "terracres");
+        const querySnapshot = await getDocs(terracresRef);
+        const properties = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setOwnedTerracres(properties);
+      } catch (error) {
+        console.error("Error fetching owned Terracres:", error);
+      }
+    };
+
+    fetchOwnedTerracres();
+  }, []);
 
   // ✅ Get user's location
   useEffect(() => {
@@ -60,20 +77,10 @@ function App() {
     }
   }, []);
 
-  // ✅ Fetch owned properties from Firestore
-  useEffect(() => {
-    const fetchOwnedTerracres = async () => {
-      const terracresRef = collection(db, "terracres");
-      const querySnapshot = await getDocs(terracresRef);
-      const properties = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setOwnedTerracres(properties);
-    };
-
-    fetchOwnedTerracres();
-  }, []);
+  // ✅ Redirect to Login if no user is signed in
+  if (!user) {
+    return <Login onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />;
+  }
 
   // ✅ Handle Sign Out
   const handleSignOut = async () => {
@@ -89,7 +96,7 @@ function App() {
     <div>
       <h1>TerraMine</h1>
 
-      {/* Show User Profile */}
+      {/* ✅ Show User Profile */}
       <div>
         <img src={user.photoURL} alt="Profile" style={{ width: "50px", borderRadius: "50%" }} />
         <p><strong>Name:</strong> {user.displayName}</p>
@@ -98,12 +105,13 @@ function App() {
         <button onClick={handleSignOut}>Sign Out</button>
       </div>
 
-      {/* Google Maps */}
+      {/* ✅ Google Maps with Owned Properties */}
       <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
         <GoogleMap mapContainerStyle={{ width: "100%", height: "500px" }} center={userLocation || defaultCenter} zoom={15}>
+          {/* ✅ User's Location */}
           {userLocation && <Marker position={userLocation} label="You" />}
 
-          {/* Owned Properties Markers */}
+          {/* ✅ Display Owned Properties */}
           {ownedTerracres.map((terracre) => (
             <Marker
               key={terracre.id}
@@ -115,14 +123,15 @@ function App() {
         </GoogleMap>
       </LoadScript>
 
-      {checkInStatus && <p>{checkInStatus}</p>}
-
-      {/* QR Code Scanner */}
+      {/* ✅ QR Code Scanner */}
       <div>
         <h2>Scan QR Code to Check-In</h2>
         <QrScanner delay={300} onError={(error) => console.error(error)} onScan={(data) => setQrResult(data?.text || "")} style={{ width: "100%" }} />
         {qrResult && <p>Scanned Code: {qrResult}</p>}
       </div>
+
+      {/* ✅ Show Check-In Status */}
+      {checkInStatus && <p>{checkInStatus}</p>}
     </div>
   );
 }
