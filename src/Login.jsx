@@ -24,7 +24,6 @@ function Login({ onLoginSuccess }) {
   );
 }
 
-// ✅ Styling
 const styles = {
   container: {
     display: "flex",
@@ -45,3 +44,4 @@ const styles = {
 };
 
 export default Login;
+
