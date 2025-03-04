@@ -4,18 +4,18 @@ import { signOut, onAuthStateChanged } from "firebase/auth";
 import { db } from "./firebase";
 import { collection, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
-import Login from "./Login.jsx"; // ✅ Import Login Screen
+import Login from "./Login.jsx"; // ✅ Import Login Component
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace with actual API key
 
 function App() {
   const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [userLocation, setUserLocation] = useState(null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
-  const [isLoading, setIsLoading] = useState(true); // ✅ Prevents rendering before auth is checked
 
-  // ✅ Track user authentication
+  // ✅ Track user authentication state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       console.log("Auth State Changed:", currentUser);
@@ -28,7 +28,7 @@ function App() {
           if (!userSnap.exists()) {
             await setDoc(userRef, { uid: currentUser.uid, terrabucks: 1000 });
           }
-          
+
           setUser({ ...currentUser, terrabucks: userSnap.data()?.terrabucks ?? 1000 });
         } catch (error) {
           console.error("Error fetching user:", error);
@@ -37,23 +37,23 @@ function App() {
         setUser(null);
       }
 
-      setIsLoading(false); // ✅ Set loading state to false when done
+      setIsLoading(false); // ✅ Ensures page does not load before auth is checked
     });
 
     return () => unsubscribe();
   }, []);
 
-  // ✅ Ensure no rendering happens before authentication is checked
+  // ✅ Show loading message before authentication check is complete
   if (isLoading) {
     return <p>Loading...</p>;
   }
 
-  // ✅ Show Login Screen if User is Not Authenticated
+  // ✅ If user is not signed in, show Login screen
   if (!user) {
     return <Login onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />;
   }
 
-  // ✅ Get user's location (Runs only **once** when component mounts)
+  // ✅ Get user's location (Runs once when component mounts)
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -73,7 +73,7 @@ function App() {
     }
   }, []);
 
-  // ✅ Fetch owned properties from Firestore (Runs **once**)
+  // ✅ Fetch owned properties from Firestore (Runs once)
   useEffect(() => {
     const fetchOwnedTerracres = async () => {
       try {
@@ -121,8 +121,6 @@ function App() {
       <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
         <GoogleMap mapContainerStyle={{ width: "100%", height: "500px" }} center={userLocation || defaultCenter} zoom={15}>
           {userLocation && <Marker position={userLocation} label="You" />}
-
-          {/* Owned Properties Markers */}
           {ownedTerracres.map((terracre) => (
             <Marker
               key={terracre.id}
@@ -138,3 +136,4 @@ function App() {
 }
 
 export default App;
+
