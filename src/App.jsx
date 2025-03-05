@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { auth } from "./firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth"; // ✅ Add signOut
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
@@ -98,12 +98,11 @@ function App() {
     fetchOwnedTerracres();
   }, [fetchOwnedTerracres]);
 
-  // ✅ Sign-out function
   const handleSignOut = async () => {
     try {
       await signOut(auth);
       console.log("✅ User signed out");
-      setUser(null); // This will trigger the Login screen
+      setUser(null);
     } catch (error) {
       console.error("❌ Sign-out error:", error);
       setError("Failed to sign out.");
@@ -115,7 +114,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <header className="app-header"> {/* ✅ Add header for layout */}
+      <header className="app-header">
         <button className="signout-button" onClick={handleSignOut}>
           Sign Out
         </button>
@@ -164,6 +163,10 @@ function App() {
           </LoadScript>
         </Suspense>
       )}
+      {/* ✅ Add greeting */}
+      <p className="greeting">
+        Welcome {user.displayName || "User"}, you have {user.terrabucks} TB available.
+      </p>
       <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} />
       {checkInStatus && <p>{checkInStatus}</p>}
     </div>
