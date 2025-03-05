@@ -1,32 +1,38 @@
 import React from "react";
-import { handleCheckIn } from "../firebaseFunctions";
+import { db } from "../firebase";
+import { doc, setDoc } from "firebase/firestore";
+import "./CheckInButton.css"; // ✅ Add CSS import
 
-function CheckInButton({ user, userLocation, setCheckInStatus }) {
-  const handleCheckInClick = async () => {
+const CheckInButton = ({ user, userLocation, setCheckInStatus }) => {
+  const handleCheckIn = async () => {
     if (!user || !userLocation) {
-      setCheckInStatus("Sign in and enable location to check in.");
+      setCheckInStatus("Please log in and allow location access.");
       return;
     }
-    const statusMessage = await handleCheckIn(user, userLocation);
-    setCheckInStatus(statusMessage);
+
+    try {
+      const terracreId = `${userLocation.lat}-${userLocation.lng}`;
+      const terracreRef = doc(db, "terracres", terracreId);
+
+      await setDoc(terracreRef, {
+        lat: userLocation.lat,
+        lng: userLocation.lng,
+        ownerId: user.uid,
+        claimedAt: new Date().toISOString(),
+      }, { merge: true });
+
+      setCheckInStatus("Check-in successful! You’ve claimed this terracre.");
+    } catch (error) {
+      console.error("Check-in error:", error);
+      setCheckInStatus("Failed to check in. Try again.");
+    }
   };
 
   return (
-    <button 
-      onClick={handleCheckInClick} 
-      style={{
-        marginTop: "10px",
-        padding: "10px",
-        fontSize: "16px",
-        backgroundColor: "#28a745",
-        color: "#fff",
-        border: "none",
-        cursor: "pointer"
-      }}
-    >
-      Tap to Check-In
+    <button className="checkin-button" onClick={handleCheckIn}>
+      Check In
     </button>
   );
-}
+};
 
 export default CheckInButton;
