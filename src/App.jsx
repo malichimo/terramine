@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { db } from "./firebase"; // ✅ Use db from firebase.js
-// Remove unused import: import { doc, getDoc, setDoc, collection, getDocs } from "firebaseFirestore";
+import { db } from "./firebase";
+import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore"; // ✅ Added back for clarity
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
+import "./App.css"; // ✅ Import CSS file
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with your actual key
+const GOOGLE_MAPS_API_KEY = "YOUR_API_KEY_HERE"; // Replace with your actual key
 
 function App() {
   const [user, setUser] = useState(null);
@@ -19,14 +20,13 @@ function App() {
   const [isMounted, setIsMounted] = useState(true);
   const [error, setError] = useState(null);
 
-  /** Track User Authentication */
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!isMounted) return;
       console.log("Auth State Changed ✅:", currentUser?.uid || "No user");
       if (currentUser) {
-        const userRef = doc(db, "users", currentUser.uid); // ✅ Use db
+        const userRef = doc(db, "users", currentUser.uid);
         try {
           const userSnap = await getDoc(userRef);
           if (!userSnap.exists()) {
@@ -52,7 +52,6 @@ function App() {
     };
   }, []);
 
-  /** Get User's Location */
   useEffect(() => {
     if (!user) return;
     console.log("Fetching User Location... 📍");
@@ -79,12 +78,11 @@ function App() {
     return () => setIsMounted(false);
   }, [user]);
 
-  /** Fetch Owned Terracres */
   const fetchOwnedTerracres = useCallback(async () => {
     if (!user) return;
     try {
       console.log("📡 Fetching Terracres...");
-      const terracresRef = collection(db, "terracres"); // ✅ Use db
+      const terracresRef = collection(db, "terracres");
       const querySnapshot = await getDocs(terracresRef);
       const properties = querySnapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -100,14 +98,11 @@ function App() {
     fetchOwnedTerracres();
   }, [fetchOwnedTerracres]);
 
-  /** Render Logic */
   if (error) return <div>Error: {error}</div>;
   if (!user) return <Login onLoginSuccess={setUser} />;
 
-  console.log("Rendering with:", { user: !!user, userLocation, mapLoaded });
-
   return (
-    <div>
+    <div className="app-container"> {/* ✅ Add class for styling */}
       <h1>TerraMine</h1>
       {!userLocation ? (
         <p>Getting your location...</p>
