@@ -2,13 +2,13 @@ import React, { useState, useEffect } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { db } from "./firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore"; // ✅ Fix: Added `collection` and `getDocs`
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import Login from "./components/Login"; // ✅ Import Login
 import CheckInButton from "./components/CheckInButton"; // ✅ Import Check-In Button
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // 🔴 REPLACE WITH YOUR API KEY
+const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // 🔴 REPLACE WITH YOUR ACTUAL API KEY
 
 function App() {
   const [user, setUser] = useState(null);
@@ -83,28 +83,35 @@ function App() {
 
       {/* ✅ Google Maps */}
       <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-        <GoogleMap
-          mapContainerStyle={{ width: "100%", height: "500px" }}
-          center={userLocation || defaultCenter}
-          zoom={15}
-        >
-          {/* 📍 User's location */}
-          {userLocation && <Marker position={userLocation} label="You" />}
+        {userLocation ? (
+          <GoogleMap
+            mapContainerStyle={{ width: "100%", height: "500px" }}
+            center={userLocation}
+            zoom={15}
+          >
+            {/* ✅ Show User's Location */}
+            <Marker position={userLocation} label="You" />
 
-          {/* 🟢 Show all owned properties */}
-          {ownedTerracres.map((terracre) => (
-            <Marker
-              key={terracre.id}
-              position={{ lat: terracre.lat, lng: terracre.lng }}
-              icon={{
-                url: terracre.ownerId === user.uid
-                  ? "http://maps.google.com/mapfiles/ms/icons/blue-dot.png" // 🔹 User's owned properties
-                  : "http://maps.google.com/mapfiles/ms/icons/green-dot.png", // 🟢 Other owned properties
-                scaledSize: new window.google.maps.Size(30, 30), // Adjust size if needed
-              }}
-            />
-          ))}
-        </GoogleMap>
+            {/* ✅ Show Owned Properties */}
+            {ownedTerracres.map((terracre) => (
+              <Marker
+                key={terracre.id}
+                position={{ lat: terracre.lat, lng: terracre.lng }}
+                icon={{
+                  path:
+                    window.google?.maps?.SymbolPath?.SQUARE || // ✅ Fix: Check if window.google is available
+                    "M 0,0 L 10,0 L 10,10 L 0,10 z", // ✅ SVG path for a square if SymbolPath is unavailable
+                  scale: 10, // 🔲 Size of the square
+                  fillColor: terracre.ownerId === user.uid ? "blue" : "green", // 🔵 User-Owned = Blue, 🟢 Others' = Green
+                  fillOpacity: 1,
+                  strokeWeight: 1,
+                }}
+              />
+            ))}
+          </GoogleMap>
+        ) : (
+          <p>Loading map...</p> // ✅ Shows a message while location is loading
+        )}
       </LoadScript>
 
       {/* ✅ Check-In Button */}
@@ -114,3 +121,4 @@ function App() {
 }
 
 export default App;
+
