@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react"; // ✅ Add Suspense
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { db } from "./firebase";
@@ -14,9 +14,9 @@ function App() {
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
-  const [isMounted, setIsMounted] = useState(true); // ✅ Prevent updates after unmount
+  const [isMounted, setIsMounted] = useState(true);
 
-  /** ✅ Track User Authentication */
+  /** Track User Authentication */
   useEffect(() => {
     setIsMounted(true);
     console.log("Auth Listener Initialized ✅");
@@ -49,12 +49,12 @@ function App() {
     };
   }, []);
 
-  /** ✅ If User is Not Signed In, Show Login */
+  /** If User is Not Signed In, Show Login */
   if (!user) {
     return <Login onLoginSuccess={setUser} />;
   }
 
-  /** ✅ Get User's Location */
+  /** Get User's Location */
   useEffect(() => {
     setIsMounted(true);
     console.log("Fetching User Location... 📍");
@@ -83,7 +83,7 @@ function App() {
     };
   }, []);
 
-  /** ✅ Fetch Owned Terracres (Firestore) */
+  /** Fetch Owned Terracres (Firestore) */
   const fetchOwnedTerracres = useCallback(async () => {
     setIsMounted(true);
     try {
@@ -116,7 +116,7 @@ function App() {
     }
   }, []);
 
-  /** ✅ Load Terracres on Mount */
+  /** Load Terracres on Mount */
   useEffect(() => {
     fetchOwnedTerracres();
     return () => {
@@ -128,49 +128,48 @@ function App() {
     <div>
       <h1>TerraMine</h1>
 
-      {/* ✅ Google Maps */}
-      <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-        {userLocation ? (
-          <GoogleMap
-            mapContainerStyle={{ width: "100%", height: "500px" }}
-            center={userLocation}
-            zoom={15}
-          >
-            {/* ✅ Show User Location */}
-            <Marker position={userLocation} label="You" />
+      {/* ✅ Wrap LoadScript in Suspense */}
+      <Suspense fallback={<p>Loading map resources...</p>}>
+        <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+          {userLocation ? (
+            <GoogleMap
+              mapContainerStyle={{ width: "100%", height: "500px" }}
+              center={userLocation}
+              zoom={15}
+            >
+              {/* Show User Location */}
+              <Marker position={userLocation} label="You" />
 
-            {/* ✅ Ensure only valid properties are mapped */}
-            {ownedTerracres.length > 0 &&
-              ownedTerracres.map((terracre) => (
-                <Marker
-                  key={terracre.id}
-                  position={{ lat: terracre.lat, lng: terracre.lng }}
-                  icon={
-                    window.google && window.google.maps
-                      ? {
-                          path: window.google.maps.SymbolPath.SQUARE,
-                          scale: 10,
-                          fillColor: terracre.ownerId === user.uid ? "blue" : "green",
-                          fillOpacity: 1,
-                          strokeWeight: 1,
-                        }
-                      : undefined
-                  }
-                />
-              ))}
-          </GoogleMap>
-        ) : (
-          <p>Loading map...</p>
-        )}
-      </LoadScript>
+              {/* Ensure only valid properties are mapped */}
+              {ownedTerracres.length > 0 &&
+                ownedTerracres.map((terracre) => (
+                  <Marker
+                    key={terracre.id}
+                    position={{ lat: terracre.lat, lng: terracre.lng }}
+                    icon={
+                      window.google && window.google.maps
+                        ? {
+                            path: window.google.maps.SymbolPath.SQUARE,
+                            scale: 10,
+                            fillColor: terracre.ownerId === user.uid ? "blue" : "green",
+                            fillOpacity: 1,
+                            strokeWeight: 1,
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
+            </GoogleMap>
+          ) : (
+            <p>Loading map...</p>
+          )}
+        </LoadScript>
+      </Suspense>
 
-      {/* ✅ Check-In Button */}
+      {/* Check-In Button */}
       <CheckInButton user={user} userLocation={userLocation} />
     </div>
   );
+
 }
-
 export default App;
-
-
-
