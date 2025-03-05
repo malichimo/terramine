@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { db } from "./firebase";
-import { doc, getDoc, setDoc, collection, getDocs } from "firebaseFirestore";
+import { db } from "./firebase"; // ✅ Use db from firebase.js
+// Remove unused import: import { doc, getDoc, setDoc, collection, getDocs } from "firebaseFirestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with your actual key
+const GOOGLE_MAPS_API_KEY = "YOUR_API_KEY_HERE"; // Replace with your actual key
 
 function App() {
   const [user, setUser] = useState(null);
@@ -17,7 +17,7 @@ function App() {
   const [checkInStatus, setCheckInStatus] = useState("");
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isMounted, setIsMounted] = useState(true);
-  const [error, setError] = useState(null); // ✅ Track rendering errors
+  const [error, setError] = useState(null);
 
   /** Track User Authentication */
   useEffect(() => {
@@ -26,7 +26,7 @@ function App() {
       if (!isMounted) return;
       console.log("Auth State Changed ✅:", currentUser?.uid || "No user");
       if (currentUser) {
-        const userRef = doc(db, "users", currentUser.uid);
+        const userRef = doc(db, "users", currentUser.uid); // ✅ Use db
         try {
           const userSnap = await getDoc(userRef);
           if (!userSnap.exists()) {
@@ -54,7 +54,7 @@ function App() {
 
   /** Get User's Location */
   useEffect(() => {
-    if (!user) return; // Only fetch location if user is logged in
+    if (!user) return;
     console.log("Fetching User Location... 📍");
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -77,14 +77,14 @@ function App() {
     }
 
     return () => setIsMounted(false);
-  }, [user]); // ✅ Depend on user to avoid premature fetch
+  }, [user]);
 
   /** Fetch Owned Terracres */
   const fetchOwnedTerracres = useCallback(async () => {
     if (!user) return;
     try {
       console.log("📡 Fetching Terracres...");
-      const terracresRef = collection(db, "terracres");
+      const terracresRef = collection(db, "terracres"); // ✅ Use db
       const querySnapshot = await getDocs(terracresRef);
       const properties = querySnapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
