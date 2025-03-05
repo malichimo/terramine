@@ -78,7 +78,7 @@ function App() {
     }
   }, []);
 
- useEffect(() => {
+useEffect(() => {
   const fetchOwnedTerracres = async () => {
     try {
       console.log("Fetching Terracres from Firestore... 📡");
@@ -94,12 +94,21 @@ function App() {
         ...doc.data(),
       }));
 
-      console.log("✅ Terracres Retrieved:", properties);
+      console.log("✅ Terracres Retrieved from Firestore:", properties);
       setOwnedTerracres(properties);
+
+      // ✅ Log the state update to confirm it changes
+      setTimeout(() => {
+        console.log("🎯 Owned Terracres State after update:", properties);
+      }, 2000); // Delay logging to allow state update
     } catch (error) {
       console.error("🔥 Firestore Fetch Error:", error);
     }
   };
+
+  fetchOwnedTerracres();
+}, []);
+
 
   fetchOwnedTerracres();
 }, []);
