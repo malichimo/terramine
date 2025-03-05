@@ -1,0 +1,15 @@
+.purchase-button {
+  padding: 12px 24px;
+  background-color: #2196F3; /* Blue to match owned TAs */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: background-color 0.3s ease;
+}
+
+.purchase-button:hover {
+  background-color: #1976D2; /* Darker blue on hover */
+}
