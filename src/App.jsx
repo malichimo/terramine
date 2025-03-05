@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Suspense } from "react"; // ✅ Add Suspense
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { db } from "./firebase";
@@ -14,6 +14,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
+  const [checkInStatus, setCheckInStatus] = useState(""); // ✅ Add status state
   const [isMounted, setIsMounted] = useState(true);
 
   /** Track User Authentication */
@@ -118,17 +119,20 @@ function App() {
 
   /** Load Terracres on Mount */
   useEffect(() => {
+    console.log("Starting terracres fetch effect...");
     fetchOwnedTerracres();
     return () => {
       setIsMounted(false);
     };
   }, [fetchOwnedTerracres]);
 
+  console.log("Rendering App with userLocation:", userLocation, "ownedTerracres:", ownedTerracres);
+
   return (
     <div>
       <h1>TerraMine</h1>
 
-      {/* ✅ Wrap LoadScript in Suspense */}
+      {/* Wrap LoadScript in Suspense */}
       <Suspense fallback={<p>Loading map resources...</p>}>
         <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
           {userLocation ? (
@@ -136,29 +140,33 @@ function App() {
               mapContainerStyle={{ width: "100%", height: "500px" }}
               center={userLocation}
               zoom={15}
+              onLoad={() => console.log("✅ GoogleMap loaded")}
             >
               {/* Show User Location */}
               <Marker position={userLocation} label="You" />
 
               {/* Ensure only valid properties are mapped */}
               {ownedTerracres.length > 0 &&
-                ownedTerracres.map((terracre) => (
-                  <Marker
-                    key={terracre.id}
-                    position={{ lat: terracre.lat, lng: terracre.lng }}
-                    icon={
-                      window.google && window.google.maps
-                        ? {
-                            path: window.google.maps.SymbolPath.SQUARE,
-                            scale: 10,
-                            fillColor: terracre.ownerId === user.uid ? "blue" : "green",
-                            fillOpacity: 1,
-                            strokeWeight: 1,
-                          }
-                        : undefined
-                    }
-                  />
-                ))}
+                ownedTerracres.map((terracre) => {
+                  console.log("Rendering Marker for terracre:", terracre);
+                  return (
+                    <Marker
+                      key={terracre.id}
+                      position={{ lat: terracre.lat, lng: terracre.lng }}
+                      icon={
+                        window.google && window.google.maps
+                          ? {
+                              path: window.google.maps.SymbolPath.SQUARE,
+                              scale: 10,
+                              fillColor: terracre.ownerId === user.uid ? "blue" : "green",
+                              fillOpacity: 1,
+                              strokeWeight: 1,
+                            }
+                          : undefined
+                      }
+                    />
+                  );
+                })}
             </GoogleMap>
           ) : (
             <p>Loading map...</p>
@@ -166,10 +174,11 @@ function App() {
         </LoadScript>
       </Suspense>
 
-      {/* Check-In Button */}
-      <CheckInButton user={user} userLocation={userLocation} />
+      {/* Check-In Button with status */}
+      <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} />
+      {checkInStatus && <p>{checkInStatus}</p>}
     </div>
   );
-
 }
+
 export default App;
