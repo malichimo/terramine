@@ -79,7 +79,7 @@ function App() {
   }, []);
 
 useEffect(() => {
-  let isMounted = true;  // ✅ Track if the component is still mounted
+  let isMounted = true;  // ✅ Prevent updates if unmounted
 
   const fetchOwnedTerracres = async () => {
     try {
@@ -87,38 +87,49 @@ useEffect(() => {
       const terracresRef = collection(db, "terracres");
       const querySnapshot = await getDocs(terracresRef);
 
-      if (!querySnapshot.empty && isMounted) {
-        const properties = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+      if (!querySnapshot.empty) {
+        const properties = querySnapshot.docs
+          .map((doc) => {
+            const data = doc.data();
+            // ✅ Check if the document has valid lat & lng
+            if (data.lat !== undefined && data.lng !== undefined) {
+              return {
+                id: doc.id,
+                ...data,
+              };
+            } else {
+              console.warn(`⚠️ Skipping invalid terracre (missing lat/lng):`, doc.id);
+              return null;
+            }
+          })
+          .filter(Boolean); // ✅ Remove null entries
 
-        console.log("✅ Terracres Retrieved:", properties);
+        console.log("✅ Valid Terracres Retrieved:", properties);
         if (isMounted) {
           setOwnedTerracres(properties);
         }
       } else {
         console.warn("⚠️ No owned properties found.");
         if (isMounted) {
-          setOwnedTerracres([]);  // ✅ Prevents unmounted state updates
+          setOwnedTerracres([]);
         }
       }
     } catch (error) {
       console.error("🔥 Firestore Fetch Error:", error);
       if (isMounted) {
-        setOwnedTerracres([]); // ✅ Ensure safe state update
+        setOwnedTerracres([]);
       }
     }
   };
 
   fetchOwnedTerracres();
 
-  // ✅ Cleanup function to prevent memory leaks & state update after unmount
   return () => {
     console.log("Cleanup: Unmounting fetchOwnedTerracres 🚀");
     isMounted = false;
   };
 }, []);
+
 
 
 
@@ -136,8 +147,8 @@ useEffect(() => {
           >
             {/* ✅ Show User Location */}
             <Marker position={userLocation} label="You" />
-
-            {/* ✅ Ensure properties exist before mapping */}
+      
+            {/* ✅ Ensure only valid properties are mapped */}
             {ownedTerracres.length > 0 ? (
               ownedTerracres.map((terracre) => (
                 <Marker
@@ -153,7 +164,7 @@ useEffect(() => {
                 />
               ))
             ) : (
-              console.warn("⚠️ No owned properties found.")
+              console.warn("⚠️ No valid properties to display on map.")
             )}
           </GoogleMap>
         ) : (
