@@ -87,7 +87,67 @@ function App() {
         const querySnapshot = await getDocs(terracresRef);
 
         if (querySnapshot.empty) {
-         
+          console.warn("⚠️ No owned properties found.");
+        }
+
+        const properties = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        console.log("✅ Terracres Retrieved:", properties);
+        setOwnedTerracres(properties);
+      };
+
+      fetchOwnedTerracres();
+    } catch (error) {
+      console.error("🔥 Firestore Fetch Error:", error);
+    }
+  }, []);
+
+  return (
+    <div>
+      <h1>TerraMine</h1>
+
+      {/* ✅ Google Maps */}
+      <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+        {userLocation ? (
+          <GoogleMap
+            mapContainerStyle={{ width: "100%", height: "500px" }}
+            center={userLocation}
+            zoom={15}
+          >
+            {/* ✅ Show User's Location */}
+            <Marker position={userLocation} label="You" />
+
+            {/* ✅ Show Owned Properties */}
+            {ownedTerracres.map((terracre) => (
+              <Marker
+                key={terracre.id}
+                position={{ lat: terracre.lat, lng: terracre.lng }}
+                icon={{
+                  path: window.google?.maps?.SymbolPath?.SQUARE || "M 0,0 L 10,0 L 10,10 L 0,10 z",
+                  scale: 10,
+                  fillColor: terracre.ownerId === user.uid ? "blue" : "green",
+                  fillOpacity: 1,
+                  strokeWeight: 1,
+                }}
+              />
+            ))}
+          </GoogleMap>
+        ) : (
+          <p>Loading map...</p> 
+        )}
+      </LoadScript>
+
+      {/* ✅ Check-In Button */}
+      <CheckInButton user={user} userLocation={userLocation} />
+    </div>
+  );
+}
+
+export default App;
+
 
 
 
