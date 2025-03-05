@@ -4,23 +4,25 @@ import { onAuthStateChanged } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
-import Login from "./components/Login"; 
-import CheckInButton from "./components/CheckInButton"; 
+import Login from "./components/Login";
+import CheckInButton from "./components/CheckInButton";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; 
+const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 
 function App() {
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
-  let isMounted = true; // ✅ Prevent updates after unmounting
+  const [isMounted, setIsMounted] = useState(true); // ✅ Prevent updates after unmount
 
-  // ✅ Track User Authentication
+  /** ✅ Track User Authentication */
   useEffect(() => {
+    setIsMounted(true);
     console.log("Auth Listener Initialized ✅");
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (!isMounted) return; // ✅ Stop updates if unmounted
+      if (!isMounted) return;
       console.log("Auth State Changed ✅:", currentUser);
       if (currentUser) {
         console.log("Fetching user data from Firestore... 📡");
@@ -42,23 +44,24 @@ function App() {
     });
 
     return () => {
-      isMounted = false; // ✅ Cleanup to avoid updates after unmount
+      setIsMounted(false);
       unsubscribe();
     };
   }, []);
 
-  // ✅ If User is Not Signed In, Show Login
+  /** ✅ If User is Not Signed In, Show Login */
   if (!user) {
     return <Login onLoginSuccess={setUser} />;
   }
 
-  // ✅ Get User's Location
+  /** ✅ Get User's Location */
   useEffect(() => {
+    setIsMounted(true);
     console.log("Fetching User Location... 📍");
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          if (!isMounted) return; // ✅ Prevent updates if unmounted
+          if (!isMounted) return;
           console.log("✅ Location Retrieved:", position.coords);
           setUserLocation({
             lat: position.coords.latitude,
@@ -76,12 +79,13 @@ function App() {
     }
 
     return () => {
-      isMounted = false; // ✅ Cleanup
+      setIsMounted(false);
     };
   }, []);
 
-  // ✅ Fetch Owned Terracres (Firestore)
+  /** ✅ Fetch Owned Terracres (Firestore) */
   const fetchOwnedTerracres = useCallback(async () => {
+    setIsMounted(true);
     try {
       console.log("📡 Fetching Terracres from Firestore...");
       const terracresRef = collection(db, "terracres");
@@ -101,7 +105,7 @@ function App() {
           .filter(Boolean);
 
         console.log("✅ Valid Terracres Retrieved:", properties);
-        if (isMounted) setOwnedTerracres(properties); // ✅ Prevent updates if unmounted
+        if (isMounted) setOwnedTerracres(properties);
       } else {
         console.warn("⚠️ No owned properties found.");
         if (isMounted) setOwnedTerracres([]);
@@ -112,11 +116,11 @@ function App() {
     }
   }, []);
 
-  // ✅ Load Terracres on Mount
+  /** ✅ Load Terracres on Mount */
   useEffect(() => {
     fetchOwnedTerracres();
     return () => {
-      isMounted = false; // ✅ Cleanup
+      setIsMounted(false);
     };
   }, [fetchOwnedTerracres]);
 
@@ -134,9 +138,9 @@ function App() {
           >
             {/* ✅ Show User Location */}
             <Marker position={userLocation} label="You" />
-      
+
             {/* ✅ Ensure only valid properties are mapped */}
-            {ownedTerracres.length > 0 ? (
+            {ownedTerracres.length > 0 &&
               ownedTerracres.map((terracre) => (
                 <Marker
                   key={terracre.id}
@@ -153,10 +157,7 @@ function App() {
                       : undefined
                   }
                 />
-              ))
-            ) : (
-              console.warn("⚠️ No valid properties to display on map.")
-            )}
+              ))}
           </GoogleMap>
         ) : (
           <p>Loading map...</p>
@@ -170,8 +171,6 @@ function App() {
 }
 
 export default App;
-
-
 
 
 
