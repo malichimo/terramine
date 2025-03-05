@@ -8,7 +8,7 @@ import Login from "./components/Login"; // ✅ Import Login
 import CheckInButton from "./components/CheckInButton"; // ✅ Import Check-In Button
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // 🔴 REPLACE WITH YOUR ACTUAL API KEY
+const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // 🔴 REPLACE WITH YOUR ACTUAL API KEY
 
 function App() {
   const [user, setUser] = useState(null);
