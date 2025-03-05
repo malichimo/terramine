@@ -81,9 +81,9 @@
   background-color: #cc0000;
 }
 
-/* ✅ Style the greeting */
 .greeting {
   font-size: 18px;
-  color: #333; /* Dark gray for readability */
-  margin: 20px 0; /* Space above and below */
+  color: #555; /* ✅ Lighter gray for better visibility */
+  margin: 20px 0;
+  font-weight: 500; /* ✅ Slightly bolder for emphasis */
 }
