@@ -110,10 +110,6 @@ useEffect(() => {
 }, []);
 
 
-  fetchOwnedTerracres();
-}, []);
-
-
   return (
     <div>
       <h1>TerraMine</h1>
