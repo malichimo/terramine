@@ -87,6 +87,8 @@ useEffect(() => {
 
       if (querySnapshot.empty) {
         console.warn("⚠️ No owned properties found.");
+        setOwnedTerracres([]); // ✅ Ensure React state updates properly
+        return;
       }
 
       const properties = querySnapshot.docs.map((doc) => ({
@@ -94,15 +96,11 @@ useEffect(() => {
         ...doc.data(),
       }));
 
-      console.log("✅ Terracres Retrieved from Firestore:", properties);
+      console.log("✅ Terracres Retrieved:", properties);
       setOwnedTerracres(properties);
-
-      // ✅ Log the state update to confirm it changes
-      setTimeout(() => {
-        console.log("🎯 Owned Terracres State after update:", properties);
-      }, 2000); // Delay logging to allow state update
     } catch (error) {
       console.error("🔥 Firestore Fetch Error:", error);
+      setOwnedTerracres([]); // ✅ Prevents React from breaking
     }
   };
 
