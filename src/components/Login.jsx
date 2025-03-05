@@ -1,10 +1,16 @@
 import React from "react";
-import { handleGoogleSignIn } from "../firebaseFunctions"; // ✅ Import the function
+import { auth, googleProvider } from "../firebase";
+import { signInWithPopup } from "firebase/auth";
 
 function Login({ onLoginSuccess }) {
   const handleLogin = async () => {
-    const user = await handleGoogleSignIn(); // ✅ Call function directly
-    if (user) onLoginSuccess(user);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      onLoginSuccess(user);
+    } catch (error) {
+      console.error("Login error:", error);
+    }
   };
 
   return (
