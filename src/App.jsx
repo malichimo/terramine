@@ -78,32 +78,32 @@ function App() {
     }
   }, []);
 
-  // ✅ Fetch Owned Properties - Debugging Added
-  useEffect(() => {
+ useEffect(() => {
+  const fetchOwnedTerracres = async () => {
     try {
       console.log("Fetching Terracres from Firestore... 📡");
-      const fetchOwnedTerracres = async () => {
-        const terracresRef = collection(db, "terracres");
-        const querySnapshot = await getDocs(terracresRef);
+      const terracresRef = collection(db, "terracres");
+      const querySnapshot = await getDocs(terracresRef);
 
-        if (querySnapshot.empty) {
-          console.warn("⚠️ No owned properties found.");
-        }
+      if (querySnapshot.empty) {
+        console.warn("⚠️ No owned properties found.");
+      }
 
-        const properties = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+      const properties = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-        console.log("✅ Terracres Retrieved:", properties);
-        setOwnedTerracres(properties);
-      };
-
-      fetchOwnedTerracres();
+      console.log("✅ Terracres Retrieved:", properties);
+      setOwnedTerracres(properties);
     } catch (error) {
       console.error("🔥 Firestore Fetch Error:", error);
     }
-  }, []);
+  };
+
+  fetchOwnedTerracres();
+}, []);
+
 
   return (
     <div>
