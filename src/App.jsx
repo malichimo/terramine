@@ -6,6 +6,7 @@ import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import Login from "./components/Login"; 
 import CheckInButton from "./components/CheckInButton"; 
+import { useCallback } from "react";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; 
@@ -81,48 +82,39 @@ function App() {
 useEffect(() => {
   let isMounted = true;  // ✅ Prevent updates if unmounted
 
-  const fetchOwnedTerracres = async () => {
+  const fetchOwnedTerracres = useCallback(async () => {
     try {
-      console.log("Fetching Terracres from Firestore... 📡");
+      console.log("📡 Fetching Terracres from Firestore...");
       const terracresRef = collection(db, "terracres");
       const querySnapshot = await getDocs(terracresRef);
-
+  
       if (!querySnapshot.empty) {
-        const properties = querySnapshot.docs
-          .map((doc) => {
-            const data = doc.data();
-            // ✅ Check if the document has valid lat & lng
-            if (data.lat !== undefined && data.lng !== undefined) {
-              return {
-                id: doc.id,
-                ...data,
-              };
-            } else {
-              console.warn(`⚠️ Skipping invalid terracre (missing lat/lng):`, doc.id);
-              return null;
-            }
-          })
-          .filter(Boolean); // ✅ Remove null entries
-
+        const properties = querySnapshot.docs.map((doc) => {
+          const data = doc.data();
+          if (data.lat !== undefined && data.lng !== undefined) {
+            return { id: doc.id, ...data };
+          } else {
+            console.warn(`⚠️ Skipping invalid terracre (missing lat/lng):`, doc.id, data);
+            return null;
+          }
+        }).filter(Boolean);
+  
         console.log("✅ Valid Terracres Retrieved:", properties);
-        if (isMounted) {
-          setOwnedTerracres(properties);
-        }
+        setOwnedTerracres(properties);
       } else {
         console.warn("⚠️ No owned properties found.");
-        if (isMounted) {
-          setOwnedTerracres([]);
-        }
+        setOwnedTerracres([]);
       }
     } catch (error) {
       console.error("🔥 Firestore Fetch Error:", error);
-      if (isMounted) {
-        setOwnedTerracres([]);
-      }
+      setOwnedTerracres([]);
     }
-  };
-
-  fetchOwnedTerracres();
+  }, []);
+  
+  // ✅ Use `useEffect()` to call the function only once
+  useEffect(() => {
+    fetchOwnedTerracres();
+  }, [fetchOwnedTerracres]);
 
   return () => {
     console.log("Cleanup: Unmounting fetchOwnedTerracres 🚀");
