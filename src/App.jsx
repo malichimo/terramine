@@ -79,7 +79,7 @@ function App() {
   }, []);
 
 useEffect(() => {
-  let isMounted = true;  // ✅ Prevents updates if unmounted
+  let isMounted = true;  // ✅ Track if the component is still mounted
 
   const fetchOwnedTerracres = async () => {
     try {
@@ -94,22 +94,26 @@ useEffect(() => {
         }));
 
         console.log("✅ Terracres Retrieved:", properties);
-        setOwnedTerracres(properties);
+        if (isMounted) {
+          setOwnedTerracres(properties);
+        }
       } else {
         console.warn("⚠️ No owned properties found.");
-        setOwnedTerracres([]);  // ✅ Handles empty collection
+        if (isMounted) {
+          setOwnedTerracres([]);  // ✅ Prevents unmounted state updates
+        }
       }
     } catch (error) {
       console.error("🔥 Firestore Fetch Error:", error);
       if (isMounted) {
-        setOwnedTerracres([]);
+        setOwnedTerracres([]); // ✅ Ensure safe state update
       }
     }
   };
 
   fetchOwnedTerracres();
 
-  // ✅ Cleanup function to prevent state update after unmount
+  // ✅ Cleanup function to prevent memory leaks & state update after unmount
   return () => {
     console.log("Cleanup: Unmounting fetchOwnedTerracres 🚀");
     isMounted = false;
