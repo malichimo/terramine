@@ -56,7 +56,7 @@
 
 .google-map {
   max-width: 100%;
-  margin-bottom: 20px; /* ✅ Space below map */
+  margin-bottom: 20px;
 }
 
 .app-header {
@@ -81,6 +81,9 @@
   background-color: #cc0000;
 }
 
-.signout-button:hover {
-  background-color: #cc0000; /* Darker red on hover */
+/* ✅ Style the greeting */
+.greeting {
+  font-size: 18px;
+  color: #333; /* Dark gray for readability */
+  margin: 20px 0; /* Space above and below */
 }
