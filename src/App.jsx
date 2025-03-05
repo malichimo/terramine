@@ -31,11 +31,14 @@ function App() {
           const userSnap = await getDoc(userRef);
           if (!userSnap.exists()) {
             console.log("New user detected 🚀 - Creating Firestore profile...");
-            await setDoc(userRef, { uid: currentUser.uid, terrabucks: 1000 });
-            setUser({ ...currentUser, terrabucks: 1000 });
+            const newUserData = { uid: currentUser.uid, terrabucks: 1000 };
+            await setDoc(userRef, newUserData);
+            setUser({ ...currentUser, ...newUserData });
+            console.log("New user set with:", newUserData);
           } else {
-            console.log("User exists ✅", userSnap.data());
-            setUser({ ...currentUser, terrabucks: userSnap.data()?.terrabucks || 1000 });
+            const userData = userSnap.data();
+            console.log("User exists ✅", userData);
+            setUser({ ...currentUser, terrabucks: userData.terrabucks ?? 1000 }); // ✅ Use ?? for null/undefined
           }
         } catch (err) {
           console.error("Firestore auth error:", err);
@@ -163,9 +166,8 @@ function App() {
           </LoadScript>
         </Suspense>
       )}
-      {/* ✅ Add greeting */}
       <p className="greeting">
-        Welcome {user.displayName || "User"}, you have {user.terrabucks} TB available.
+        Welcome {user.displayName || "User"}, you have {user.terrabucks ?? 0} TB available.
       </p>
       <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} />
       {checkInStatus && <p>{checkInStatus}</p>}
