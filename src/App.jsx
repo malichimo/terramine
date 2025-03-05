@@ -79,33 +79,43 @@ function App() {
   }, []);
 
 useEffect(() => {
+  let isMounted = true;  // ✅ Prevents updates if unmounted
+
   const fetchOwnedTerracres = async () => {
     try {
       console.log("Fetching Terracres from Firestore... 📡");
       const terracresRef = collection(db, "terracres");
       const querySnapshot = await getDocs(terracresRef);
 
-      if (querySnapshot.empty) {
+      if (!querySnapshot.empty && isMounted) {
+        const properties = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        console.log("✅ Terracres Retrieved:", properties);
+        setOwnedTerracres(properties);
+      } else {
         console.warn("⚠️ No owned properties found.");
-        setOwnedTerracres([]); // ✅ Ensure React state updates properly
-        return;
+        setOwnedTerracres([]);  // ✅ Handles empty collection
       }
-
-      const properties = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      console.log("✅ Terracres Retrieved:", properties);
-      setOwnedTerracres(properties);
     } catch (error) {
       console.error("🔥 Firestore Fetch Error:", error);
-      setOwnedTerracres([]); // ✅ Prevents React from breaking
+      if (isMounted) {
+        setOwnedTerracres([]);
+      }
     }
   };
 
   fetchOwnedTerracres();
+
+  // ✅ Cleanup function to prevent state update after unmount
+  return () => {
+    console.log("Cleanup: Unmounting fetchOwnedTerracres 🚀");
+    isMounted = false;
+  };
 }, []);
+
 
 
   return (
