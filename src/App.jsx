@@ -2,39 +2,44 @@ import React, { useState, useEffect } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { db } from "./firebase";
-import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore"; // ✅ Fix: Added `collection` and `getDocs`
+import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
-import Login from "./components/Login"; // ✅ Import Login
-import CheckInButton from "./components/CheckInButton"; // ✅ Import Check-In Button
+import Login from "./components/Login"; 
+import CheckInButton from "./components/CheckInButton"; 
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // 🔴 REPLACE WITH YOUR ACTUAL API KEY
+const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; 
 
 function App() {
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
-  const [ownedTerracres, setOwnedTerracres] = useState([]); // ✅ Stores all owned properties
+  const [ownedTerracres, setOwnedTerracres] = useState([]);
 
-  // ✅ Track user authentication
+  // ✅ Debugging - Log Errors
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      console.log("Auth State Changed:", currentUser);
-      if (currentUser) {
-        const userRef = doc(db, "users", currentUser.uid);
-        const userSnap = await getDoc(userRef);
+    try {
+      console.log("Auth Listener Initialized");
+      const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+        console.log("Auth State Changed:", currentUser);
+        if (currentUser) {
+          const userRef = doc(db, "users", currentUser.uid);
+          const userSnap = await getDoc(userRef);
 
-        if (!userSnap.exists()) {
-          await setDoc(userRef, { uid: currentUser.uid, terrabucks: 1000 });
-          setUser({ ...currentUser, terrabucks: 1000 });
+          if (!userSnap.exists()) {
+            await setDoc(userRef, { uid: currentUser.uid, terrabucks: 1000 });
+            setUser({ ...currentUser, terrabucks: 1000 });
+          } else {
+            setUser({ ...currentUser, terrabucks: userSnap.data()?.terrabucks || 1000 });
+          }
         } else {
-          setUser({ ...currentUser, terrabucks: userSnap.data()?.terrabucks || 1000 });
+          setUser(null);
         }
-      } else {
-        setUser(null);
-      }
-    });
+      });
 
-    return () => unsubscribe();
+      return () => unsubscribe();
+    } catch (error) {
+      console.error("Auth State Error:", error);
+    }
   }, []);
 
   // ✅ If user is not signed in, show Login screen
@@ -42,39 +47,51 @@ function App() {
     return <Login onLoginSuccess={setUser} />;
   }
 
-  // ✅ Get user's current location
+  // ✅ Get User's Location - Debugging Added
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.error("Error retrieving location:", error);
-          setUserLocation(defaultCenter);
-        }
-      );
-    } else {
-      setUserLocation(defaultCenter);
+    try {
+      console.log("Fetching User Location...");
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            console.log("Location Retrieved:", position.coords);
+            setUserLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+          },
+          (error) => {
+            console.error("Error retrieving location:", error);
+            setUserLocation(defaultCenter);
+          }
+        );
+      } else {
+        setUserLocation(defaultCenter);
+      }
+    } catch (error) {
+      console.error("Location Fetch Error:", error);
     }
   }, []);
 
-  // ✅ Fetch owned properties from Firestore
+  // ✅ Fetch Owned Properties - Debugging Added
   useEffect(() => {
-    const fetchOwnedTerracres = async () => {
-      const terracresRef = collection(db, "terracres");
-      const querySnapshot = await getDocs(terracresRef);
-      const properties = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setOwnedTerracres(properties);
-    };
+    try {
+      console.log("Fetching Terracres from Firestore...");
+      const fetchOwnedTerracres = async () => {
+        const terracresRef = collection(db, "terracres");
+        const querySnapshot = await getDocs(terracresRef);
+        const properties = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        console.log("Terracres Retrieved:", properties);
+        setOwnedTerracres(properties);
+      };
 
-    fetchOwnedTerracres();
+      fetchOwnedTerracres();
+    } catch (error) {
+      console.error("Firestore Fetch Error:", error);
+    }
   }, []);
 
   return (
@@ -84,11 +101,7 @@ function App() {
       {/* ✅ Google Maps */}
       <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
         {userLocation ? (
-          <GoogleMap
-            mapContainerStyle={{ width: "100%", height: "500px" }}
-            center={userLocation}
-            zoom={15}
-          >
+          <GoogleMap mapContainerStyle={{ width: "100%", height: "500px" }} center={userLocation} zoom={15}>
             {/* ✅ Show User's Location */}
             <Marker position={userLocation} label="You" />
 
@@ -98,11 +111,9 @@ function App() {
                 key={terracre.id}
                 position={{ lat: terracre.lat, lng: terracre.lng }}
                 icon={{
-                  path:
-                    window.google?.maps?.SymbolPath?.SQUARE || // ✅ Fix: Check if window.google is available
-                    "M 0,0 L 10,0 L 10,10 L 0,10 z", // ✅ SVG path for a square if SymbolPath is unavailable
-                  scale: 10, // 🔲 Size of the square
-                  fillColor: terracre.ownerId === user.uid ? "blue" : "green", // 🔵 User-Owned = Blue, 🟢 Others' = Green
+                  path: window.google?.maps?.SymbolPath?.SQUARE || "M 0,0 L 10,0 L 10,10 L 0,10 z",
+                  scale: 10,
+                  fillColor: terracre.ownerId === user.uid ? "blue" : "green",
                   fillOpacity: 1,
                   strokeWeight: 1,
                 }}
@@ -110,7 +121,7 @@ function App() {
             ))}
           </GoogleMap>
         ) : (
-          <p>Loading map...</p> // ✅ Shows a message while location is loading
+          <p>Loading map...</p> 
         )}
       </LoadScript>
 
@@ -121,4 +132,5 @@ function App() {
 }
 
 export default App;
+
 
