@@ -6,6 +6,7 @@ import { collection, addDoc, doc, getDoc, setDoc, query, where, getDocs, Timesta
 // ✅ Google Sign-In
 export const handleGoogleSignIn = async () => {
   try {
+    googleProvider.setCustomParameters({ prompt: "select_account" });
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
 
