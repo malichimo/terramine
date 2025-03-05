@@ -130,26 +130,30 @@ useEffect(() => {
             center={userLocation}
             zoom={15}
           >
-            {/* ✅ Show User's Location */}
+            {/* ✅ Show User Location */}
             <Marker position={userLocation} label="You" />
 
-            {/* ✅ Show Owned Properties */}
-            {ownedTerracres.map((terracre) => (
-              <Marker
-                key={terracre.id}
-                position={{ lat: terracre.lat, lng: terracre.lng }}
-                icon={{
-                  path: window.google?.maps?.SymbolPath?.SQUARE || "M 0,0 L 10,0 L 10,10 L 0,10 z",
-                  scale: 10,
-                  fillColor: terracre.ownerId === user.uid ? "blue" : "green",
-                  fillOpacity: 1,
-                  strokeWeight: 1,
-                }}
-              />
-            ))}
+            {/* ✅ Ensure properties exist before mapping */}
+            {ownedTerracres.length > 0 ? (
+              ownedTerracres.map((terracre) => (
+                <Marker
+                  key={terracre.id}
+                  position={{ lat: terracre.lat, lng: terracre.lng }}
+                  icon={{
+                    path: window.google.maps.SymbolPath.SQUARE,
+                    scale: 10,
+                    fillColor: terracre.ownerId === user.uid ? "blue" : "green",
+                    fillOpacity: 1,
+                    strokeWeight: 1,
+                  }}
+                />
+              ))
+            ) : (
+              console.warn("⚠️ No owned properties found.")
+            )}
           </GoogleMap>
         ) : (
-          <p>Loading map...</p> 
+          <p>Loading map...</p>
         )}
       </LoadScript>
 
