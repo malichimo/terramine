@@ -56,25 +56,29 @@
 
 .google-map {
   max-width: 100%;
+  margin-bottom: 20px; /* ✅ Space below map */
 }
 
-/* New styles for header and sign-out button */
 .app-header {
   display: flex;
-  justify-content: space-between; /* Pushes button to left, title to center */
+  justify-content: space-between;
   align-items: center;
   width: 100%;
-  max-width: 1280px; /* Matches #root */
+  max-width: 1280px;
   margin-bottom: 20px;
 }
 
 .signout-button {
   padding: 8px 16px;
-  background-color: #ff4444; /* Red for visibility */
+  background-color: #ff4444;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+}
+
+.signout-button:hover {
+  background-color: #cc0000;
 }
 
 .signout-button:hover {
