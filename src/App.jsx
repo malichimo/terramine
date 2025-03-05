@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { auth } from "./firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth"; // ✅ Add signOut
 import { db } from "./firebase";
-import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore"; // ✅ Added back for clarity
+import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
-import "./App.css"; // ✅ Import CSS file
+import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with your actual key
@@ -98,12 +98,29 @@ function App() {
     fetchOwnedTerracres();
   }, [fetchOwnedTerracres]);
 
+  // ✅ Sign-out function
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      console.log("✅ User signed out");
+      setUser(null); // This will trigger the Login screen
+    } catch (error) {
+      console.error("❌ Sign-out error:", error);
+      setError("Failed to sign out.");
+    }
+  };
+
   if (error) return <div>Error: {error}</div>;
   if (!user) return <Login onLoginSuccess={setUser} />;
 
   return (
-    <div className="app-container"> {/* ✅ Add class for styling */}
-      <h1>TerraMine</h1>
+    <div className="app-container">
+      <header className="app-header"> {/* ✅ Add header for layout */}
+        <button className="signout-button" onClick={handleSignOut}>
+          Sign Out
+        </button>
+        <h1>TerraMine</h1>
+      </header>
       {!userLocation ? (
         <p>Getting your location...</p>
       ) : (
