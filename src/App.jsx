@@ -6,10 +6,11 @@ import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
+import PurchaseButton from "./components/PurchaseButton"; // ✅ Add import
 import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with your actual key
+const GOOGLE_MAPS_API_KEY = "YOUR_API_KEY_HERE"; // Replace with your actual key
 
 function App() {
   const [user, setUser] = useState(null);
@@ -38,7 +39,7 @@ function App() {
           } else {
             const userData = userSnap.data();
             console.log("User exists ✅", userData);
-            setUser({ ...currentUser, terrabucks: userData.terrabucks ?? 1000 }); // ✅ Use ?? for null/undefined
+            setUser({ ...currentUser, terrabucks: userData.terrabucks ?? 1000 });
           }
         } catch (err) {
           console.error("Firestore auth error:", err);
@@ -170,9 +171,18 @@ function App() {
         Welcome {user.displayName || "User"}, you have {user.terrabucks ?? 0} TB available.
       </p>
       <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} />
+      {/* ✅ Add PurchaseButton */}
+      <PurchaseButton
+        user={user}
+        userLocation={userLocation}
+        setCheckInStatus={setCheckInStatus}
+        setUser={setUser} // Pass setUser to update terrabucks
+      />
       {checkInStatus && <p>{checkInStatus}</p>}
     </div>
   );
 }
+
+export default App;
 
 export default App;
