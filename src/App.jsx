@@ -14,11 +14,13 @@ function App() {
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
+  let isMounted = true; // ✅ Prevent updates after unmounting
 
   // ✅ Track User Authentication
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (!isMounted) return; // ✅ Stop updates if unmounted
       console.log("Auth State Changed ✅:", currentUser);
       if (currentUser) {
         console.log("Fetching user data from Firestore... 📡");
@@ -39,7 +41,10 @@ function App() {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      isMounted = false; // ✅ Cleanup to avoid updates after unmount
+      unsubscribe();
+    };
   }, []);
 
   // ✅ If User is Not Signed In, Show Login
@@ -53,6 +58,7 @@ function App() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          if (!isMounted) return; // ✅ Prevent updates if unmounted
           console.log("✅ Location Retrieved:", position.coords);
           setUserLocation({
             lat: position.coords.latitude,
@@ -68,6 +74,10 @@ function App() {
       console.warn("⚠️ Geolocation not supported, using default location.");
       setUserLocation(defaultCenter);
     }
+
+    return () => {
+      isMounted = false; // ✅ Cleanup
+    };
   }, []);
 
   // ✅ Fetch Owned Terracres (Firestore)
@@ -91,20 +101,23 @@ function App() {
           .filter(Boolean);
 
         console.log("✅ Valid Terracres Retrieved:", properties);
-        setOwnedTerracres(properties);
+        if (isMounted) setOwnedTerracres(properties); // ✅ Prevent updates if unmounted
       } else {
         console.warn("⚠️ No owned properties found.");
-        setOwnedTerracres([]);
+        if (isMounted) setOwnedTerracres([]);
       }
     } catch (error) {
       console.error("🔥 Firestore Fetch Error:", error);
-      setOwnedTerracres([]);
+      if (isMounted) setOwnedTerracres([]);
     }
   }, []);
 
   // ✅ Load Terracres on Mount
   useEffect(() => {
     fetchOwnedTerracres();
+    return () => {
+      isMounted = false; // ✅ Cleanup
+    };
   }, [fetchOwnedTerracres]);
 
   return (
@@ -157,6 +170,7 @@ function App() {
 }
 
 export default App;
+
 
 
 
