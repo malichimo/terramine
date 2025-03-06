@@ -3,15 +3,15 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
-import { GoogleMap, LoadScript, useJsApiLoader } from "@react-google-maps/api"; // Remove Marker import
-import { AdvancedMarkerElement } from "@react-google-maps/api"; // ✅ Add this
+import { GoogleMap, LoadScript } from "@react-google-maps/api"; // Remove useJsApiLoader
+import { AdvancedMarkerElement } from "@react-google-maps/api"; // Should work with v2.19+
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
 import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with your actual key
+const GOOGLE_MAPS_API_KEY = "YOUR_API_KEY_HERE"; // Replace with your actual key
 
 function App() {
   const [user, setUser] = useState(null);
