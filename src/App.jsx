@@ -165,9 +165,12 @@ function App() {
                     key={terracre.id}
                     position={{ lat: terracre.lat, lng: terracre.lng }}
                     icon={{
-                      url: terracre.ownerId === user.uid
-                        ? "https://maps.google.com/mapfiles/ms/icons/blue-dot.png"
-                        : "https://maps.google.com/mapfiles/ms/icons/green-dot.png",
+                      path: google.maps.SymbolPath.SQUARE, // ✅ Square placeholder
+                      scale: 10, // Size of the square
+                      fillColor: terracre.ownerId === user.uid ? "blue" : "green",
+                      fillOpacity: 1,
+                      strokeWeight: 1,
+                      strokeColor: "#fff",
                     }}
                     title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
                   />
