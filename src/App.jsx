@@ -166,8 +166,8 @@ function App() {
                     position={{ lat: terracre.lat, lng: terracre.lng }}
                     icon={{
                       url: terracre.ownerId === user.uid
-                        ? "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
-                        : "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
+                        ? "https://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                        : "https://maps.google.com/mapfiles/ms/icons/green-dot.png",
                     }}
                     title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
                   />
