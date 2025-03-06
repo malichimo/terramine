@@ -3,14 +3,15 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
-import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, useJsApiLoader } from "@react-google-maps/api"; // Remove Marker import
+import { AdvancedMarkerElement } from "@react-google-maps/api"; // ✅ Add this
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
 import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with your actual key
+const GOOGLE_MAPS_API_KEY = "YOUR_API_KEY_HERE"; // Replace with your actual key
 
 function App() {
   const [user, setUser] = useState(null);
@@ -20,7 +21,7 @@ function App() {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isMounted, setIsMounted] = useState(true);
   const [error, setError] = useState(null);
-  const [purchaseTrigger, setPurchaseTrigger] = useState(0); // ✅ Trigger refetch
+  const [purchaseTrigger, setPurchaseTrigger] = useState(0);
 
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
@@ -104,7 +105,7 @@ function App() {
 
   useEffect(() => {
     fetchOwnedTerracres();
-  }, [fetchOwnedTerracres, purchaseTrigger]); // ✅ Refetch on purchaseTrigger change
+  }, [fetchOwnedTerracres, purchaseTrigger]);
 
   const handleSignOut = async () => {
     try {
@@ -115,6 +116,11 @@ function App() {
       console.error("❌ Sign-out error:", error);
       setError("Failed to sign out.");
     }
+  };
+
+  const handlePurchase = () => {
+    setPurchaseTrigger((prev) => prev + 1);
+    console.log("✅ Purchase trigger incremented:", purchaseTrigger + 1);
   };
 
   if (error) return <div>Error: {error}</div>;
@@ -152,19 +158,27 @@ function App() {
               >
                 {!ownedTerracres.some(
                   (t) => t.lat === userLocation.lat && t.lng === userLocation.lng
-                ) && <Marker position={userLocation} label="You" />}
+                ) && (
+                  <AdvancedMarkerElement
+                    position={userLocation}
+                    title="You"
+                  />
+                )}
                 {ownedTerracres.map((terracre) => (
-                  <Marker
+                  <AdvancedMarkerElement
                     key={terracre.id}
                     position={{ lat: terracre.lat, lng: terracre.lng }}
-                    icon={{
-                      path: window.google.maps.SymbolPath.SQUARE,
-                      scale: 10,
-                      fillColor: terracre.ownerId === user.uid ? "blue" : "green",
-                      fillOpacity: 1,
-                      strokeWeight: 1,
-                    }}
-                  />
+                    title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
+                  >
+                    <div
+                      style={{
+                        width: "20px",
+                        height: "20px",
+                        backgroundColor: terracre.ownerId === user.uid ? "blue" : "green",
+                        border: "1px solid #fff",
+                      }}
+                    />
+                  </AdvancedMarkerElement>
                 ))}
               </GoogleMap>
             ) : (
@@ -183,6 +197,7 @@ function App() {
         setCheckInStatus={setCheckInStatus}
         setUser={setUser}
         fetchOwnedTerracres={fetchOwnedTerracres}
+        onPurchase={handlePurchase}
       />
       {checkInStatus && <p>{checkInStatus}</p>}
     </div>
