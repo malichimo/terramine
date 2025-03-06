@@ -3,7 +3,7 @@ import { db } from "../firebase";
 import { doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
 import "./PurchaseButton.css";
 
-const PurchaseButton = ({ user, userLocation, setCheckInStatus, setUser, fetchOwnedTerracres }) => {
+const PurchaseButton = ({ user, userLocation, setCheckInStatus, setUser, fetchOwnedTerracres, onPurchase }) => {
   const handlePurchase = async () => {
     if (!user || !userLocation) {
       setCheckInStatus("Please log in and allow location access.");
@@ -29,17 +29,24 @@ const PurchaseButton = ({ user, userLocation, setCheckInStatus, setUser, fetchOw
       const newTerrabucks = user.terrabucks - 100;
       await updateDoc(userRef, { terrabucks: newTerrabucks });
       setUser({ ...user, terrabucks: newTerrabucks });
+      console.log("✅ TB updated to:", newTerrabucks);
 
-      await setDoc(terracreRef, {
+      const newTerracre = {
         lat: userLocation.lat,
         lng: userLocation.lng,
         ownerId: user.uid,
         purchasedAt: new Date().toISOString(),
         size: 800,
-      });
+      };
+      await setDoc(terracreRef, newTerracre);
+      console.log("✅ Terracre saved:", { id: terracreId, ...newTerracre });
 
       setCheckInStatus("Terracre purchased successfully!");
-      await fetchOwnedTerracres(); // ✅ Refresh terracres to show on map
+      setTimeout(async () => {
+        await fetchOwnedTerracres();
+        console.log("✅ Fetch triggered after delay");
+        onPurchase();
+      }, 1000); // 1-second delay
     } catch (error) {
       console.error("Purchase error:", error);
       setCheckInStatus("Failed to purchase Terracre. Try again.");
