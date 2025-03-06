@@ -4,7 +4,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { GoogleMap, LoadScript } from "@react-google-maps/api";
-import { AdvancedMarkerElement } from "@react-google-maps/api/lib/marker/AdvancedMarkerElement"; // ✅ Try this path
+import { AdvancedMarkerElement } from "@react-google-maps/api/lib/marker/AdvancedMarkerElement"; // ✅ Corrected import
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
