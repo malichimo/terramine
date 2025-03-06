@@ -1,62 +1,192 @@
-import React from "react";
-import { db } from "../firebase";
-import { doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
-import "./PurchaseButton.css";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
+import { auth } from "./firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { db } from "./firebase";
+import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
+import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
+import Login from "./components/Login";
+import CheckInButton from "./components/CheckInButton";
+import PurchaseButton from "./components/PurchaseButton";
+import "./App.css";
 
-const PurchaseButton = ({ user, userLocation, setCheckInStatus, setUser, fetchOwnedTerracres }) => {
-  const handlePurchase = async () => {
-    if (!user || !userLocation) {
-      setCheckInStatus("Please log in and allow location access.");
-      return;
-    }
+const defaultCenter = { lat: 37.7749, lng: -122.4194 };
+const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with your actual key
 
-    if (user.terrabucks < 100) {
-      setCheckInStatus("Not enough TB! You need 100 TB to purchase a Terracre.");
-      return;
-    }
+function App() {
+  const [user, setUser] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+  const [ownedTerracres, setOwnedTerracres] = useState([]);
+  const [checkInStatus, setCheckInStatus] = useState("");
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [isMounted, setIsMounted] = useState(true);
+  const [error, setError] = useState(null);
+  const [purchaseTrigger, setPurchaseTrigger] = useState(0); // ✅ Trigger refetch
 
-    try {
-      const terracreId = `${userLocation.lat}-${userLocation.lng}`;
-      const terracreRef = doc(db, "terracres", terracreId);
-      const userRef = doc(db, "users", user.uid);
-
-      const terracreSnap = await getDoc(terracreRef);
-      if (terracreSnap.exists()) {
-        setCheckInStatus("This Terracre is already owned!");
-        return;
+  useEffect(() => {
+    console.log("Auth Listener Initialized ✅");
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (!isMounted) return;
+      console.log("Auth State Changed ✅:", currentUser?.uid || "No user");
+      if (currentUser) {
+        const userRef = doc(db, "users", currentUser.uid);
+        try {
+          const userSnap = await getDoc(userRef);
+          if (!userSnap.exists()) {
+            console.log("New user detected 🚀 - Creating Firestore profile...");
+            const newUserData = { uid: currentUser.uid, terrabucks: 1000 };
+            await setDoc(userRef, newUserData);
+            setUser({ ...currentUser, ...newUserData });
+            console.log("New user set with:", newUserData);
+          } else {
+            const userData = userSnap.data();
+            console.log("User exists ✅", userData);
+            setUser({ ...currentUser, terrabucks: userData.terrabucks ?? 1000 });
+          }
+        } catch (err) {
+          console.error("Firestore auth error:", err);
+          setError("Failed to load user data.");
+        }
+      } else {
+        setUser(null);
       }
+    });
 
-      const newTerrabucks = user.terrabucks - 100;
-      await updateDoc(userRef, { terrabucks: newTerrabucks });
-      setUser({ ...user, terrabucks: newTerrabucks });
-      console.log("✅ TB updated to:", newTerrabucks);
+    return () => {
+      setIsMounted(false);
+      unsubscribe();
+    };
+  }, []);
 
-      await setDoc(terracreRef, {
-        lat: userLocation.lat,
-        lng: userLocation.lng,
-        ownerId: user.uid,
-        purchasedAt: new Date().toISOString(),
-        size: 800,
-      });
-      console.log("✅ Terracre saved:", terracreId);
+  useEffect(() => {
+    if (!user) return;
+    console.log("Fetching User Location... 📍");
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (!isMounted) return;
+          console.log("✅ Location Retrieved:", position.coords);
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error("❌ Location error:", error);
+          setUserLocation(defaultCenter);
+        }
+      );
+    } else {
+      console.warn("⚠️ Geolocation not supported");
+      setUserLocation(defaultCenter);
+    }
 
-      setCheckInStatus("Terracre purchased successfully!");
-      // Wait briefly for Firestore to commit, then refetch
-      setTimeout(async () => {
-        await fetchOwnedTerracres();
-        console.log("✅ Fetch triggered after purchase");
-      }, 1000); // 1-second delay
+    return () => setIsMounted(false);
+  }, [user]);
+
+  const fetchOwnedTerracres = useCallback(async () => {
+    if (!user) return;
+    try {
+      console.log("📡 Fetching Terracres...");
+      const terracresRef = collection(db, "terracres");
+      const querySnapshot = await getDocs(terracresRef);
+      const properties = querySnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((t) => t.lat && t.lng);
+      if (isMounted) {
+        setOwnedTerracres(properties);
+        console.log("✅ Terracres updated:", properties);
+      }
     } catch (error) {
-      console.error("Purchase error:", error);
-      setCheckInStatus("Failed to purchase Terracre. Try again.");
+      console.error("🔥 Terracres fetch error:", error);
+      setOwnedTerracres([]);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchOwnedTerracres();
+  }, [fetchOwnedTerracres, purchaseTrigger]); // ✅ Refetch on purchaseTrigger change
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      console.log("✅ User signed out");
+      setUser(null);
+    } catch (error) {
+      console.error("❌ Sign-out error:", error);
+      setError("Failed to sign out.");
     }
   };
 
-  return (
-    <button className="purchase-button" onClick={handlePurchase}>
-      Purchase Terracre (100 TB)
-    </button>
-  );
-};
+  if (error) return <div>Error: {error}</div>;
+  if (!user) return <Login onLoginSuccess={setUser} />;
 
-export default PurchaseButton;
+  return (
+    <div className="app-container">
+      <header className="app-header">
+        <button className="signout-button" onClick={handleSignOut}>
+          Sign Out
+        </button>
+        <h1>TerraMine</h1>
+      </header>
+      {!userLocation ? (
+        <p>Getting your location...</p>
+      ) : (
+        <Suspense fallback={<p>Loading map resources...</p>}>
+          <LoadScript
+            googleMapsApiKey={GOOGLE_MAPS_API_KEY}
+            onLoad={() => {
+              console.log("✅ LoadScript loaded");
+              setMapLoaded(true);
+            }}
+            onError={(e) => {
+              console.error("❌ LoadScript error:", e);
+              setError("Failed to load map.");
+            }}
+          >
+            {mapLoaded ? (
+              <GoogleMap
+                mapContainerStyle={{ width: "100%", height: "500px" }}
+                center={userLocation}
+                zoom={15}
+                onLoad={() => console.log("✅ GoogleMap rendered")}
+              >
+                {!ownedTerracres.some(
+                  (t) => t.lat === userLocation.lat && t.lng === userLocation.lng
+                ) && <Marker position={userLocation} label="You" />}
+                {ownedTerracres.map((terracre) => (
+                  <Marker
+                    key={terracre.id}
+                    position={{ lat: terracre.lat, lng: terracre.lng }}
+                    icon={{
+                      path: window.google.maps.SymbolPath.SQUARE,
+                      scale: 10,
+                      fillColor: terracre.ownerId === user.uid ? "blue" : "green",
+                      fillOpacity: 1,
+                      strokeWeight: 1,
+                    }}
+                  />
+                ))}
+              </GoogleMap>
+            ) : (
+              <p>Initializing map...</p>
+            )}
+          </LoadScript>
+        </Suspense>
+      )}
+      <p className="greeting">
+        Welcome {user.displayName || "User"}, you have {user.terrabucks ?? 0} TB available.
+      </p>
+      <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} />
+      <PurchaseButton
+        user={user}
+        userLocation={userLocation}
+        setCheckInStatus={setCheckInStatus}
+        setUser={setUser}
+        fetchOwnedTerracres={fetchOwnedTerracres}
+      />
+      {checkInStatus && <p>{checkInStatus}</p>}
+    </div>
+  );
+}
+
+export default App;
