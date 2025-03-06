@@ -6,7 +6,7 @@ import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
-import PurchaseButton from "./components/PurchaseButton"; // ✅ Add import
+import PurchaseButton from "./components/PurchaseButton";
 import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
@@ -91,7 +91,10 @@ function App() {
       const properties = querySnapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .filter((t) => t.lat && t.lng);
-      if (isMounted) setOwnedTerracres(properties);
+      if (isMounted) {
+        setOwnedTerracres(properties);
+        console.log("✅ Terracres updated:", properties);
+      }
     } catch (error) {
       console.error("🔥 Terracres fetch error:", error);
       setOwnedTerracres([]);
@@ -171,12 +174,12 @@ function App() {
         Welcome {user.displayName || "User"}, you have {user.terrabucks ?? 0} TB available.
       </p>
       <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} />
-      {/* ✅ Add PurchaseButton */}
       <PurchaseButton
         user={user}
         userLocation={userLocation}
         setCheckInStatus={setCheckInStatus}
-        setUser={setUser} // Pass setUser to update terrabucks
+        setUser={setUser}
+        fetchOwnedTerracres={fetchOwnedTerracres} // ✅ Pass fetch function
       />
       {checkInStatus && <p>{checkInStatus}</p>}
     </div>
