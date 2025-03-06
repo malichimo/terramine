@@ -3,8 +3,7 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
-import { GoogleMap, LoadScript } from "@react-google-maps/api";
-import { AdvancedMarkerElement } from "@react-google-maps/api/lib/marker/AdvancedMarkerElement"; // ✅ Submodule import
+import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
@@ -159,26 +158,19 @@ function App() {
                 {!ownedTerracres.some(
                   (t) => t.lat === userLocation.lat && t.lng === userLocation.lng
                 ) && (
-                  <AdvancedMarkerElement
-                    position={userLocation}
-                    title="You"
-                  />
+                  <Marker position={userLocation} label="You" />
                 )}
                 {ownedTerracres.map((terracre) => (
-                  <AdvancedMarkerElement
+                  <Marker
                     key={terracre.id}
                     position={{ lat: terracre.lat, lng: terracre.lng }}
+                    icon={{
+                      url: terracre.ownerId === user.uid
+                        ? "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                        : "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
+                    }}
                     title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
-                  >
-                    <div
-                      style={{
-                        width: "20px",
-                        height: "20px",
-                        backgroundColor: terracre.ownerId === user.uid ? "blue" : "green",
-                        border: "1px solid #fff",
-                      }}
-                    />
-                  </AdvancedMarkerElement>
+                  />
                 ))}
               </GoogleMap>
             ) : (
