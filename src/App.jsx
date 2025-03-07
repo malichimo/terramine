@@ -3,8 +3,7 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
-import { GoogleMap, LoadScript, useJsApiLoader } from "@react-google-maps/api";
-import { AdvancedMarkerElement } from "@react-google-maps/api"; // Import this
+import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
@@ -23,10 +22,6 @@ function App() {
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
   const [mapKey, setMapKey] = useState(0);
-
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-  });
 
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
@@ -131,7 +126,6 @@ function App() {
 
   if (error) return <div>Error: {error}</div>;
   if (!user) return <Login onLoginSuccess={setUser} />;
-  if (!isLoaded) return <p>Loading map resources...</p>;
 
   return (
     <div className="app-container">
@@ -144,44 +138,52 @@ function App() {
       {!userLocation ? (
         <p>Getting your location...</p>
       ) : (
-        <GoogleMap
-          key={mapKey}
-          mapContainerStyle={{ width: "100%", height: "500px" }}
-          center={userLocation}
-          zoom={15}
-          onLoad={() => {
-            console.log("✅ GoogleMap rendered");
-            setMapLoaded(true);
-          }}
-        >
-          {!ownedTerracres.some(
-            (t) => t.lat === userLocation.lat && t.lng === userLocation.lng
-          ) && (
-            <AdvancedMarkerElement
-              position={userLocation}
-              title="You"
-            >
-              <div style={{ color: "red", fontWeight: "bold" }}>You</div>
-            </AdvancedMarkerElement>
-          )}
-          {ownedTerracres.map((terracre) => (
-            <AdvancedMarkerElement
-              key={terracre.id}
-              position={{ lat: terracre.lat, lng: terracre.lng }}
-              title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
-            >
-              <div
-                style={{
-                  width: "20px",
-                  height: "20px",
-                  backgroundColor: terracre.ownerId === user.uid ? "blue" : "green",
-                  border: "2px solid white",
-                  borderRadius: "4px",
-                }}
-              />
-            </AdvancedMarkerElement>
-          ))}
-        </GoogleMap>
+        <Suspense fallback={<p>Loading map resources...</p>}>
+          <LoadScript
+            googleMapsApiKey={GOOGLE_MAPS_API_KEY}
+            onLoad={() => {
+              console.log("✅ LoadScript loaded");
+              setMapLoaded(true);
+            }}
+            onError={(e) => {
+              console.error("❌ LoadScript error:", e);
+              setError("Failed to load map.");
+            }}
+          >
+            {mapLoaded ? (
+              <GoogleMap
+                key={mapKey}
+                mapContainerStyle={{ width: "100%", height: "500px" }}
+                center={userLocation}
+                zoom={15}
+                onLoad={() => console.log("✅ GoogleMap rendered")}
+              >
+                {!ownedTerracres.some(
+                  (t) => t.lat === userLocation.lat && t.lng === userLocation.lng
+                ) && (
+                  <Marker position={userLocation} label="You" />
+                )}
+                {ownedTerracres.map((terracre) => (
+                  <Marker
+                    key={terracre.id}
+                    position={{ lat: terracre.lat, lng: terracre.lng }}
+                    icon={{
+                      path: "M -10,-10 L 10,-10 L 10,10 L -10,10 Z",
+                      scale: 2, // Adjusted for visibility
+                      fillColor: terracre.ownerId === user.uid ? "blue" : "green",
+                      fillOpacity: 1,
+                      strokeWeight: 2,
+                      strokeColor: "#fff",
+                    }}
+                    title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
+                  />
+                ))}
+              </GoogleMap>
+            ) : (
+              <p>Initializing map...</p>
+            )}
+          </LoadScript>
+        </Suspense>
       )}
       <p className="greeting">
         Welcome {user.displayName || "User"}, you have {user.terrabucks ?? 0} TB available.
