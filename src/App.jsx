@@ -10,7 +10,7 @@ import PurchaseButton from "./components/PurchaseButton";
 import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with your actual key
+const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -21,6 +21,7 @@ function App() {
   const [isMounted, setIsMounted] = useState(true);
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
+  const [mapKey, setMapKey] = useState(0); // Add this for force rerender
 
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
@@ -42,6 +43,7 @@ function App() {
             console.log("User exists ✅", userData);
             setUser({ ...currentUser, terrabucks: userData.terrabucks ?? 1000 });
           }
+          setMapKey((prev) => prev + 1); // Force map rerender on login
         } catch (err) {
           console.error("Firestore auth error:", err);
           setError("Failed to load user data.");
@@ -150,6 +152,7 @@ function App() {
           >
             {mapLoaded ? (
               <GoogleMap
+                key={mapKey} // Force remount on login
                 mapContainerStyle={{ width: "100%", height: "500px" }}
                 center={userLocation}
                 zoom={15}
