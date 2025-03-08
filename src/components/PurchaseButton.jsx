@@ -41,7 +41,7 @@ function PurchaseButton({ user, userLocation, setCheckInStatus, setUser, fetchOw
       setUser((prev) => ({ ...prev, terrabucks: updatedTerrabucks }));
 
       setCheckInStatus("Terracre purchased successfully!");
-      onPurchase();
+      onPurchase(terracreId);
       fetchOwnedTerracres();
     } catch (error) {
       console.error("Purchase error:", error);
