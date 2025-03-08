@@ -11,9 +11,9 @@ import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
-const TERRACRE_SIZE_METERS = 10; // 10x10m terracre
+const TERRACRE_SIZE_METERS = 10;
 
-console.log("TerraMine v1.1 - a8a25ed - Squares match property bounds");
+console.log("TerraMine v1.1 - c7d861f - Dynamic 10x10m squares");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -41,14 +41,12 @@ function App() {
             const newUserData = { uid: currentUser.uid, terrabucks: 1000 };
             await setDoc(userRef, newUserData);
             setUser({ ...currentUser, ...newUserData });
-            console.log("New user set with:", newUserData);
           } else {
             const userData = userSnap.data();
-            console.log("User exists ✅", userData);
             setUser({ ...currentUser, terrabucks: userData.terrabucks ?? 1000 });
           }
-          setMapKey(Date.now());
           fetchOwnedTerracres();
+          setMapKey(Date.now());
         } catch (err) {
           console.error("Firestore auth error:", err);
           setError("Failed to load user data.");
@@ -133,20 +131,24 @@ function App() {
   };
 
   const getMarkerScale = (lat) => {
+    if (!zoom) return 1; // Fallback if zoom undefined
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
     const pixels = TERRACRE_SIZE_METERS / metersPerPixel;
-    return pixels / 26; // Base SVG is ~26px at scale 1
+    const scale = pixels / 26; // Base SVG ~26px
+    return isNaN(scale) || scale <= 0 ? 1 : scale; // Prevent invalid scale
   };
 
   if (error) return <div>Error: {error}</div>;
-  if (!user) return <Login onLoginSuccess={setUser} />;
+  if (!user && !mapLoaded) return <Login onLoginSuccess={setUser} />;
 
   return (
     <div className="app-container">
       <header className="app-header">
-        <button className="signout-button" onClick={handleSignOut}>
-          Sign Out
-        </button>
+        {user && (
+          <button className="signout-button" onClick={handleSignOut}>
+            Sign Out
+          </button>
+        )}
         <h1>TerraMine</h1>
       </header>
       {!userLocation ? (
@@ -168,12 +170,12 @@ function App() {
               <GoogleMap
                 key={mapKey}
                 mapContainerStyle={{ width: "100%", height: "500px" }}
-                center={userLocation}
+                center={userLocation || defaultCenter}
                 zoom={zoom}
                 onLoad={() => console.log("✅ GoogleMap rendered")}
-                onZoomChanged={(map) => setZoom(map.getZoom())}
+                onZoomChanged={(map) => setZoom(map ? map.getZoom() : zoom)}
               >
-                {!ownedTerracres.some(
+                {user && !ownedTerracres.some(
                   (t) =>
                     t.lat.toFixed(6) === userLocation.lat.toFixed(6) &&
                     t.lng.toFixed(6) === userLocation.lng.toFixed(6)
@@ -202,19 +204,23 @@ function App() {
           </LoadScript>
         </Suspense>
       )}
-      <p className="greeting">
-        Welcome {user.displayName || "User"}, you have {user.terrabucks ?? 0} TB available.
-      </p>
-      <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} />
-      <PurchaseButton
-        user={user}
-        userLocation={userLocation}
-        setCheckInStatus={setCheckInStatus}
-        setUser={setUser}
-        fetchOwnedTerracres={fetchOwnedTerracres}
-        onPurchase={handlePurchase}
-      />
-      {checkInStatus && <p>{checkInStatus}</p>}
+      {user && (
+        <>
+          <p className="greeting">
+            Welcome {user.displayName || "User"}, you have {user.terrabucks ?? 0} TB available.
+          </p>
+          <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} />
+          <PurchaseButton
+            user={user}
+            userLocation={userLocation}
+            setCheckInStatus={setCheckInStatus}
+            setUser={setUser}
+            fetchOwnedTerracres={fetchOwnedTerracres}
+            onPurchase={handlePurchase}
+          />
+          {checkInStatus && <p>{checkInStatus}</p>}
+        </>
+      )}
     </div>
   );
 }
