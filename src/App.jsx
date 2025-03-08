@@ -13,7 +13,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 10;
 
-console.log("TerraMine v1.1 - c7d861f - Dynamic 10x10m squares");
+console.log("TerraMine v1.2 - c7d861f - Fixed blank screen, 10m squares");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -131,11 +131,11 @@ function App() {
   };
 
   const getMarkerScale = (lat) => {
-    if (!zoom) return 1; // Fallback if zoom undefined
+    if (!zoom) return 1;
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
     const pixels = TERRACRE_SIZE_METERS / metersPerPixel;
-    const scale = pixels / 26; // Base SVG ~26px
-    return isNaN(scale) || scale <= 0 ? 1 : scale; // Prevent invalid scale
+    const scale = pixels / 26;
+    return isNaN(scale) || scale <= 0 ? 1 : scale;
   };
 
   if (error) return <div>Error: {error}</div>;
