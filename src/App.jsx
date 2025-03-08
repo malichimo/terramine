@@ -13,7 +13,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 
-console.log("TerraMine v1.12 - Live 30m squares, pin fix");
+console.log("TerraMine v1.13 - Zoom-adjusted 30m squares");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -134,12 +134,12 @@ function App() {
     setPurchasedThisSession(terracreId);
     console.log("✅ Purchase trigger incremented:", purchaseTrigger + 1, "Purchased:", terracreId);
     fetchOwnedTerracres();
-    setMapKey(Date.now()); // Force map rerender
+    setMapKey(Date.now());
   };
 
   const getMarkerScale = (lat) => {
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
-    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 2; // ~30m at zoom 15
+    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 1.5; // ~30m at zoom 15
     console.log("Scale calc - Lat:", lat, "Zoom:", zoom, "Meters/Pixel:", metersPerPixel, "Scale:", scale);
     return isNaN(scale) || scale <= 0 ? 1 : scale;
   };
@@ -178,7 +178,12 @@ function App() {
               zoom={zoom}
               onLoad={() => console.log("✅ GoogleMap rendered")}
               onZoomChanged={(map) => {
-                if (map) setZoom(map.getZoom());
+                if (map) {
+                  const newZoom = map.getZoom();
+                  setZoom(newZoom);
+                  setMapKey(Date.now()); // Rerender on zoom
+                  console.log("Zoom changed:", newZoom);
+                }
               }}
             >
               {console.log(
