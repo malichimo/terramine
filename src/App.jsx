@@ -21,7 +21,7 @@ function App() {
   const [isMounted, setIsMounted] = useState(true);
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
-  const [mapKey, setMapKey] = useState(0);
+  const [mapKey, setMapKey] = useState(Date.now()); // Force rerender with timestamp
 
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
@@ -43,13 +43,14 @@ function App() {
             console.log("User exists ✅", userData);
             setUser({ ...currentUser, terrabucks: userData.terrabucks ?? 1000 });
           }
-          setMapKey((prev) => prev + 1);
+          setMapKey(Date.now()); // Rerender map on auth change
         } catch (err) {
           console.error("Firestore auth error:", err);
           setError("Failed to load user data.");
         }
       } else {
         setUser(null);
+        setMapKey(Date.now()); // Reset map on sign-out
       }
     });
 
@@ -97,6 +98,7 @@ function App() {
       if (isMounted) {
         setOwnedTerracres(properties);
         console.log("✅ Terracres updated:", properties);
+        setMapKey(Date.now()); // Rerender map after fetch
       }
     } catch (error) {
       console.error("🔥 Terracres fetch error:", error);
@@ -169,7 +171,7 @@ function App() {
                     position={{ lat: terracre.lat, lng: terracre.lng }}
                     icon={{
                       path: "M -10,-10 L 10,-10 L 10,10 L -10,10 Z",
-                      scale: 2, // Adjusted for visibility
+                      scale: 2,
                       fillColor: terracre.ownerId === user.uid ? "blue" : "green",
                       fillOpacity: 1,
                       strokeWeight: 2,
