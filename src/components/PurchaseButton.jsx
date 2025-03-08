@@ -32,6 +32,8 @@ function PurchaseButton({ user, userLocation, setCheckInStatus, setUser, fetchOw
       };
       await setDoc(terracreRef, terracreData);
       console.log("Terracre written:", terracreId, terracreData);
+      const postWriteSnap = await getDoc(terracreRef);
+      console.log("Post-write check:", terracreId, "Exists:", postWriteSnap.exists(), "Data:", postWriteSnap.data());
 
       const userRef = doc(db, "users", user.uid);
       const updatedTerrabucks = (user.terrabucks || 1000) - 100;
