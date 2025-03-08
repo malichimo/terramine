@@ -24,13 +24,14 @@ function PurchaseButton({ user, userLocation, setCheckInStatus, setUser, fetchOw
         return;
       }
 
-      await setDoc(terracreRef, {
-        lat: userLocation.lat,
-        lng: userLocation.lng,
+      const terracreData = {
+        lat: Number(userLocation.lat),
+        lng: Number(userLocation.lng),
         ownerId: user.uid,
         purchasedAt: new Date().toISOString(),
-      });
-      console.log("Terracre written:", terracreId);
+      };
+      await setDoc(terracreRef, terracreData);
+      console.log("Terracre written:", terracreId, terracreData);
 
       const userRef = doc(db, "users", user.uid);
       const updatedTerrabucks = (user.terrabucks || 1000) - 100;
@@ -46,7 +47,7 @@ function PurchaseButton({ user, userLocation, setCheckInStatus, setUser, fetchOw
     }
   };
 
-  return <button onClick={handlePurchase}>Purchase Terracre</button>;
+  return <button className="purchase-button" onClick={handlePurchase}>Purchase Terracre</button>;
 }
 
 export default PurchaseButton;
