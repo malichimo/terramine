@@ -8,7 +8,7 @@ function PurchaseButton({ user, userLocation, setCheckInStatus, setUser, fetchOw
       return;
     }
 
-    const terracreId = `${userLocation.lat.toFixed(6)}_${userLocation.lng.toFixed(6)}`;
+    const terracreId = `${userLocation.lat.toFixed(4)}_${userLocation.lng.toFixed(4)}`; // 4 decimals for ~30m grid
     const terracreRef = doc(db, "terracres", terracreId);
 
     try {
@@ -25,8 +25,8 @@ function PurchaseButton({ user, userLocation, setCheckInStatus, setUser, fetchOw
       }
 
       const terracreData = {
-        lat: Number(userLocation.lat),
-        lng: Number(userLocation.lng),
+        lat: Number(userLocation.lat.toFixed(4)),
+        lng: Number(userLocation.lng.toFixed(4)),
         ownerId: user.uid,
         purchasedAt: new Date().toISOString(),
       };
