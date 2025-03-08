@@ -11,6 +11,9 @@ import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
+const TERRACRE_SIZE_METERS = 10; // 10x10m terracre - adjust if different
+
+console.log("TerraMine v1.1 - a8a25ed - Squares match property bounds");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -22,6 +25,7 @@ function App() {
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
   const [mapKey, setMapKey] = useState(Date.now());
+  const [zoom, setZoom] = useState(15); // Track zoom level
 
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
@@ -43,15 +47,15 @@ function App() {
             console.log("User exists ✅", userData);
             setUser({ ...currentUser, terrabucks: userData.terrabucks ?? 1000 });
           }
-          setMapKey(Date.now()); // Rerender on auth
-          fetchOwnedTerracres(); // Fetch immediately
+          setMapKey(Date.now());
+          fetchOwnedTerracres();
         } catch (err) {
           console.error("Firestore auth error:", err);
           setError("Failed to load user data.");
         }
       } else {
         setUser(null);
-        setOwnedTerracres([]); // Clear on sign-out
+        setOwnedTerracres([]);
         setMapKey(Date.now());
       }
     });
@@ -68,7 +72,7 @@ function App() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          if (!isMounted) return;
+         —if (!isMounted) return;
           console.log("✅ Location Retrieved:", position.coords);
           setUserLocation({
             lat: position.coords.latitude,
@@ -100,7 +104,7 @@ function App() {
       if (isMounted) {
         console.log("✅ Terracres fetched:", properties);
         setOwnedTerracres(properties);
-        setMapKey(Date.now()); // Rerender after fetch
+        setMapKey(Date.now());
       }
     } catch (error) {
       console.error("🔥 Terracres fetch error:", error);
@@ -109,7 +113,7 @@ function App() {
   }, [user]);
 
   useEffect(() => {
-    if (user) fetchOwnedTerracres(); // Sync on purchase/user change
+    if (user) fetchOwnedTerracres();
   }, [fetchOwnedTerracres, purchaseTrigger, user]);
 
   const handleSignOut = async () => {
@@ -126,6 +130,13 @@ function App() {
   const handlePurchase = () => {
     setPurchaseTrigger((prev) => prev + 1);
     console.log("✅ Purchase trigger incremented:", purchaseTrigger + 1);
+  };
+
+  // Calculate marker size in pixels based on zoom and latitude
+  const getMarkerScale = (lat) => {
+    const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
+    const pixels = TERRACRE_SIZE_METERS / metersPerPixel;
+    return pixels / 26; // Base SVG is ~26px at scale 1
   };
 
   if (error) return <div>Error: {error}</div>;
@@ -159,8 +170,9 @@ function App() {
                 key={mapKey}
                 mapContainerStyle={{ width: "100%", height: "500px" }}
                 center={userLocation}
-                zoom={15}
+                zoom={zoom}
                 onLoad={() => console.log("✅ GoogleMap rendered")}
+                onZoomChanged={(map) => setZoom(map.getZoom())} // Update zoom state
               >
                 {!ownedTerracres.some(
                   (t) =>
@@ -174,8 +186,8 @@ function App() {
                     key={terracre.id}
                     position={{ lat: terracre.lat, lng: terracre.lng }}
                     icon={{
-                      path: "M -10,-10 L 10,-10 L 10,10 L -10,10 Z",
-                      scale: 2,
+                      path: "M -13,-13 L 13,-13 L 13,13 L -13,13 Z", // ~26px base
+                      scale: getMarkerScale(terracre.lat),
                       fillColor: terracre.ownerId === user.uid ? "blue" : "green",
                       fillOpacity: 1,
                       strokeWeight: 2,
