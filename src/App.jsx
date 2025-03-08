@@ -13,7 +13,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 10;
 
-console.log("TerraMine v1.2 - c7d861f - Fixed blank screen, 10m squares");
+console.log("TerraMine v1.3 - b950f3f - Fixed map load and zoom errors");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -21,6 +21,7 @@ function App() {
   const [ownedTerracres, setOwnedTerracres] = useState([]);
   const [checkInStatus, setCheckInStatus] = useState("");
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [apiLoaded, setApiLoaded] = useState(false); // Track Google API load
   const [isMounted, setIsMounted] = useState(true);
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
@@ -139,7 +140,7 @@ function App() {
   };
 
   if (error) return <div>Error: {error}</div>;
-  if (!user && !mapLoaded) return <Login onLoginSuccess={setUser} />;
+  if (!user && !apiLoaded) return <Login onLoginSuccess={setUser} />;
 
   return (
     <div className="app-container">
@@ -151,59 +152,58 @@ function App() {
         )}
         <h1>TerraMine</h1>
       </header>
-      {!userLocation ? (
-        <p>Getting your location...</p>
-      ) : (
-        <Suspense fallback={<p>Loading map resources...</p>}>
-          <LoadScript
-            googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-            onLoad={() => {
-              console.log("✅ LoadScript loaded");
-              setMapLoaded(true);
-            }}
-            onError={(e) => {
-              console.error("❌ LoadScript error:", e);
-              setError("Failed to load map.");
-            }}
-          >
-            {mapLoaded ? (
-              <GoogleMap
-                key={mapKey}
-                mapContainerStyle={{ width: "100%", height: "500px" }}
-                center={userLocation || defaultCenter}
-                zoom={zoom}
-                onLoad={() => console.log("✅ GoogleMap rendered")}
-                onZoomChanged={(map) => setZoom(map ? map.getZoom() : zoom)}
-              >
-                {user && !ownedTerracres.some(
-                  (t) =>
-                    t.lat.toFixed(6) === userLocation.lat.toFixed(6) &&
-                    t.lng.toFixed(6) === userLocation.lng.toFixed(6)
-                ) && (
-                  <Marker position={userLocation} label="You" />
-                )}
-                {ownedTerracres.map((terracre) => (
-                  <Marker
-                    key={terracre.id}
-                    position={{ lat: terracre.lat, lng: terracre.lng }}
-                    icon={{
-                      path: "M -13,-13 L 13,-13 L 13,13 L -13,13 Z",
-                      scale: getMarkerScale(terracre.lat),
-                      fillColor: terracre.ownerId === user.uid ? "blue" : "green",
-                      fillOpacity: 1,
-                      strokeWeight: 2,
-                      strokeColor: "#fff",
-                    }}
-                    title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
-                  />
-                ))}
-              </GoogleMap>
-            ) : (
-              <p>Initializing map...</p>
-            )}
-          </LoadScript>
-        </Suspense>
-      )}
+      <Suspense fallback={<p>Loading map resources...</p>}>
+        <LoadScript
+          googleMapsApiKey={GOOGLE_MAPS_API_KEY}
+          onLoad={() => {
+            console.log("✅ LoadScript loaded");
+            setApiLoaded(true);
+            setMapLoaded(true);
+          }}
+          onError={(e) => {
+            console.error("❌ LoadScript error:", e);
+            setError("Failed to load map.");
+          }}
+        >
+          {apiLoaded && userLocation ? (
+            <GoogleMap
+              key={mapKey}
+              mapContainerStyle={{ width: "100%", height: "500px" }}
+              center={userLocation || defaultCenter}
+              zoom={zoom}
+              onLoad={() => console.log("✅ GoogleMap rendered")}
+              onZoomChanged={(map) => {
+                if (map) setZoom(map.getZoom());
+              }}
+            >
+              {user && !ownedTerracres.some(
+                (t) =>
+                  t.lat.toFixed(6) === userLocation.lat.toFixed(6) &&
+                  t.lng.toFixed(6) === userLocation.lng.toFixed(6)
+              ) && (
+                <Marker position={userLocation} label="You" />
+              )}
+              {ownedTerracres.map((terracre) => (
+                <Marker
+                  key={terracre.id}
+                  position={{ lat: terracre.lat, lng: terracre.lng }}
+                  icon={{
+                    path: "M -13,-13 L 13,-13 L 13,13 L -13,13 Z",
+                    scale: getMarkerScale(terracre.lat),
+                    fillColor: terracre.ownerId === user.uid ? "blue" : "green",
+                    fillOpacity: 1,
+                    strokeWeight: 2,
+                    strokeColor: "#fff",
+                  }}
+                  title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
+                />
+              ))}
+            </GoogleMap>
+          ) : (
+            <p>{userLocation ? "Initializing map..." : "Getting your location..."}</p>
+          )}
+        </LoadScript>
+      </Suspense>
       {user && (
         <>
           <p className="greeting">
