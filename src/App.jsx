@@ -11,7 +11,7 @@ import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
-const TERRACRE_SIZE_METERS = 10; // 10x10m terracre - adjust if different
+const TERRACRE_SIZE_METERS = 10; // 10x10m terracre
 
 console.log("TerraMine v1.1 - a8a25ed - Squares match property bounds");
 
@@ -25,7 +25,7 @@ function App() {
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
   const [mapKey, setMapKey] = useState(Date.now());
-  const [zoom, setZoom] = useState(15); // Track zoom level
+  const [zoom, setZoom] = useState(15);
 
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
@@ -72,7 +72,7 @@ function App() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-         —if (!isMounted) return;
+          if (!isMounted) return;
           console.log("✅ Location Retrieved:", position.coords);
           setUserLocation({
             lat: position.coords.latitude,
@@ -132,7 +132,6 @@ function App() {
     console.log("✅ Purchase trigger incremented:", purchaseTrigger + 1);
   };
 
-  // Calculate marker size in pixels based on zoom and latitude
   const getMarkerScale = (lat) => {
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
     const pixels = TERRACRE_SIZE_METERS / metersPerPixel;
@@ -172,7 +171,7 @@ function App() {
                 center={userLocation}
                 zoom={zoom}
                 onLoad={() => console.log("✅ GoogleMap rendered")}
-                onZoomChanged={(map) => setZoom(map.getZoom())} // Update zoom state
+                onZoomChanged={(map) => setZoom(map.getZoom())}
               >
                 {!ownedTerracres.some(
                   (t) =>
@@ -186,7 +185,7 @@ function App() {
                     key={terracre.id}
                     position={{ lat: terracre.lat, lng: terracre.lng }}
                     icon={{
-                      path: "M -13,-13 L 13,-13 L 13,13 L -13,13 Z", // ~26px base
+                      path: "M -13,-13 L 13,-13 L 13,13 L -13,13 Z",
                       scale: getMarkerScale(terracre.lat),
                       fillColor: terracre.ownerId === user.uid ? "blue" : "green",
                       fillOpacity: 1,
