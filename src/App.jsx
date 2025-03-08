@@ -13,7 +13,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 
-console.log("TerraMine v1.7 - 30m grid, fixed pin and purchase overlap");
+console.log("TerraMine v1.8 - 30m static borders, pin fix");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -27,6 +27,7 @@ function App() {
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
   const [mapKey, setMapKey] = useState(Date.now());
   const [zoom, setZoom] = useState(15);
+  const [purchasedThisSession, setPurchasedThisSession] = useState(null);
 
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
@@ -129,19 +130,15 @@ function App() {
     }
   };
 
-  const handlePurchase = () => {
+  const handlePurchase = (terracreId) => {
     setPurchaseTrigger((prev) => prev + 1);
-    console.log("✅ Purchase trigger incremented:", purchaseTrigger + 1);
+    setPurchasedThisSession(terracreId);
+    console.log("✅ Purchase trigger incremented:", purchaseTrigger + 1, "Purchased:", terracreId);
     fetchOwnedTerracres(); // Immediate refresh
   };
 
-  const getMarkerScale = (lat) => {
-    if (!zoom) return 1;
-    const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
-    const pixels = TERRACRE_SIZE_METERS / metersPerPixel;
-    const scale = pixels / 10; // ~30m at zoom 15
-    console.log("Scale calc - Lat:", lat, "Zoom:", zoom, "Meters/Pixel:", metersPerPixel, "Scale:", scale);
-    return isNaN(scale) || scale <= 0 ? 1 : scale;
+  const getMarkerScale = () => {
+    return 0.845; // Static ~30m at zoom 15
   };
 
   if (error) return <div>Error: {error}</div>;
@@ -187,21 +184,23 @@ function App() {
                 "Location:",
                 userLocation,
                 "Terracres:",
-                ownedTerracres.map((t) => ({ id: t.id, lat: t.lat, lng: t.lng, ownerId: t.ownerId }))
+                ownedTerracres.map((t) => ({ id: t.id, lat: t.lat, lng: t.lng, ownerId: t.ownerId })),
+                "Purchased this session:",
+                purchasedThisSession
               )}
-              {user && userLocation && (
+              {user && userLocation && purchasedThisSession !== `${userLocation.lat.toFixed(4)}_${userLocation.lng.toFixed(4)}` && (
                 ownedTerracres.some(
                   (t) =>
                     t.lat.toFixed(4) === userLocation.lat.toFixed(4) &&
                     t.lng.toFixed(4) === userLocation.lng.toFixed(4)
                 )
-                  ? console.log("Pin hidden - Location matches owned terracre:", userLocation)
-                  : console.log("Pin shown - No match at:", userLocation) || (
+                  ? console.log("Pin hidden - Location matches owned terracre (pre-purchase):", userLocation)
+                  : console.log("Pin shown - No match or not purchased yet:", userLocation) || (
                       <Marker position={userLocation} label="You" />
                     )
               )}
               {ownedTerracres.map((terracre) => {
-                const scale = getMarkerScale(terracre.lat);
+                const scale = getMarkerScale();
                 console.log("Marker render:", terracre.id, "Lat:", terracre.lat, "Lng:", terracre.lng, "Scale:", scale);
                 return (
                   <Marker
