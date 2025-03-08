@@ -11,9 +11,9 @@ import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
-const TERRACRE_SIZE_METERS = 10;
+const TERRACRE_SIZE_METERS = 30; // ~100ft
 
-console.log("TerraMine v1.6 - Fixed pin visibility, purchase persistence, and marker scale");
+console.log("TerraMine v1.7 - 30m grid, fixed pin and purchase overlap");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -132,14 +132,14 @@ function App() {
   const handlePurchase = () => {
     setPurchaseTrigger((prev) => prev + 1);
     console.log("✅ Purchase trigger incremented:", purchaseTrigger + 1);
-    fetchOwnedTerracres(); // Refresh terracres immediately
+    fetchOwnedTerracres(); // Immediate refresh
   };
 
   const getMarkerScale = (lat) => {
     if (!zoom) return 1;
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
     const pixels = TERRACRE_SIZE_METERS / metersPerPixel;
-    const scale = pixels / 5; // Increased for ~10m visibility at zoom 15
+    const scale = pixels / 10; // ~30m at zoom 15
     console.log("Scale calc - Lat:", lat, "Zoom:", zoom, "Meters/Pixel:", metersPerPixel, "Scale:", scale);
     return isNaN(scale) || scale <= 0 ? 1 : scale;
   };
@@ -189,12 +189,17 @@ function App() {
                 "Terracres:",
                 ownedTerracres.map((t) => ({ id: t.id, lat: t.lat, lng: t.lng, ownerId: t.ownerId }))
               )}
-              {user &&
-                !ownedTerracres.some(
+              {user && userLocation && (
+                ownedTerracres.some(
                   (t) =>
-                    t.lat.toFixed(6) === userLocation.lat.toFixed(6) &&
-                    t.lng.toFixed(6) === userLocation.lng.toFixed(6)
-                ) && <Marker position={userLocation} label="You" />}
+                    t.lat.toFixed(4) === userLocation.lat.toFixed(4) &&
+                    t.lng.toFixed(4) === userLocation.lng.toFixed(4)
+                )
+                  ? console.log("Pin hidden - Location matches owned terracre:", userLocation)
+                  : console.log("Pin shown - No match at:", userLocation) || (
+                      <Marker position={userLocation} label="You" />
+                    )
+              )}
               {ownedTerracres.map((terracre) => {
                 const scale = getMarkerScale(terracre.lat);
                 console.log("Marker render:", terracre.id, "Lat:", terracre.lat, "Lng:", terracre.lng, "Scale:", scale);
