@@ -13,7 +13,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 
-console.log("TerraMine v1.8 - 30m static borders, pin fix");
+console.log("TerraMine v1.9 - Fixed 30m borders, pin shows until purchase");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -134,11 +134,11 @@ function App() {
     setPurchaseTrigger((prev) => prev + 1);
     setPurchasedThisSession(terracreId);
     console.log("✅ Purchase trigger incremented:", purchaseTrigger + 1, "Purchased:", terracreId);
-    fetchOwnedTerracres(); // Immediate refresh
+    fetchOwnedTerracres();
   };
 
   const getMarkerScale = () => {
-    return 0.845; // Static ~30m at zoom 15
+    return 2.25; // Calibrated for ~30m static borders at zoom 15
   };
 
   if (error) return <div>Error: {error}</div>;
@@ -188,14 +188,10 @@ function App() {
                 "Purchased this session:",
                 purchasedThisSession
               )}
-              {user && userLocation && purchasedThisSession !== `${userLocation.lat.toFixed(4)}_${userLocation.lng.toFixed(4)}` && (
-                ownedTerracres.some(
-                  (t) =>
-                    t.lat.toFixed(4) === userLocation.lat.toFixed(4) &&
-                    t.lng.toFixed(4) === userLocation.lng.toFixed(4)
-                )
-                  ? console.log("Pin hidden - Location matches owned terracre (pre-purchase):", userLocation)
-                  : console.log("Pin shown - No match or not purchased yet:", userLocation) || (
+              {user && userLocation && (
+                purchasedThisSession === `${userLocation.lat.toFixed(4)}_${userLocation.lng.toFixed(4)}`
+                  ? console.log("Pin hidden - Purchased this session:", userLocation)
+                  : console.log("Pin shown - Not purchased this session:", userLocation) || (
                       <Marker position={userLocation} label="You" />
                     )
               )}
