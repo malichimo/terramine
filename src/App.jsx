@@ -13,7 +13,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 10;
 
-console.log("TerraMine v1.3 - b950f3f - Fixed map load and zoom errors");
+console.log("TerraMine v1.3 - Fixed map load and zoom errors");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -21,7 +21,7 @@ function App() {
   const [ownedTerracres, setOwnedTerracres] = useState([]);
   const [checkInStatus, setCheckInStatus] = useState("");
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [apiLoaded, setApiLoaded] = useState(false); // Track Google API load
+  const [apiLoaded, setApiLoaded] = useState(false);
   const [isMounted, setIsMounted] = useState(true);
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
