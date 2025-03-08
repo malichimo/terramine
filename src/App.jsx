@@ -13,7 +13,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 10;
 
-console.log("TerraMine v1.5 - c3a2ed7 - Fixed marker scale, button style, and purchase persistence");
+console.log("TerraMine v1.6 - Fixed pin visibility, purchase persistence, and marker scale");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -132,13 +132,14 @@ function App() {
   const handlePurchase = () => {
     setPurchaseTrigger((prev) => prev + 1);
     console.log("✅ Purchase trigger incremented:", purchaseTrigger + 1);
+    fetchOwnedTerracres(); // Refresh terracres immediately
   };
 
   const getMarkerScale = (lat) => {
     if (!zoom) return 1;
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
     const pixels = TERRACRE_SIZE_METERS / metersPerPixel;
-    const scale = pixels / 10; // Adjusted for ~10m visibility at zoom 15
+    const scale = pixels / 5; // Increased for ~10m visibility at zoom 15
     console.log("Scale calc - Lat:", lat, "Zoom:", zoom, "Meters/Pixel:", metersPerPixel, "Scale:", scale);
     return isNaN(scale) || scale <= 0 ? 1 : scale;
   };
