@@ -21,7 +21,7 @@ function App() {
   const [isMounted, setIsMounted] = useState(true);
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
-  const [mapKey, setMapKey] = useState(Date.now()); // Force rerender with timestamp
+  const [mapKey, setMapKey] = useState(Date.now());
 
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
@@ -43,14 +43,16 @@ function App() {
             console.log("User exists ✅", userData);
             setUser({ ...currentUser, terrabucks: userData.terrabucks ?? 1000 });
           }
-          setMapKey(Date.now()); // Rerender map on auth change
+          setMapKey(Date.now()); // Rerender on auth
+          fetchOwnedTerracres(); // Fetch immediately
         } catch (err) {
           console.error("Firestore auth error:", err);
           setError("Failed to load user data.");
         }
       } else {
         setUser(null);
-        setMapKey(Date.now()); // Reset map on sign-out
+        setOwnedTerracres([]); // Clear on sign-out
+        setMapKey(Date.now());
       }
     });
 
@@ -96,9 +98,9 @@ function App() {
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .filter((t) => t.lat && t.lng);
       if (isMounted) {
+        console.log("✅ Terracres fetched:", properties);
         setOwnedTerracres(properties);
-        console.log("✅ Terracres updated:", properties);
-        setMapKey(Date.now()); // Rerender map after fetch
+        setMapKey(Date.now()); // Rerender after fetch
       }
     } catch (error) {
       console.error("🔥 Terracres fetch error:", error);
@@ -107,8 +109,8 @@ function App() {
   }, [user]);
 
   useEffect(() => {
-    fetchOwnedTerracres();
-  }, [fetchOwnedTerracres, purchaseTrigger]);
+    if (user) fetchOwnedTerracres(); // Sync on purchase/user change
+  }, [fetchOwnedTerracres, purchaseTrigger, user]);
 
   const handleSignOut = async () => {
     try {
@@ -161,7 +163,9 @@ function App() {
                 onLoad={() => console.log("✅ GoogleMap rendered")}
               >
                 {!ownedTerracres.some(
-                  (t) => t.lat === userLocation.lat && t.lng === userLocation.lng
+                  (t) =>
+                    t.lat.toFixed(6) === userLocation.lat.toFixed(6) &&
+                    t.lng.toFixed(6) === userLocation.lng.toFixed(6)
                 ) && (
                   <Marker position={userLocation} label="You" />
                 )}
