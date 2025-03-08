@@ -13,7 +13,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 10;
 
-console.log("TerraMine v1.3 - Fixed map load and zoom errors");
+console.log("TerraMine v1.4 - 81780cc - Fixed squares, sign-out, and purchase persistence");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -94,7 +94,7 @@ function App() {
   const fetchOwnedTerracres = useCallback(async () => {
     if (!user) return;
     try {
-      console.log("📡 Fetching Terracres...");
+      console.log("📡 Fetching Terracres for user:", user.uid);
       const terracresRef = collection(db, "terracres");
       const querySnapshot = await getDocs(terracresRef);
       const properties = querySnapshot.docs
@@ -109,7 +109,7 @@ function App() {
       console.error("🔥 Terracres fetch error:", error);
       setOwnedTerracres([]);
     }
-  }, [user]);
+  }, [user, isMounted]);
 
   useEffect(() => {
     if (user) fetchOwnedTerracres();
@@ -120,6 +120,9 @@ function App() {
       await signOut(auth);
       console.log("✅ User signed out");
       setUser(null);
+      setApiLoaded(false);
+      setMapLoaded(false);
+      window.location.reload(); // Force reload to show Login
     } catch (error) {
       console.error("❌ Sign-out error:", error);
       setError("Failed to sign out.");
@@ -136,6 +139,7 @@ function App() {
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
     const pixels = TERRACRE_SIZE_METERS / metersPerPixel;
     const scale = pixels / 26;
+    console.log("Scale calc - Lat:", lat, "Zoom:", zoom, "Meters/Pixel:", metersPerPixel, "Scale:", scale);
     return isNaN(scale) || scale <= 0 ? 1 : scale;
   };
 
@@ -176,28 +180,39 @@ function App() {
                 if (map) setZoom(map.getZoom());
               }}
             >
-              {user && !ownedTerracres.some(
-                (t) =>
-                  t.lat.toFixed(6) === userLocation.lat.toFixed(6) &&
-                  t.lng.toFixed(6) === userLocation.lng.toFixed(6)
-              ) && (
-                <Marker position={userLocation} label="You" />
+              {console.log(
+                "Rendering map - User:",
+                user?.uid,
+                "Location:",
+                userLocation,
+                "Terracres:",
+                ownedTerracres.map((t) => ({ id: t.id, lat: t.lat, lng: t.lng, ownerId: t.ownerId }))
               )}
-              {ownedTerracres.map((terracre) => (
-                <Marker
-                  key={terracre.id}
-                  position={{ lat: terracre.lat, lng: terracre.lng }}
-                  icon={{
-                    path: "M -13,-13 L 13,-13 L 13,13 L -13,13 Z",
-                    scale: getMarkerScale(terracre.lat),
-                    fillColor: terracre.ownerId === user.uid ? "blue" : "green",
-                    fillOpacity: 1,
-                    strokeWeight: 2,
-                    strokeColor: "#fff",
-                  }}
-                  title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
-                />
-              ))}
+              {user &&
+                !ownedTerracres.some(
+                  (t) =>
+                    t.lat.toFixed(6) === userLocation.lat.toFixed(6) &&
+                    t.lng.toFixed(6) === userLocation.lng.toFixed(6)
+                ) && <Marker position={userLocation} label="You" />}
+              {ownedTerracres.map((terracre) => {
+                const scale = getMarkerScale(terracre.lat);
+                console.log("Marker render:", terracre.id, "Lat:", terracre.lat, "Lng:", terracre.lng, "Scale:", scale);
+                return (
+                  <Marker
+                    key={terracre.id}
+                    position={{ lat: terracre.lat, lng: terracre.lng }}
+                    icon={{
+                      path: "M -13,-13 L 13,-13 L 13,13 L -13,13 Z",
+                      scale: scale,
+                      fillColor: terracre.ownerId === user.uid ? "blue" : "green",
+                      fillOpacity: 1,
+                      strokeWeight: 2,
+                      strokeColor: "#fff",
+                    }}
+                    title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
+                  />
+                );
+              })}
             </GoogleMap>
           ) : (
             <p>{userLocation ? "Initializing map..." : "Getting your location..."}</p>
