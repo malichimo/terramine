@@ -303,4 +303,17 @@ function App() {
           <PurchaseButton
             user={user}
             userLocation={userLocation}
-            setCheckInStatus={setCheckI
+            setCheckInStatus={setCheckInStatus}
+            setUser={setUser}
+            fetchOwnedTerracres={fetchOwnedTerracres}
+            onPurchase={handlePurchase}
+            gridCenter={userGridCenter}
+          />
+          {checkInStatus && <p>{checkInStatus}</p>}
+        </>
+      )}
+    </div>
+  );
+}
+
+export default App;
