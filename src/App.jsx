@@ -12,9 +12,9 @@ import "./App.css";
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
-const GRID_SIZE = 1; // 3x3 grid (90m x 90m), centered on user
+const GRID_SIZE = 5; // 11x11 grid (330m x 330m) at zoom 18
 
-console.log("TerraMine v1.19 - 30m grid = Terracre, zoom 18 start");
+console.log("TerraMine v1.20 - 30m grid tiles map, TA matches grid");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -141,24 +141,32 @@ function App() {
 
   const getMarkerScale = (lat) => {
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
-    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 20; // ~30m at zoom 18
+    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 111; // Fit 30m grid exactly
     console.log("Scale calc - Lat:", lat, "Zoom:", zoom, "Meters/Pixel:", metersPerPixel, "Scale:", scale);
-    return isNaN(scale) || scale <= 0 ? 1 : scale;
+    return isNaN(scale) || scale <= 0 ? 0.1 : scale;
   };
 
   const getGridLines = (center) => {
-    if (!center) return [];
-    const { lat, lng } = center;
-    const grid = [];
+    if (!center || !mapRef.current) return [];
+    const bounds = mapRef.current.getBounds();
+    if (!bounds) return [];
+    const ne = bounds.getNorthEast();
+    const sw = bounds.getSouthWest();
     const metersPerDegreeLat = 111000; // Approx meters per degree latitude
-    const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat * Math.PI) / 180);
+    const metersPerDegreeLng = metersPerDegreeLat * Math.cos((center.lat * Math.PI) / 180);
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
 
-    for (let i = -GRID_SIZE; i <= GRID_SIZE; i++) {
-      for (let j = -GRID_SIZE; j <= GRID_SIZE; j++) {
-        const baseLat = Math.round(lat / deltaLat) * deltaLat + i * deltaLat;
-        const baseLng = Math.round(lng / deltaLng) * deltaLng + j * deltaLng;
+    const minLat = Math.floor(sw.lat() / deltaLat) * deltaLat;
+    const maxLat = Math.ceil(ne.lat() / deltaLat) * deltaLat;
+    const minLng = Math.floor(sw.lng() / deltaLng) * deltaLng;
+    const maxLng = Math.ceil(ne.lng() / deltaLng) * deltaLng;
+
+    const grid = [];
+    for (let lat = minLat; lat < maxLat; lat += deltaLat) {
+      for (let lng = minLng; lng < maxLng; lng += deltaLng) {
+        const baseLat = lat;
+        const baseLng = lng;
         const centerLat = baseLat + deltaLat / 2;
         const centerLng = baseLng + deltaLng / 2;
         grid.push({
@@ -251,7 +259,7 @@ function App() {
                     key={terracre.id}
                     position={position}
                     icon={{
-                      path: "M -13,-13 L 13,-13 L 13,13 L -13,13 Z",
+                      path: "M -15,-15 L 15,-15 L 15,15 L -15,15 Z",
                       scale: getMarkerScale(position.lat),
                       fillColor: terracre.ownerId === user.uid ? "blue" : "green",
                       fillOpacity: 1,
