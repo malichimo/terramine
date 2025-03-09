@@ -11,10 +11,10 @@ import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
-const TERRACRE_SIZE_METERS = 30; // ~100ft
-const GRID_SIZE = 5; // 5x5 grid (150m x 150m)
+const TERRACRE_SIZE_METERS = 90; // ~300ft
+const GRID_SIZE = 1; // 3x3 grid (270m x 270m), centered on user
 
-console.log("TerraMine v1.17 - Gridlines over 30m squares");
+console.log("TerraMine v1.18 - 90m grid = Terracre ownership");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -27,7 +27,7 @@ function App() {
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
   const [mapKey, setMapKey] = useState(Date.now());
-  const [zoom, setZoom] = useState(18); // Initial zoom 18
+  const [zoom, setZoom] = useState(16); // Initial zoom 16 for larger grid
   const [purchasedThisSession, setPurchasedThisSession] = useState(null);
   const mapRef = useRef(null);
 
@@ -141,7 +141,7 @@ function App() {
 
   const getMarkerScale = (lat) => {
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
-    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 20; // ~30m at zoom 18
+    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 20; // ~90m at zoom 16
     console.log("Scale calc - Lat:", lat, "Zoom:", zoom, "Meters/Pixel:", metersPerPixel, "Scale:", scale);
     return isNaN(scale) || scale <= 0 ? 1 : scale;
   };
@@ -157,8 +157,10 @@ function App() {
 
     for (let i = -GRID_SIZE; i <= GRID_SIZE; i++) {
       for (let j = -GRID_SIZE; j <= GRID_SIZE; j++) {
-        const baseLat = lat + i * deltaLat;
-        const baseLng = lng + j * deltaLng;
+        const baseLat = Math.round(lat / deltaLat) * deltaLat + i * deltaLat;
+        const baseLng = Math.round(lng / deltaLng) * deltaLng + j * deltaLng;
+        const centerLat = baseLat + deltaLat / 2;
+        const centerLng = baseLng + deltaLng / 2;
         grid.push({
           paths: [
             { lat: baseLat, lng: baseLng },
@@ -167,6 +169,7 @@ function App() {
             { lat: baseLat, lng: baseLng + deltaLng },
             { lat: baseLat, lng: baseLng },
           ],
+          center: { lat: centerLat, lng: centerLng },
         });
       }
     }
@@ -176,6 +179,8 @@ function App() {
 
   if (error) return <div>Error: {error}</div>;
   if (!user && !apiLoaded) return <Login onLoginSuccess={setUser} />;
+
+  const gridCells = getGridLines(userLocation);
 
   return (
     <div className="app-container">
@@ -234,22 +239,30 @@ function App() {
                       <Marker position={userLocation} label="You" zIndex={1000} />
                     )
               )}
-              {ownedTerracres.map((terracre) => (
-                <Marker
-                  key={terracre.id}
-                  position={{ lat: Number(terracre.lat), lng: Number(terracre.lng) }}
-                  icon={{
-                    path: "M -13,-13 L 13,-13 L 13,13 L -13,13 Z",
-                    scale: getMarkerScale(terracre.lat),
-                    fillColor: terracre.ownerId === user.uid ? "blue" : "green",
-                    fillOpacity: 1,
-                    strokeWeight: 2,
-                    strokeColor: "#fff",
-                  }}
-                  title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
-                />
-              ))}
-              {getGridLines(userLocation).map((cell, index) => (
+              {ownedTerracres.map((terracre) => {
+                const gridCell = gridCells.find(
+                  (cell) =>
+                    Math.abs(cell.center.lat - terracre.lat) < 0.0001 &&
+                    Math.abs(cell.center.lng - terracre.lng) < 0.0001
+                );
+                const position = gridCell ? gridCell.center : { lat: terracre.lat, lng: terracre.lng };
+                return (
+                  <Marker
+                    key={terracre.id}
+                    position={position}
+                    icon={{
+                      path: "M -13,-13 L 13,-13 L 13,13 L -13,13 Z",
+                      scale: getMarkerScale(position.lat),
+                      fillColor: terracre.ownerId === user.uid ? "blue" : "green",
+                      fillOpacity: 1,
+                      strokeWeight: 2,
+                      strokeColor: "#fff",
+                    }}
+                    title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
+                  />
+                );
+              })}
+              {gridCells.map((cell, index) => (
                 <Polygon
                   key={index}
                   paths={cell.paths}
@@ -280,6 +293,14 @@ function App() {
             setUser={setUser}
             fetchOwnedTerracres={fetchOwnedTerracres}
             onPurchase={handlePurchase}
+            gridCenter={
+              gridCells.find((cell) =>
+                userLocation.lat >= cell.paths[0].lat &&
+                userLocation.lat < cell.paths[1].lat &&
+                userLocation.lng >= cell.paths[0].lng &&
+                userLocation.lng < cell.paths[2].lng
+              )?.center
+            }
           />
           {checkInStatus && <p>{checkInStatus}</p>}
         </>
