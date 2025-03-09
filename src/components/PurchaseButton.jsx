@@ -3,24 +3,14 @@ import { db } from "../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const PurchaseButton = ({ user, userLocation, setCheckInStatus, setUser, fetchOwnedTerracres, onPurchase, gridCenter }) => {
-  const snapToGridCenter = (lat, lng) => {
-    const metersPerDegreeLat = 111000;
-    const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat * Math.PI) / 180);
-    const deltaLat = 30 / metersPerDegreeLat; // TERRACRE_SIZE_METERS = 30
-    const deltaLng = 30 / metersPerDegreeLng;
-    const snappedLat = Math.round(lat / deltaLat) * deltaLat + deltaLat / 2;
-    const snappedLng = Math.round(lng / deltaLng) * deltaLng + deltaLng / 2;
-    return { lat: snappedLat, lng: snappedLng };
-  };
-
   const handlePurchase = async () => {
     if (!user || !userLocation || !gridCenter) {
+      console.log("Purchase failed - Missing data:", { user: !!user, userLocation, gridCenter });
       setCheckInStatus("Unable to purchase - missing location or user data.");
       return;
     }
 
-    const snappedPosition = snapToGridCenter(userLocation.lat, userLocation.lng);
-    const terracreId = `${snappedPosition.lat.toFixed(4)}_${snappedPosition.lng.toFixed(4)}`;
+    const terracreId = `${gridCenter.lat.toFixed(4)}_${gridCenter.lng.toFixed(4)}`;
     const terracreRef = doc(db, "terracres", terracreId);
     const userRef = doc(db, "users", user.uid);
 
@@ -39,8 +29,8 @@ const PurchaseButton = ({ user, userLocation, setCheckInStatus, setUser, fetchOw
       }
 
       await setDoc(terracreRef, {
-        lat: snappedPosition.lat,
-        lng: snappedPosition.lng,
+        lat: gridCenter.lat,
+        lng: gridCenter.lng,
         ownerId: user.uid,
         purchasedAt: new Date().toISOString(),
       });
