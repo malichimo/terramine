@@ -13,7 +13,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 
-console.log("TerraMine v1.15 - Real-time 30m square scaling");
+console.log("TerraMine v1.16 - Stable 30m squares, cleaned zoom");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -180,16 +180,12 @@ function App() {
               onLoad={(map) => {
                 mapRef.current = map;
                 console.log("✅ GoogleMap rendered");
-              }}
-              onZoomChanged={() => {
-                if (mapRef.current) {
-                  const newZoom = mapRef.current.getZoom();
+                map.addListener("zoom_changed", () => {
+                  const newZoom = map.getZoom();
                   setZoom(newZoom);
-                  setMapKey(Date.now()); // Rerender on zoom
+                  setMapKey(Date.now());
                   console.log("Zoom changed:", newZoom);
-                } else {
-                  console.warn("Map ref not set in onZoomChanged");
-                }
+                });
               }}
             >
               {console.log(
