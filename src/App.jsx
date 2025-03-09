@@ -13,7 +13,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 
-console.log("TerraMine v1.13 - Zoom-adjusted 30m squares");
+console.log("TerraMine v1.13 - Zoom-adjusted 30m squares, initial zoom 18");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -26,7 +26,7 @@ function App() {
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
   const [mapKey, setMapKey] = useState(Date.now());
-  const [zoom, setZoom] = useState(15);
+  const [zoom, setZoom] = useState(18); // Initial zoom 18
   const [purchasedThisSession, setPurchasedThisSession] = useState(null);
 
   useEffect(() => {
