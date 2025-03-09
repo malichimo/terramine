@@ -14,7 +14,7 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 const GRID_SIZE = 5; // 11x11 grid (330m x 330m) at zoom 18
 
-console.log("TerraMine v1.20 - 30m grid tiles map, TA matches grid");
+console.log("TerraMine v1.21 - 30m grid, TA fills grid, rounded coords");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -141,7 +141,7 @@ function App() {
 
   const getMarkerScale = (lat) => {
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
-    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 111; // Fit 30m grid exactly
+    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 60; // Fit 30m grid at zoom 18
     console.log("Scale calc - Lat:", lat, "Zoom:", zoom, "Meters/Pixel:", metersPerPixel, "Scale:", scale);
     return isNaN(scale) || scale <= 0 ? 0.1 : scale;
   };
