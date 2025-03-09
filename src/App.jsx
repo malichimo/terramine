@@ -14,7 +14,7 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 const GRID_SIZE = 5; // 11x11 grid (330m x 330m) at zoom 18
 
-console.log("TerraMine v1.21 - 30m grid, TA fills grid, rounded coords");
+console.log("TerraMine v1.22 - 30m grid, TA fills grid, snap fixed");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -141,7 +141,7 @@ function App() {
 
   const getMarkerScale = (lat) => {
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
-    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 60; // Fit 30m grid at zoom 18
+    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 35; // Fit 30m grid at zoom 18
     console.log("Scale calc - Lat:", lat, "Zoom:", zoom, "Meters/Pixel:", metersPerPixel, "Scale:", scale);
     return isNaN(scale) || scale <= 0 ? 0.1 : scale;
   };
@@ -183,6 +183,16 @@ function App() {
     }
     console.log("Grid generated:", grid.length, "cells");
     return grid;
+  };
+
+  const snapToGridCenter = (lat, lng) => {
+    const metersPerDegreeLat = 111000;
+    const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat * Math.PI) / 180);
+    const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
+    const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
+    const snappedLat = Math.round(lat / deltaLat) * deltaLat + deltaLat / 2;
+    const snappedLng = Math.round(lng / deltaLng) * deltaLng + deltaLng / 2;
+    return { lat: snappedLat, lng: snappedLng };
   };
 
   if (error) return <div>Error: {error}</div>;
@@ -248,12 +258,13 @@ function App() {
                     )
               )}
               {ownedTerracres.map((terracre) => {
+                const snappedPosition = snapToGridCenter(terracre.lat, terracre.lng);
                 const gridCell = gridCells.find(
                   (cell) =>
-                    Math.abs(cell.center.lat - terracre.lat) < 0.0001 &&
-                    Math.abs(cell.center.lng - terracre.lng) < 0.0001
+                    Math.abs(cell.center.lat - snappedPosition.lat) < 0.0001 &&
+                    Math.abs(cell.center.lng - snappedPosition.lng) < 0.0001
                 );
-                const position = gridCell ? gridCell.center : { lat: terracre.lat, lng: terracre.lng };
+                const position = gridCell ? gridCell.center : snappedPosition;
                 return (
                   <Marker
                     key={terracre.id}
