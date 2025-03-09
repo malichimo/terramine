@@ -14,7 +14,7 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 const GRID_SIZE = 5; // 11x11 grid (330m x 330m) at zoom 18
 
-console.log("TerraMine v1.22 - 30m grid, TA fills grid, snap fixed");
+console.log("TerraMine v1.23 - 30m grid, TA snaps to user grid");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -190,15 +190,16 @@ function App() {
     const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat * Math.PI) / 180);
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
-    const snappedLat = Math.round(lat / deltaLat) * deltaLat + deltaLat / 2;
-    const snappedLng = Math.round(lng / deltaLng) * deltaLng + deltaLng / 2;
-    return { lat: snappedLat, lng: snappedLng };
+    const baseLat = Math.floor(lat / deltaLat) * deltaLat;
+    const baseLng = Math.floor(lng / deltaLng) * deltaLng;
+    return { lat: baseLat + deltaLat / 2, lng: baseLng + deltaLng / 2 };
   };
 
   if (error) return <div>Error: {error}</div>;
   if (!user && !apiLoaded) return <Login onLoginSuccess={setUser} />;
 
   const gridCells = getGridLines(userLocation);
+  const userGridCenter = userLocation ? snapToGridCenter(userLocation.lat, userLocation.lng) : null;
 
   return (
     <div className="app-container">
@@ -251,7 +252,7 @@ function App() {
                 purchasedThisSession
               )}
               {user && userLocation && (
-                purchasedThisSession === `${userLocation.lat.toFixed(4)}_${userLocation.lng.toFixed(4)}`
+                purchasedThisSession === `${userGridCenter.lat.toFixed(4)}_${userGridCenter.lng.toFixed(4)}`
                   ? console.log("Pin hidden - Purchased this session:", userLocation)
                   : console.log("Pin shown - Not purchased this session:", userLocation) || (
                       <Marker position={userLocation} label="You" zIndex={1000} />
@@ -259,19 +260,13 @@ function App() {
               )}
               {ownedTerracres.map((terracre) => {
                 const snappedPosition = snapToGridCenter(terracre.lat, terracre.lng);
-                const gridCell = gridCells.find(
-                  (cell) =>
-                    Math.abs(cell.center.lat - snappedPosition.lat) < 0.0001 &&
-                    Math.abs(cell.center.lng - snappedPosition.lng) < 0.0001
-                );
-                const position = gridCell ? gridCell.center : snappedPosition;
                 return (
                   <Marker
                     key={terracre.id}
-                    position={position}
+                    position={snappedPosition}
                     icon={{
                       path: "M -15,-15 L 15,-15 L 15,15 L -15,15 Z",
-                      scale: getMarkerScale(position.lat),
+                      scale: getMarkerScale(snappedPosition.lat),
                       fillColor: terracre.ownerId === user.uid ? "blue" : "green",
                       fillOpacity: 1,
                       strokeWeight: 2,
@@ -308,24 +303,4 @@ function App() {
           <PurchaseButton
             user={user}
             userLocation={userLocation}
-            setCheckInStatus={setCheckInStatus}
-            setUser={setUser}
-            fetchOwnedTerracres={fetchOwnedTerracres}
-            onPurchase={handlePurchase}
-            gridCenter={
-              gridCells.find((cell) =>
-                userLocation.lat >= cell.paths[0].lat &&
-                userLocation.lat < cell.paths[1].lat &&
-                userLocation.lng >= cell.paths[0].lng &&
-                userLocation.lng < cell.paths[2].lng
-              )?.center
-            }
-          />
-          {checkInStatus && <p>{checkInStatus}</p>}
-        </>
-      )}
-    </div>
-  );
-}
-
-export default App;
+            setCheckInStatus={setCheckI
