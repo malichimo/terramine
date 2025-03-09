@@ -13,7 +13,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 
-console.log("TerraMine v1.13 - Zoom-adjusted 30m squares, initial zoom 18");
+console.log("TerraMine v1.14 - Correct 30m squares at zoom 18");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -139,7 +139,7 @@ function App() {
 
   const getMarkerScale = (lat) => {
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
-    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 1.5; // ~30m at zoom 15
+    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 20; // ~30m at zoom 18
     console.log("Scale calc - Lat:", lat, "Zoom:", zoom, "Meters/Pixel:", metersPerPixel, "Scale:", scale);
     return isNaN(scale) || scale <= 0 ? 1 : scale;
   };
