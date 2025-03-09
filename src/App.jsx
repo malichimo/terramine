@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
@@ -13,7 +13,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 
-console.log("TerraMine v1.14 - Correct 30m squares at zoom 18");
+console.log("TerraMine v1.15 - Real-time 30m square scaling");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -28,6 +28,7 @@ function App() {
   const [mapKey, setMapKey] = useState(Date.now());
   const [zoom, setZoom] = useState(18); // Initial zoom 18
   const [purchasedThisSession, setPurchasedThisSession] = useState(null);
+  const mapRef = useRef(null);
 
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
@@ -176,13 +177,18 @@ function App() {
               mapContainerStyle={{ width: "100%", height: "500px" }}
               center={userLocation || defaultCenter}
               zoom={zoom}
-              onLoad={() => console.log("✅ GoogleMap rendered")}
-              onZoomChanged={(map) => {
-                if (map) {
-                  const newZoom = map.getZoom();
+              onLoad={(map) => {
+                mapRef.current = map;
+                console.log("✅ GoogleMap rendered");
+              }}
+              onZoomChanged={() => {
+                if (mapRef.current) {
+                  const newZoom = mapRef.current.getZoom();
                   setZoom(newZoom);
                   setMapKey(Date.now()); // Rerender on zoom
                   console.log("Zoom changed:", newZoom);
+                } else {
+                  console.warn("Map ref not set in onZoomChanged");
                 }
               }}
             >
@@ -203,25 +209,21 @@ function App() {
                       <Marker position={userLocation} label="You" zIndex={1000} />
                     )
               )}
-              {ownedTerracres.map((terracre) => {
-                const scale = getMarkerScale(terracre.lat);
-                console.log("Marker render:", terracre.id, "Lat:", terracre.lat, "Lng:", terracre.lng, "Scale:", scale);
-                return (
-                  <Marker
-                    key={terracre.id}
-                    position={{ lat: Number(terracre.lat), lng: Number(terracre.lng) }}
-                    icon={{
-                      path: "M -13,-13 L 13,-13 L 13,13 L -13,13 Z",
-                      scale: scale,
-                      fillColor: terracre.ownerId === user.uid ? "blue" : "green",
-                      fillOpacity: 1,
-                      strokeWeight: 2,
-                      strokeColor: "#fff",
-                    }}
-                    title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
-                  />
-                );
-              })}
+              {ownedTerracres.map((terracre) => (
+                <Marker
+                  key={terracre.id}
+                  position={{ lat: Number(terracre.lat), lng: Number(terracre.lng) }}
+                  icon={{
+                    path: "M -13,-13 L 13,-13 L 13,13 L -13,13 Z",
+                    scale: getMarkerScale(terracre.lat),
+                    fillColor: terracre.ownerId === user.uid ? "blue" : "green",
+                    fillOpacity: 1,
+                    strokeWeight: 2,
+                    strokeColor: "#fff",
+                  }}
+                  title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
+                />
+              ))}
             </GoogleMap>
           ) : (
             <p>{userLocation ? "Initializing map..." : "Getting your location..."}</p>
