@@ -11,10 +11,10 @@ import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
-const TERRACRE_SIZE_METERS = 90; // ~300ft
-const GRID_SIZE = 1; // 3x3 grid (270m x 270m), centered on user
+const TERRACRE_SIZE_METERS = 30; // ~100ft
+const GRID_SIZE = 1; // 3x3 grid (90m x 90m), centered on user
 
-console.log("TerraMine v1.18 - 90m grid = Terracre ownership");
+console.log("TerraMine v1.19 - 30m grid = Terracre, zoom 18 start");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -27,7 +27,7 @@ function App() {
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
   const [mapKey, setMapKey] = useState(Date.now());
-  const [zoom, setZoom] = useState(16); // Initial zoom 16 for larger grid
+  const [zoom, setZoom] = useState(18); // Initial zoom 18
   const [purchasedThisSession, setPurchasedThisSession] = useState(null);
   const mapRef = useRef(null);
 
@@ -141,7 +141,7 @@ function App() {
 
   const getMarkerScale = (lat) => {
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
-    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 20; // ~90m at zoom 16
+    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 20; // ~30m at zoom 18
     console.log("Scale calc - Lat:", lat, "Zoom:", zoom, "Meters/Pixel:", metersPerPixel, "Scale:", scale);
     return isNaN(scale) || scale <= 0 ? 1 : scale;
   };
