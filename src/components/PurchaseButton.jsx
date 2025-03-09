@@ -1,55 +1,54 @@
+import React from "react";
 import { db } from "../firebase";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
-function PurchaseButton({ user, userLocation, setCheckInStatus, setUser, fetchOwnedTerracres, onPurchase }) {
+const PurchaseButton = ({ user, userLocation, setCheckInStatus, setUser, fetchOwnedTerracres, onPurchase, gridCenter }) => {
   const handlePurchase = async () => {
-    if (!user || !userLocation) {
-      setCheckInStatus("Please sign in and allow location access.");
+    if (!user || !userLocation || !gridCenter) {
+      setCheckInStatus("Unable to purchase - missing location or user data.");
       return;
     }
 
-    const terracreId = `${userLocation.lat.toFixed(4)}_${userLocation.lng.toFixed(4)}`; // 4 decimals for ~30m grid
+    const terracreId = `${gridCenter.lat.toFixed(4)}_${gridCenter.lng.toFixed(4)}`;
     const terracreRef = doc(db, "terracres", terracreId);
+    const userRef = doc(db, "users", user.uid);
 
     try {
       const terracreSnap = await getDoc(terracreRef);
-      console.log("Terracre check:", terracreId, "Exists:", terracreSnap.exists(), "Data:", terracreSnap.data());
       if (terracreSnap.exists()) {
         setCheckInStatus("This terracre is already owned!");
         return;
       }
 
-      if ((user.terrabucks || 1000) < 100) {
-        setCheckInStatus("Not enough TB to purchase!");
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.data();
+      if (userData.terrabucks < 100) {
+        setCheckInStatus("Not enough terrabucks! Need 100 TB.");
         return;
       }
 
-      const terracreData = {
-        lat: Number(userLocation.lat.toFixed(4)),
-        lng: Number(userLocation.lng.toFixed(4)),
+      await setDoc(terracreRef, {
+        lat: gridCenter.lat,
+        lng: gridCenter.lng,
         ownerId: user.uid,
         purchasedAt: new Date().toISOString(),
-      };
-      await setDoc(terracreRef, terracreData);
-      console.log("Terracre written:", terracreId, terracreData);
-      const postWriteSnap = await getDoc(terracreRef);
-      console.log("Post-write check:", terracreId, "Exists:", postWriteSnap.exists(), "Data:", postWriteSnap.data());
+      });
 
-      const userRef = doc(db, "users", user.uid);
-      const updatedTerrabucks = (user.terrabucks || 1000) - 100;
-      await setDoc(userRef, { terrabucks: updatedTerrabucks }, { merge: true });
-      setUser((prev) => ({ ...prev, terrabucks: updatedTerrabucks }));
-
+      await setDoc(userRef, { terrabucks: userData.terrabucks - 100 }, { merge: true });
+      setUser((prev) => ({ ...prev, terrabucks: prev.terrabucks - 100 }));
       setCheckInStatus("Terracre purchased successfully!");
       onPurchase(terracreId);
-      fetchOwnedTerracres();
     } catch (error) {
       console.error("Purchase error:", error);
       setCheckInStatus("Failed to purchase terracre.");
     }
   };
 
-  return <button className="purchase-button" onClick={handlePurchase}>Purchase Terracre</button>;
-}
+  return (
+    <button className="purchase-button" onClick={handlePurchase}>
+      Purchase Terracre (100 TB)
+    </button>
+  );
+};
 
 export default PurchaseButton;
