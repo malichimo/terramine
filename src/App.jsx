@@ -3,7 +3,7 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
-import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
@@ -12,8 +12,9 @@ import "./App.css";
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
+const GRID_SIZE = 5; // 5x5 grid (150m x 150m)
 
-console.log("TerraMine v1.16 - Stable 30m squares, cleaned zoom");
+console.log("TerraMine v1.17 - Gridlines over 30m squares");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -145,6 +146,34 @@ function App() {
     return isNaN(scale) || scale <= 0 ? 1 : scale;
   };
 
+  const getGridLines = (center) => {
+    if (!center) return [];
+    const { lat, lng } = center;
+    const grid = [];
+    const metersPerDegreeLat = 111000; // Approx meters per degree latitude
+    const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat * Math.PI) / 180);
+    const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
+    const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
+
+    for (let i = -GRID_SIZE; i <= GRID_SIZE; i++) {
+      for (let j = -GRID_SIZE; j <= GRID_SIZE; j++) {
+        const baseLat = lat + i * deltaLat;
+        const baseLng = lng + j * deltaLng;
+        grid.push({
+          paths: [
+            { lat: baseLat, lng: baseLng },
+            { lat: baseLat + deltaLat, lng: baseLng },
+            { lat: baseLat + deltaLat, lng: baseLng + deltaLng },
+            { lat: baseLat, lng: baseLng + deltaLng },
+            { lat: baseLat, lng: baseLng },
+          ],
+        });
+      }
+    }
+    console.log("Grid generated:", grid.length, "cells");
+    return grid;
+  };
+
   if (error) return <div>Error: {error}</div>;
   if (!user && !apiLoaded) return <Login onLoginSuccess={setUser} />;
 
@@ -218,6 +247,18 @@ function App() {
                     strokeColor: "#fff",
                   }}
                   title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
+                />
+              ))}
+              {getGridLines(userLocation).map((cell, index) => (
+                <Polygon
+                  key={index}
+                  paths={cell.paths}
+                  options={{
+                    fillColor: "transparent",
+                    strokeColor: "#999",
+                    strokeOpacity: 0.8,
+                    strokeWeight: 1,
+                  }}
                 />
               ))}
             </GoogleMap>
