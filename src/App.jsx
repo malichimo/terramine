@@ -4,7 +4,7 @@ import { onAuthStateChanged, signOut, signInWithRedirect, GoogleAuthProvider } f
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { GoogleMap, LoadScript, Polygon } from "@react-google-maps/api";
-import { AdvancedMarkerElement } from "@react-google-maps/api"; // Import AdvancedMarkerElement
+import { AdvancedMarkerElement } from "@googlemaps/marker"; // Correct import
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
