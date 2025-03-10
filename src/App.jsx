@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import { auth } from "./firebase";
-import { onAuthStateChanged, signOut, signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
+import { onAuthStateChanged, signOut, signInWithRedirect, GoogleAuthProvider, getRedirectResult } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { GoogleMap, LoadScript, Polygon } from "@react-google-maps/api";
@@ -14,7 +14,7 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 const GRID_SIZE = 5; // 11x11 grid (330m x 330m) at zoom 18
 
-console.log("TerraMine v1.25 - 30m grid, AdvancedMarkerElement via Google Maps API, redirect auth");
+console.log("TerraMine v1.25 - 30m grid, AdvancedMarkerElement via Google Maps API, redirect auth fixed");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -30,6 +30,23 @@ function App() {
   const [zoom, setZoom] = useState(18); // Initial zoom 18
   const [purchasedThisSession, setPurchasedThisSession] = useState(null);
   const mapRef = useRef(null);
+
+  // Handle redirect result after sign-in
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          console.log("✅ Redirect Sign-In Successful:", result.user.uid);
+          // User is set via onAuthStateChanged below
+        }
+      } catch (error) {
+        console.error("❌ Redirect Sign-In Error:", error);
+        setError("Failed to sign in with Google.");
+      }
+    };
+    handleRedirectResult();
+  }, []);
 
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
