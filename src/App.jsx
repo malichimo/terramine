@@ -4,7 +4,6 @@ import { onAuthStateChanged, signOut, signInWithRedirect, GoogleAuthProvider } f
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { GoogleMap, LoadScript, Polygon } from "@react-google-maps/api";
-import { AdvancedMarkerElement } from "@googlemaps/marker"; // Correct import
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
@@ -15,7 +14,7 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 const GRID_SIZE = 5; // 11x11 grid (330m x 330m) at zoom 18
 
-console.log("TerraMine v1.25 - 30m grid, AdvancedMarkerElement, redirect auth");
+console.log("TerraMine v1.25 - 30m grid, AdvancedMarkerElement via Google Maps API, redirect auth");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -222,6 +221,7 @@ function App() {
       <Suspense fallback={<p>Loading map resources...</p>}>
         <LoadScript
           googleMapsApiKey={GOOGLE_MAPS_API_KEY}
+          libraries={["marker"]} // Load the marker library for AdvancedMarkerElement
           onLoad={() => {
             console.log("✅ LoadScript loaded");
             setApiLoaded(true);
@@ -263,7 +263,7 @@ function App() {
                 purchasedThisSession === `${userGridCenter.lat.toFixed(4)}_${userGridCenter.lng.toFixed(4)}`
                   ? console.log("Pin hidden - Purchased this session:", userLocation)
                   : console.log("Pin shown - Not purchased this session:", userLocation) || (
-                      <AdvancedMarkerElement
+                      <window.google.maps.marker.AdvancedMarkerElement
                         position={userLocation}
                         zIndex={1000}
                         title="You"
@@ -271,13 +271,13 @@ function App() {
                         <div style={{ background: 'red', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '12px' }}>
                           You
                         </div>
-                      </AdvancedMarkerElement>
+                      </window.google.maps.marker.AdvancedMarkerElement>
                     )
               )}
               {ownedTerracres.map((terracre) => {
                 const snappedPosition = snapToGridCenter(terracre.lat, terracre.lng, gridCells);
                 return (
-                  <AdvancedMarkerElement
+                  <window.google.maps.marker.AdvancedMarkerElement
                     key={terracre.id}
                     position={snappedPosition}
                     zIndex={500}
@@ -292,7 +292,7 @@ function App() {
                         boxSizing: "border-box",
                       }}
                     />
-                  </AdvancedMarkerElement>
+                  </window.google.maps.marker.AdvancedMarkerElement>
                 );
               })}
               {gridCells.map((cell, index) => (
