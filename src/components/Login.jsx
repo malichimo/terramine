@@ -1,47 +1,26 @@
 import React from "react";
-import { auth, googleProvider } from "../firebase";
-import { signInWithPopup } from "firebase/auth";
+import { auth } from "../firebase";
+import { GoogleAuthProvider, signInWithRedirect } from "firebase/auth";
 
-function Login({ onLoginSuccess }) {
-  const handleLogin = async () => {
+const Login = ({ onLoginSuccess }) => {
+  const handleGoogleLogin = async () => {
+    const provider = new GoogleAuthProvider();
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      onLoginSuccess(user);
+      await signInWithRedirect(auth, provider);
+      // onLoginSuccess handled by App.jsx onAuthStateChanged
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("Google login error:", error);
     }
   };
 
   return (
-    <div style={styles.container}>
-      <h1>Welcome to TerraMine</h1>
-      <p>Sign in to explore and check-in at properties!</p>
-      <button onClick={handleLogin} style={styles.button}>
-        Sign in with Google
+    <div className="login-container">
+      <h2>Welcome to TerraMine</h2>
+      <button onClick={handleGoogleLogin} className="google-login-button">
+        Login with Google
       </button>
     </div>
   );
-}
-
-// ✅ Simple styling
-const styles = {
-  container: {
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
-    alignItems: "center",
-    height: "100vh",
-    textAlign: "center",
-  },
-  button: {
-    padding: "10px 20px",
-    fontSize: "16px",
-    backgroundColor: "#4285F4",
-    color: "white",
-    border: "none",
-    cursor: "pointer",
-  },
 };
 
 export default Login;
