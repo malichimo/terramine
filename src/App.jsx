@@ -14,7 +14,7 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 const GRID_SIZE = 5; // 11x11 grid (330m x 330m) at zoom 18
 
-console.log("TerraMine v1.23 - 30m grid, TA snaps to user grid");
+console.log("TerraMine v1.24 - 30m grid, TA snaps to exact user cell");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -185,21 +185,28 @@ function App() {
     return grid;
   };
 
-  const snapToGridCenter = (lat, lng) => {
+  const snapToGridCenter = (lat, lng, gridCells) => {
+    if (!gridCells || !gridCells.length) return { lat, lng };
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat * Math.PI) / 180);
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
     const baseLat = Math.floor(lat / deltaLat) * deltaLat;
     const baseLng = Math.floor(lng / deltaLng) * deltaLng;
-    return { lat: baseLat + deltaLat / 2, lng: baseLng + deltaLng / 2 };
+    const userCell = gridCells.find(
+      (cell) =>
+        lat >= cell.paths[0].lat && lat < cell.paths[1].lat && lng >= cell.paths[0].lng && lng < cell.paths[2].lng
+    );
+    const center = userCell ? userCell.center : { lat: baseLat + deltaLat / 2, lng: baseLng + deltaLng / 2 };
+    console.log("Snapped - User:", { lat, lng }, "Cell:", center);
+    return center;
   };
 
   if (error) return <div>Error: {error}</div>;
   if (!user && !apiLoaded) return <Login onLoginSuccess={setUser} />;
 
   const gridCells = getGridLines(userLocation);
-  const userGridCenter = userLocation ? snapToGridCenter(userLocation.lat, userLocation.lng) : null;
+  const userGridCenter = userLocation ? snapToGridCenter(userLocation.lat, userLocation.lng, gridCells) : null;
 
   return (
     <div className="app-container">
@@ -259,7 +266,7 @@ function App() {
                     )
               )}
               {ownedTerracres.map((terracre) => {
-                const snappedPosition = snapToGridCenter(terracre.lat, terracre.lng);
+                const snappedPosition = snapToGridCenter(terracre.lat, terracre.lng, gridCells);
                 return (
                   <Marker
                     key={terracre.id}
