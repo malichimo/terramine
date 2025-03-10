@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import { auth } from "./firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut, signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
-import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, Polygon } from "@react-google-maps/api";
+import { AdvancedMarkerElement } from "@react-google-maps/api"; // Import AdvancedMarkerElement
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
@@ -14,7 +15,7 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 const GRID_SIZE = 5; // 11x11 grid (330m x 330m) at zoom 18
 
-console.log("TerraMine v1.24 - 30m grid, TA snaps to exact user cell");
+console.log("TerraMine v1.25 - 30m grid, AdvancedMarkerElement, redirect auth");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -262,25 +263,36 @@ function App() {
                 purchasedThisSession === `${userGridCenter.lat.toFixed(4)}_${userGridCenter.lng.toFixed(4)}`
                   ? console.log("Pin hidden - Purchased this session:", userLocation)
                   : console.log("Pin shown - Not purchased this session:", userLocation) || (
-                      <Marker position={userLocation} label="You" zIndex={1000} />
+                      <AdvancedMarkerElement
+                        position={userLocation}
+                        zIndex={1000}
+                        title="You"
+                      >
+                        <div style={{ background: 'red', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '12px' }}>
+                          You
+                        </div>
+                      </AdvancedMarkerElement>
                     )
               )}
               {ownedTerracres.map((terracre) => {
                 const snappedPosition = snapToGridCenter(terracre.lat, terracre.lng, gridCells);
                 return (
-                  <Marker
+                  <AdvancedMarkerElement
                     key={terracre.id}
                     position={snappedPosition}
-                    icon={{
-                      path: "M -15,-15 L 15,-15 L 15,15 L -15,15 Z",
-                      scale: getMarkerScale(snappedPosition.lat),
-                      fillColor: terracre.ownerId === user.uid ? "blue" : "green",
-                      fillOpacity: 1,
-                      strokeWeight: 2,
-                      strokeColor: "#fff",
-                    }}
+                    zIndex={500}
                     title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
-                  />
+                  >
+                    <div
+                      style={{
+                        width: `${TERRACRE_SIZE_METERS * getMarkerScale(snappedPosition.lat)}px`,
+                        height: `${TERRACRE_SIZE_METERS * getMarkerScale(snappedPosition.lat)}px`,
+                        background: terracre.ownerId === user.uid ? "blue" : "green",
+                        border: "2px solid #fff",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </AdvancedMarkerElement>
                 );
               })}
               {gridCells.map((cell, index) => (
