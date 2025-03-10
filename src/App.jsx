@@ -14,7 +14,7 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 const GRID_SIZE = 5; // 11x11 grid (330m x 330m) at zoom 18
 
-console.log("TerraMine v1.25 - 30m grid, AdvancedMarkerElement via Google Maps API, redirect auth debugged");
+console.log("TerraMine v1.25 - 30m grid, AdvancedMarkerElement via Google Maps API, redirect auth refined");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -31,31 +31,29 @@ function App() {
   const [purchasedThisSession, setPurchasedThisSession] = useState(null);
   const mapRef = useRef(null);
 
-  // Handle redirect result after sign-in
-  useEffect(() => {
-    const handleRedirectResult = async () => {
-      console.log("Attempting to get redirect result...");
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          console.log("✅ Redirect Sign-In Successful:", result.user.uid, result.user.displayName);
-          // User will be set via onAuthStateChanged below
-        } else {
-          console.log("ℹ️ No redirect result found, user might not be signed in yet.");
-        }
-      } catch (error) {
-        console.error("❌ Redirect Sign-In Error:", error.code, error.message, error.customData);
-        setError(`Failed to sign in with Google: ${error.message}`);
-      }
-    };
-    handleRedirectResult();
-  }, []);
-
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!isMounted) return;
       console.log("Auth State Changed ✅:", currentUser?.uid || "No user");
+
+      // Check for redirect result after auth state change
+      if (!currentUser) {
+        console.log("Checking for redirect result...");
+        try {
+          const result = await getRedirectResult(auth);
+          if (result) {
+            console.log("✅ Redirect Sign-In Successful:", result.user.uid, result.user.displayName);
+            // User will be set on the next onAuthStateChanged cycle
+          } else {
+            console.log("ℹ️ No redirect result found, user not signed in yet.");
+          }
+        } catch (error) {
+          console.error("❌ Redirect Sign-In Error:", error.code, error.message, error.customData);
+          setError(`Failed to sign in with Google: ${error.message}`);
+        }
+      }
+
       if (currentUser) {
         const userRef = doc(db, "users", currentUser.uid);
         try {
