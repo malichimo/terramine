@@ -101,3 +101,17 @@
 .purchase-button:hover {
   background-color: darkblue;
 }
+.google-login-button {
+  background-color: #4285f4; /* Google Blue */
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.google-login-button:hover {
+  background-color: #3267d6; /* Darker blue on hover */
+}
