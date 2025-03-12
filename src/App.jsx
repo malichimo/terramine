@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import { auth } from "./firebase";
-import { onAuthStateChanged, signOut, signInWithRedirect, GoogleAuthProvider, getRedirectResult } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { GoogleMap, LoadScript, Polygon } from "@react-google-maps/api";
@@ -14,7 +14,7 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 const GRID_SIZE = 5; // 11x11 grid (330m x 330m) at zoom 18
 
-console.log("TerraMine v1.25 - 30m grid, AdvancedMarkerElement via Google Maps API, redirect auth refined");
+console.log("TerraMine v1.26 - 30m grid, AdvancedMarkerElement via Google Maps API, popup auth");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -36,23 +36,6 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!isMounted) return;
       console.log("Auth State Changed ✅:", currentUser?.uid || "No user");
-
-      // Check for redirect result after auth state change
-      if (!currentUser) {
-        console.log("Checking for redirect result...");
-        try {
-          const result = await getRedirectResult(auth);
-          if (result) {
-            console.log("✅ Redirect Sign-In Successful:", result.user.uid, result.user.displayName);
-            // User will be set on the next onAuthStateChanged cycle
-          } else {
-            console.log("ℹ️ No redirect result found, user not signed in yet.");
-          }
-        } catch (error) {
-          console.error("❌ Redirect Sign-In Error:", error.code, error.message, error.customData);
-          setError(`Failed to sign in with Google: ${error.message}`);
-        }
-      }
 
       if (currentUser) {
         const userRef = doc(db, "users", currentUser.uid);
@@ -239,7 +222,7 @@ function App() {
       <Suspense fallback={<p>Loading map resources...</p>}>
         <LoadScript
           googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-          libraries={["marker"]} // Load the marker library for AdvancedMarkerElement
+          libraries={["marker"]}
           onLoad={() => {
             console.log("✅ LoadScript loaded");
             setApiLoaded(true);
