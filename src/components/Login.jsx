@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { signInWithPopup } from "firebase/auth";
+import { signInWithPopup, signInWithRedirect } from "firebase/auth";
 import { auth, provider } from "../firebase";
 
 function Login({ onLoginSuccess }) {
@@ -12,9 +12,16 @@ function Login({ onLoginSuccess }) {
     // Test if popup can open
     const testWindow = window.open("", "_blank", "width=500,height=500");
     if (!testWindow || testWindow.closed || typeof testWindow.closed === "undefined") {
-      console.warn("⚠️ Popup blocked by browser during test.");
-      alert("Popup blocked! Please allow popups for https://terramine.onrender.com and try again.");
-      return;
+      console.warn("⚠️ Popup blocked by browser during test, falling back to redirect...");
+      try {
+        console.log("Attempting sign-in with redirect...");
+        await signInWithRedirect(auth, provider);
+        return; // Exit to let redirect handle the flow
+      } catch (error) {
+        console.error("❌ Redirect Sign-In Error:", error.code, error.message);
+        alert("Redirect failed. Please check console for details.");
+        return;
+      }
     }
     console.log("✅ Popup test successful, closing test window...");
     testWindow.close();
@@ -39,8 +46,13 @@ function Login({ onLoginSuccess }) {
         popupRef.current.close();
       }
       if (error.code === "auth/popup-blocked") {
-        console.warn("⚠️ Popup blocked by browser during sign-in.");
-        alert("Popup blocked! Please allow popups for https://terramine.onrender.com and try again.");
+        console.warn("⚠️ Popup blocked by browser during sign-in, falling back to redirect...");
+        try {
+          await signInWithRedirect(auth, provider);
+        } catch (redirectError) {
+          console.error("❌ Redirect Fallback Error:", redirectError.code, redirectError.message);
+          alert("Redirect fallback failed. Please check console for details.");
+        }
       } else if (error.code === "auth/popup-closed-by-user") {
         console.warn("⚠️ Popup closed by user or system before completion.");
         alert("Popup was closed before completing sign-in. Please try again and keep the popup open.");
