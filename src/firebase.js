@@ -4,7 +4,7 @@ import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDwh0aVmyCRil5vQTGRMUTER_W37r3r6sM",
-  authDomain: "terramine.onrender.com", // Updated to match Render URL
+  authDomain: "terramine.onrender.com",
   projectId: "terramine-3744d",
   storageBucket: "terramine-3744d.firebasestorage.app",
   messagingSenderId: "746868896165",
