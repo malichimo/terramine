@@ -1,11 +1,10 @@
 import React from "react";
 import { signInWithPopup } from "firebase/auth";
 import { auth, provider } from "../firebase";
-import "./Login.css";
 
 function Login({ onLoginSuccess }) {
   const handleLogin = async (event) => {
-    event.preventDefault(); // Prevent default button behavior that might cause a redirect
+    event.preventDefault(); // Prevent default navigation
     try {
       console.log("Initiating sign-in with popup...");
       const result = await signInWithPopup(auth, provider);
@@ -19,6 +18,8 @@ function Login({ onLoginSuccess }) {
         alert("Popup blocked! Please allow popups for https://terramine.onrender.com and try again.");
       } else if (error.code === "auth/cancelled-popup-request") {
         console.warn("⚠️ Popup request cancelled.");
+      } else {
+        console.error("Unexpected error:", error);
       }
     }
   };
@@ -26,13 +27,11 @@ function Login({ onLoginSuccess }) {
   return (
     <div className="login-container">
       <h2>Welcome to TerraMine</h2>
-      <button className="google-signin-button" onClick={handleLogin}>
+      <button className="google-login-button" onClick={handleLogin}>
         Sign in with Google
       </button>
     </div>
   );
 }
-
-export default Login;
 
 export default Login;
