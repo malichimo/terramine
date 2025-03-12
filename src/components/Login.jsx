@@ -1,26 +1,26 @@
 import React from "react";
-import { auth } from "../firebase";
-import { GoogleAuthProvider, signInWithRedirect } from "firebase/auth";
+import { signInWithPopup } from "firebase/auth";
+import { auth, provider } from "../firebase";
 
-const Login = ({ onLoginSuccess }) => {
-  const handleGoogleLogin = async () => {
-    const provider = new GoogleAuthProvider();
+function Login({ onLoginSuccess }) {
+  const handleLogin = async () => {
     try {
-      await signInWithRedirect(auth, provider);
-      // onLoginSuccess handled by App.jsx onAuthStateChanged
+      console.log("Initiating sign-in with popup...");
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      console.log("✅ Popup Sign-In Successful:", user.uid, user.email);
+      if (onLoginSuccess) onLoginSuccess(user);
     } catch (error) {
-      console.error("Google login error:", error);
+      console.error("❌ Popup Sign-In Error:", error.code, error.message);
     }
   };
 
   return (
     <div className="login-container">
       <h2>Welcome to TerraMine</h2>
-      <button onClick={handleGoogleLogin} className="google-login-button">
-        Login with Google
-      </button>
+      <button onClick={handleLogin}>Sign in with Google</button>
     </div>
   );
-};
+}
 
 export default Login;
