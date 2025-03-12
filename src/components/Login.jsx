@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import { signInWithPopup, signInWithRedirect } from "firebase/auth";
 import { auth, provider } from "../firebase";
 
@@ -34,15 +34,18 @@ function Login({ onLoginSuccess }) {
       }
       console.log("Popup window opened, initiating sign-in...");
       const result = await signInWithPopup(auth, provider);
+      console.log("Popup sign-in process completed, awaiting result...");
       const user = result.user;
       console.log("✅ Popup Sign-In Successful:", user.uid, user.email);
       if (onLoginSuccess) onLoginSuccess(user);
       if (popupRef.current && !popupRef.current.closed) {
+        console.log("Closing popup window...");
         popupRef.current.close();
       }
     } catch (error) {
       console.error("❌ Popup Sign-In Error:", error.code, error.message);
       if (popupRef.current && !popupRef.current.closed) {
+        console.log("Closing popup window due to error...");
         popupRef.current.close();
       }
       if (error.code === "auth/popup-blocked") {
@@ -61,6 +64,19 @@ function Login({ onLoginSuccess }) {
       }
     }
   };
+
+  // Monitor popup state
+  useEffect(() => {
+    const checkPopup = setInterval(() => {
+      if (popupRef.current && !popupRef.current.closed) {
+        console.log("Popup is still open...");
+      } else if (popupRef.current) {
+        console.log("Popup has closed.");
+        clearInterval(checkPopup);
+      }
+    }, 1000);
+    return () => clearInterval(checkPopup);
+  }, []);
 
   return (
     <div className="login-container">
