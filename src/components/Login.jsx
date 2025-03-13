@@ -8,11 +8,11 @@ function Login({ onLoginSuccess }) {
     console.log("handleLogin triggered, forcing redirect...");
 
     try {
-      console.log("Attempting sign-in with redirect...");
+      console.log("Attempting sign-in with redirect, redirect URL: https://terramine.onrender.com/");
       await signInWithRedirect(auth, provider);
     } catch (error) {
       console.error("❌ Redirect Sign-In Error:", error.code, error.message);
-      alert("Redirect failed. Please check console for details.");
+      alert("Redirect failed. Please check console for details and ensure popups/redirects are allowed.");
     }
   };
 
