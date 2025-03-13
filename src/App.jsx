@@ -14,7 +14,7 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30; // ~100ft
 const GRID_SIZE = 5; // 11x11 grid (330m x 330m) at zoom 18
 
-console.log("TerraMine v1.30a - 30m grid, popup auth with URL logging, TA snaps to exact user cell");
+console.log("TerraMine v1.30b - 30m grid, popup auth with URL logging, TA snaps to exact user cell");
 
 function App() {
   const [user, setUser] = useState(null);
