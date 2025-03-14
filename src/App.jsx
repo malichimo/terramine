@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, Suspense, useRef } from "react
 import { auth } from "./firebase";
 import { onAuthStateChanged, signOut, getRedirectResult } from "firebase/auth";
 import { db } from "./firebase";
-import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs, updateDoc } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
@@ -63,7 +63,7 @@ function App() {
       if (!isMounted) return;
       console.log("Auth State Changed ✅:", currentUser?.uid || "No user");
 
-      if (currentUser && !user) { // Only process if user isn't set from redirect
+      if (currentUser && !user) {
         const userRef = doc(db, "users", currentUser.uid);
         try {
           const userSnap = await getDoc(userRef);
@@ -234,6 +234,7 @@ function App() {
 
   const gridCells = getGridLines(userLocation);
   const userGridCenter = userLocation ? snapToGridCenter(userLocation.lat, userLocation.lng, gridCells) : null;
+  const terracreId = userGridCenter ? `${userGridCenter.lat.toFixed(7)}-${userGridCenter.lng.toFixed(7)}` : null;
 
   return (
     <div className="app-container">
@@ -282,7 +283,7 @@ function App() {
                 "Location:",
                 userLocation,
                 "Terracres:",
-                ownedTerracres.map((t) => ({ id: t.id, lat: t.lat, lng: t.lng, ownerId: t.ownerId })),
+                ownedTerracres.map((t) => ({ id: t.id, lat: t.lat, lng: t.lng, ownerId: t.ownerID })),
                 "Purchased this session:",
                 purchasedThisSession
               )}
@@ -302,12 +303,12 @@ function App() {
                     icon={{
                       path: "M -15,-15 L 15,-15 L 15,15 L -15,15 Z",
                       scale: getMarkerScale(snappedPosition.lat),
-                      fillColor: terracre.ownerId === user.uid ? "blue" : "green",
+                      fillColor: terracre.ownerID === user.uid ? "blue" : "green",
                       fillOpacity: 1,
                       strokeWeight: 2,
                       strokeColor: "#fff",
                     }}
-                    title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
+                    title={`Terracre owned by ${terracre.ownerID === user.uid ? "you" : "someone else"}`}
                   />
                 );
               })}
@@ -334,7 +335,12 @@ function App() {
           <p className="greeting">
             Welcome {user.displayName || "User"}, you have {user.terrabucks ?? 0} TB available.
           </p>
-          <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} />
+          <CheckInButton
+            user={user}
+            userLocation={userLocation}
+            setCheckInStatus={setCheckInStatus}
+            setUser={setUser}
+          />
           <PurchaseButton
             user={user}
             userLocation={userLocation}
