@@ -1,7 +1,8 @@
 // src/components/Login.jsx
 import React, { useRef, useEffect } from "react";
 import { signInWithPopup, signInWithRedirect } from "firebase/auth";
-import { auth, googleProvider } from "../firebase"; // Changed from 'provider' to 'googleProvider'
+import { auth, googleProvider } from "../firebase";
+import "./Login.css";
 
 function Login({ onLoginSuccess }) {
   const loginButtonRef = useRef(null);
@@ -24,7 +25,11 @@ function Login({ onLoginSuccess }) {
   return (
     <div className="login-container">
       <h2>Welcome to TerraMine</h2>
-      <button ref={loginButtonRef} className="login-button" onClick={handleGoogleSignIn}>
+      <button
+        ref={loginButtonRef}
+        className="login-button"
+        onClick={handleGoogleSignIn}
+      >
         Sign in with Google
       </button>
     </div>
