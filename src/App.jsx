@@ -11,8 +11,9 @@ import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
-const TERRACRE_SIZE_METERS = 30; // ~100ft
-const GRID_SIZE = 5; // 11x11 grid (330m x 330m) at zoom 18
+const TERRACRE_SIZE_METERS = 30;
+const GRID_SIZE = 5;
+const libraries = ["marker"]; // Static libraries to fix LoadScript warning
 
 console.log("TerraMine v1.30b - 30m grid, popup auth with URL logging, TA snaps to exact user cell");
 
@@ -27,7 +28,7 @@ function App() {
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
   const [mapKey, setMapKey] = useState(Date.now());
-  const [zoom, setZoom] = useState(18); // Initial zoom 18
+  const [zoom, setZoom] = useState(18);
   const [purchasedThisSession, setPurchasedThisSession] = useState(null);
   const mapRef = useRef(null);
 
@@ -38,7 +39,7 @@ function App() {
         const result = await getRedirectResult(auth);
         if (result && result.user) {
           console.log("✅ Redirect Sign-In Successful:", result.user.uid, result.user.email);
-          setUser(result.user); // Set user state directly
+          setUser(result.user);
           const userRef = doc(db, "users", result.user.uid);
           const userSnap = await getDoc(userRef);
           if (!userSnap.exists()) {
@@ -84,7 +85,7 @@ function App() {
         }
       } else if (!currentUser) {
         setUser(null);
-        setOwnedTerracres([]);
+        setOwnedTerracres([]); // Clear ownedTerracres on sign-out
         setMapKey(Date.now());
       }
     });
@@ -131,7 +132,7 @@ function App() {
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .filter((t) => t.lat && t.lng && typeof t.lat === "number" && typeof t.lng === "number");
       if (isMounted) {
-        console.log("✅ Terracres fetched:", properties);
+        console.log("✅ Terracres fetched with data:", properties); // Log full data for debugging
         setOwnedTerracres(properties);
       }
     } catch (error) {
@@ -168,7 +169,7 @@ function App() {
 
   const getMarkerScale = (lat) => {
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
-    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 35; // Fit 30m grid at zoom 18
+    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 35;
     console.log("Scale calc - Lat:", lat, "Zoom:", zoom, "Meters/Pixel:", metersPerPixel, "Scale:", scale);
     return isNaN(scale) || scale <= 0 ? 0.1 : scale;
   };
@@ -179,7 +180,7 @@ function App() {
     if (!bounds) return [];
     const ne = bounds.getNorthEast();
     const sw = bounds.getSouthWest();
-    const metersPerDegreeLat = 111000; // Approx meters per degree latitude
+    const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = metersPerDegreeLat * Math.cos((center.lat * Math.PI) / 180);
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
@@ -249,7 +250,7 @@ function App() {
       <Suspense fallback={<p>Loading map resources...</p>}>
         <LoadScript
           googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-          libraries={["marker"]}
+          libraries={libraries} // Use static libraries
           onLoad={() => {
             console.log("✅ LoadScript loaded");
             setApiLoaded(true);
@@ -283,7 +284,7 @@ function App() {
                 "Location:",
                 userLocation,
                 "Terracres:",
-                ownedTerracres.map((t) => ({ id: t.id, lat: t.lat, lng: t.lng, ownerId: t.ownerID })),
+                ownedTerracres.map((t) => ({ id: t.id, lat: t.lat, lng: t.lng, ownerID: t.ownerID })),
                 "Purchased this session:",
                 purchasedThisSession
               )}
