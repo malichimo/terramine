@@ -39,33 +39,44 @@ export const handleSignOut = async () => {
   }
 };
 
-// ✅ Handle Check-In
-export const handleCheckIn = async (user, userLocation) => {
+// ✅ Handle Check-In (Updated)
+export const handleCheckIn = async (user, terracreId) => {
   if (!user) return "Please sign in to check in.";
-  if (!userLocation) return "Location not found. Please enable location services.";
 
   try {
-    const terracreId = `terracre_${Math.floor(userLocation.lat * 1000)}_${Math.floor(userLocation.lng * 1000)}`;
-    const checkinRef = collection(db, "checkins");
     const terracreRef = doc(db, "terracres", terracreId);
-
     const terracreSnap = await getDoc(terracreRef);
-    if (!terracreSnap.exists()) return "This Terracre is not owned by anyone.";
+    if (!terracreSnap.exists()) return "This Terracre is unowned.";
 
-    const today = new Date().toISOString().split("T")[0];
-    const q = query(checkinRef, where("userId", "==", user.uid), where("terracreId", "==", terracreId));
+    const ownerId = terracreSnap.data().ownerID;
+    if (ownerId === user.uid) return "You can’t check into your own Terracre!";
+
+    const startOfDay = new Date().setHours(0, 0, 0, 0);
+    const q = query(
+      collection(db, "checkins"),
+      where("userId", "==", user.uid),
+      where("terracreId", "==", terracreId),
+      where("timestamp", ">=", startOfDay)
+    );
     const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) return "You’ve already checked in here today!";
 
-    let alreadyCheckedIn = false;
-    querySnapshot.forEach((doc) => {
-      if (doc.data().timestamp.toDate().toISOString().split("T")[0] === today) alreadyCheckedIn = true;
+    // Award 1 TB
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    const currentTB = userSnap.data().terrabucks || 0;
+    await updateDoc(userRef, { terrabucks: currentTB + 1 });
+
+    // Log the check-in
+    await addDoc(collection(db, "checkins"), {
+      userId: user.uid,
+      username: user.displayName || user.email,
+      terracreId,
+      timestamp: Timestamp.now(),
+      message: "Checked in!",
     });
 
-    if (alreadyCheckedIn) return "You can only check in once per day per location.";
-
-    await addDoc(checkinRef, { userId: user.uid, username: user.displayName || user.email, terracreId, timestamp: Timestamp.now(), message: "Checked in!" });
-
-    return `Check-in successful! You earned 1 TB.`;
+    return "Check-in successful! You earned 1 TB.";
   } catch (error) {
     console.error("Check-in failed:", error);
     return "Check-in failed. Try again.";
