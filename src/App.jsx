@@ -9,6 +9,7 @@ import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
 import "./App.css";
 
+// Define constants for map and grid settings
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
@@ -18,6 +19,7 @@ const libraries = ["marker"]; // Static libraries to fix LoadScript warning
 console.log("TerraMine v1.30b - 30m grid, popup auth with URL logging, TA snaps to exact user cell");
 
 function App() {
+  // State variables for user, location, map, and other app states
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
@@ -32,6 +34,7 @@ function App() {
   const [purchasedThisSession, setPurchasedThisSession] = useState(null);
   const mapRef = useRef(null);
 
+  // Effect to handle authentication state changes and redirect results
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
     const handleRedirectResult = async () => {
@@ -96,6 +99,7 @@ function App() {
     };
   }, []);
 
+  // Effect to fetch user location
   useEffect(() => {
     if (!user) return;
     console.log("Fetching User Location... 📍");
@@ -122,6 +126,7 @@ function App() {
     return () => setIsMounted(false);
   }, [user]);
 
+  // Function to fetch owned terracres from Firestore
   const fetchOwnedTerracres = useCallback(async () => {
     if (!user) return;
     try {
@@ -141,10 +146,12 @@ function App() {
     }
   }, [user, isMounted]);
 
+  // Effect to fetch owned terracres when user or purchaseTrigger changes
   useEffect(() => {
     if (user) fetchOwnedTerracres();
   }, [fetchOwnedTerracres, purchaseTrigger, user]);
 
+  // Function to handle user sign-out
   const handleSignOut = async () => {
     try {
       await signOut(auth);
@@ -159,6 +166,7 @@ function App() {
     }
   };
 
+  // Function to handle purchase of a terracre
   const handlePurchase = (terracreId) => {
     setPurchaseTrigger((prev) => prev + 1);
     setPurchasedThisSession(terracreId);
@@ -167,6 +175,7 @@ function App() {
     setMapKey(Date.now());
   };
 
+  // Function to calculate marker scale based on latitude and zoom level
   const getMarkerScale = (lat) => {
     const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
     const scale = TERRACRE_SIZE_METERS / metersPerPixel / 35;
@@ -174,6 +183,7 @@ function App() {
     return isNaN(scale) || scale <= 0 ? 0.1 : scale;
   };
 
+  // Function to generate grid lines for the map
   const getGridLines = (center) => {
     if (!center || !mapRef.current) return [];
     const bounds = mapRef.current.getBounds();
@@ -213,6 +223,7 @@ function App() {
     return grid;
   };
 
+  // Function to snap user location to the center of the nearest grid cell
   const snapToGridCenter = (lat, lng, gridCells) => {
     if (!gridCells || !gridCells.length) return { lat, lng };
     const metersPerDegreeLat = 111000;
@@ -230,9 +241,12 @@ function App() {
     return center;
   };
 
+  // Render error message if any error occurs
   if (error) return <div>Error: {error}</div>;
+  // Render login component if user is not authenticated
   if (!user && !apiLoaded) return <Login onLoginSuccess={setUser} />;
 
+  // Generate grid cells and snap user location to grid center
   const gridCells = getGridLines(userLocation);
   const userGridCenter = userLocation ? snapToGridCenter(userLocation.lat, userLocation.lng, gridCells) : null;
   const terracreId = userGridCenter ? `${userGridCenter.lat.toFixed(7)}-${userGridCenter.lng.toFixed(7)}` : null;
