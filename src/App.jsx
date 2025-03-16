@@ -290,8 +290,8 @@ const handlePurchase = async (gridCenter) => {
 
   // Generate grid cells and snap user location to grid center
   const gridCells = getGridLines(userLocation);
-  const userGridCenter = userLocation ? snapToGridCenter(userLocation.lat, userLocation.lng, gridCells) : null;
-  const terracreId = userGridCenter ? ${userGridCenter.lat.toFixed(7)}-${userGridCenter.lng.toFixed(7)} : null;
+  const snappedUserGridCenter = userLocation ? snapToGridCenter(userLocation.lat, userLocation.lng, gridCells) : null;
+  const terracreId = snappedUserGridCenter ? `${snappedUserGridCenter.lat.toFixed(7)}-${snappedUserGridCenter.lng.toFixed(7)}` : null;
 
   return (
     <div className="app-container">
@@ -345,7 +345,7 @@ const handlePurchase = async (gridCenter) => {
                 purchasedThisSession
               )}
               {user && userLocation && (
-                purchasedThisSession === ${userGridCenter.lat.toFixed(4)}_${userGridCenter.lng.toFixed(4)}
+                purchasedThisSession === `${snappedUserGridCenter.lat.toFixed(4)}_${snappedUserGridCenter.lng.toFixed(4)}`
                   ? console.log("Pin hidden - Purchased this session:", userLocation)
                   : console.log("Pin shown - Not purchased this session:", userLocation) || (
                       <Marker position={userLocation} label="You" zIndex={1000} />
@@ -365,7 +365,7 @@ const handlePurchase = async (gridCenter) => {
                       strokeWeight: 2,
                       strokeColor: "#fff",
                     }}
-                    title={Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}}
+                    title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
                   />
                 );
               })}
@@ -405,7 +405,7 @@ const handlePurchase = async (gridCenter) => {
             setUser={setUser}
             fetchOwnedTerracres={fetchOwnedTerracres}
             onPurchase={handlePurchase}
-            gridCenter={userGridCenter}
+            gridCenter={snappedUserGridCenter}
           />
           {checkInStatus && <p>{checkInStatus}</p>}
         </>
