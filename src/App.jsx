@@ -245,7 +245,7 @@ function App() {
     const minLat = Math.floor(sw.lat() / deltaLat) * deltaLat;
     const maxLat = Math.ceil(ne.lat() / deltaLat) * deltaLat;
     const minLng = Math.floor(sw.lng() / deltaLng) * deltaLng;
-    const maxLng = Math.ceil(ne.lng() / deltaLng) * maxLng;
+    const maxLng = Math.ceil(ne.lng() / deltaLng) * deltaLng;
 
     const grid = [];
     for (let lat = minLat; lat < maxLat; lat += deltaLat) {
@@ -278,7 +278,7 @@ function App() {
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
     const baseLat = Math.floor(lat / deltaLat) * deltaLat;
-    const baseLng = Math.floor(lng / deltaLng) * baseLng;
+    const baseLng = Math.floor(lng / deltaLng) * deltaLng;
     const userCell = gridCells.find(
       (cell) =>
         lat >= cell.paths[0].lat && lat < cell.paths[1].lat && lng >= cell.paths[0].lng && lng < cell.paths[2].lng
