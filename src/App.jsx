@@ -318,12 +318,12 @@ function App() {
                     icon={{
                       path: "M -15,-15 L 15,-15 L 15,15 L -15,15 Z",
                       scale: getMarkerScale(snappedPosition.lat),
-                      fillColor: terracre.ownerID === user.uid ? "blue" : "green",
+                      fillColor: terracre.ownerId === user.uid ? "blue" : "green",
                       fillOpacity: 1,
                       strokeWeight: 2,
                       strokeColor: "#fff",
                     }}
-                    title={`Terracre owned by ${terracre.ownerID === user.uid ? "you" : "someone else"}`}
+                    title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
                   />
                 );
               })}
