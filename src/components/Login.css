@@ -33,3 +33,26 @@
   outline: none;
   box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.5);
 }
+
+/* Add styles for the image */
+.login-image {
+  width: 10vw; /* Use viewport width units */
+  max-width: 40px; /* Set a maximum width */
+  height: auto; /* Maintain aspect ratio */
+  margin-bottom: 20px; /* Add some space below the image */
+}
+
+/* Media queries for responsiveness */
+@media (max-width: 768px) {
+  .login-image {
+    width: 15vw;
+    max-width: 30px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-image {
+    width: 20vw;
+    max-width: 20px;
+  }
+}
