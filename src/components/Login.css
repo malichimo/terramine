@@ -1,12 +1,12 @@
 /* src/components/Login.css */
 @font-face {
   font-family: 'DominoBrick';
-  src: url('C:\\Users\\abafl\\OneDrive\\Documents\\GitHub\\terramine\\src\\fonts\\DominoBrick.ttf') format('truetype');
+  src: url('https://github.com/malichimo/terramine/blob/v1.30-branch/src/fonts/DominoBrick.ttf') format('truetype');
 }
 
 @font-face {
   font-family: 'SuperNormal';
-  src: url('C:\\Users\\abafl\\OneDrive\\Documents\\GitHub\\terramine\\src\\fonts\\SuperNormal.ttf') format('truetype');
+  src: url('https://github.com/malichimo/terramine/blob/v1.30-branch/src/fonts/SuperNormal.ttf') format('truetype');
 }
 
 html, body {
