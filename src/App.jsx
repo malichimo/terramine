@@ -249,7 +249,7 @@ function App() {
 
     const grid = [];
     for (let lat = minLat; lat < maxLat; lat += deltaLat) {
-      for (let lng = minLng; lat < maxLng; lng += deltaLng) {
+      for (let lng = minLng; lng < maxLng; lng += deltaLng) {
         const baseLat = lat;
         const baseLng = lng;
         const centerLat = baseLat + deltaLat / 2;
@@ -341,23 +341,18 @@ function App() {
                 });
               }}
             >
-              {console.log(
-                "Rendering map - User:",
-                user?.uid,
-                "Location:",
-                userLocation,
-                "Terracres:",
-                ownedTerracres.map((t) => ({ id: t.id, lat: t.lat, lng: t.lng, ownerID: t.ownerID })),
-                "Purchased this session:",
-                purchasedThisSession
-              )}
-              {user && userLocation && (
-                purchasedThisSession === `${snappedUserGridCenter.lat.toFixed(4)}_${snappedUserGridCenter.lng.toFixed(4)}`
-                  ? console.log("Pin hidden - Purchased this session:", userLocation)
-                  : console.log("Pin shown - Not purchased this session:", userLocation) || (
-                      <Marker position={userLocation} label="You" zIndex={1000} />
-                    )
-              )}
+              {gridCells.map((cell, index) => (
+                <Polygon
+                  key={index}
+                  paths={cell.paths}
+                  options={{
+                    fillColor: "transparent",
+                    strokeColor: "#999",
+                    strokeOpacity: 0.8,
+                    strokeWeight: 1,
+                  }}
+                />
+              ))}
               {ownedTerracres.map((terracre) => {
                 const snappedPosition = snapToGridCenter(terracre.lat, terracre.lng, gridCells);
                 return (
@@ -376,18 +371,6 @@ function App() {
                   />
                 );
               })}
-              {gridCells.map((cell, index) => (
-                <Polygon
-                  key={index}
-                  paths={cell.paths}
-                  options={{
-                    fillColor: "transparent",
-                    strokeColor: "#999",
-                    strokeOpacity: 0.8,
-                    strokeWeight: 1,
-                  }}
-                />
-              ))}
             </GoogleMap>
           ) : (
             <p>{userLocation ? "Initializing map..." : "Getting your location..."}</p>
