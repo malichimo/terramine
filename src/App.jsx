@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import { auth } from "./firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut, getRedirectResult } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs, updateDoc } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
@@ -9,7 +9,7 @@ import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
 import "./App.css";
 
-// Map and grid settings
+// Constants
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY";
 const TERRACRE_SIZE_METERS = 30;
@@ -23,7 +23,7 @@ const TERRACRE_TYPES = [
   { type: "Diamond Mine", rate: 0.50 },
 ];
 
-console.log("TerraMine v1.31b - Earnings & Ownership Types Implemented ✅");
+console.log("TerraMine v1.31b - Earnings, Ownership Types & Google Sign-In ✅");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -34,18 +34,26 @@ function App() {
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
   const mapRef = useRef(null);
 
-  // ✅ Handle User Authentication
+  // ✅ Handle Google Sign-In (Redirect and Popup)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        console.log("Auth State Changed ✅:", currentUser.uid);
-        const userRef = doc(db, "users", currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (!userSnap.exists()) {
-          await setDoc(userRef, { uid: currentUser.uid, terrabucks: 1000 });
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          console.log("✅ Redirect Sign-In Successful:", result.user.uid, result.user.email);
+          setUser(result.user);
+          await setupUser(result.user.uid);
         }
-        setUser({ ...currentUser, terrabucks: userSnap.data()?.terrabucks || 1000 });
-        fetchOwnedTerracres();
+      } catch (error) {
+        console.error("❌ Redirect Result Error:", error.code, error.message);
+      }
+    };
+    handleRedirectResult();
+
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      console.log("Auth State Changed ✅:", currentUser?.uid || "No user");
+      if (currentUser) {
+        await setupUser(currentUser.uid);
       } else {
         setUser(null);
       }
@@ -53,6 +61,19 @@ function App() {
 
     return () => unsubscribe();
   }, []);
+
+  // ✅ Set up user in Firestore
+  const setupUser = async (uid) => {
+    const userRef = doc(db, "users", uid);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      console.log("🚀 New User: Creating Firestore profile...");
+      await setDoc(userRef, { uid, terrabucks: 1000 });
+    }
+    const userData = (await getDoc(userRef)).data();
+    setUser((prev) => ({ ...prev, terrabucks: userData.terrabucks || 1000 }));
+    fetchOwnedTerracres();
+  };
 
   // ✅ Fetch User Location
   useEffect(() => {
