@@ -5,12 +5,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',  
-    port: 3000, // Change this to an available port
+    port: 10000, // Change this to an available port
     strictPort: true,
   },
   preview: {
     host: '0.0.0.0',
-    port: 3000,
+    port: 10000,
     allowedHosts: ['terramine.onrender.com'] // 👈 Add your Render domain here
   }
 });
