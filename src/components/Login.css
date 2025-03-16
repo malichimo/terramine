@@ -35,24 +35,21 @@
 }
 
 /* Add styles for the image */
-.login-image {
-  width: 40%; /* Set width to 40% of the page */
-  max-width: 200px; /* Set a maximum width */
+.login-container .login-image {
+  width: 10vw; /* Use viewport width units */
   height: auto; /* Maintain aspect ratio */
   margin-bottom: 20px; /* Add some space below the image */
 }
 
 /* Media queries for responsiveness */
 @media (max-width: 768px) {
-  .login-image {
+  .login-container .login-image {
     width: 15vw;
-    max-width: 30px;
   }
 }
 
 @media (max-width: 480px) {
-  .login-image {
+  .login-container .login-image {
     width: 20vw;
-    max-width: 20px;
   }
 }
