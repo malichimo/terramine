@@ -183,7 +183,21 @@ const handlePurchase = async (gridCenter) => {
     return;
   }
 
-  // If not owned, purchase it
+  // Check if the user has enough TerraBucks
+  const userRef = doc(db, "users", user.uid);
+  const userSnap = await getDoc(userRef);
+  const userData = userSnap.data();
+  const terrabucks = userData.terrabucks ?? 0;
+
+  const TERRACRE_COST = 100; // Define the cost of one TerraAcre
+
+  if (terrabucks < TERRACRE_COST) {
+    console.log("❌ Not enough TerraBucks to purchase Terracre.");
+    setError("Not enough TerraBucks to purchase Terracre.");
+    return;
+  }
+
+  // If not owned and user has enough TerraBucks, purchase it
   const newTerracre = {
     id: terracreId,
     lat: gridCenter.lat,
@@ -194,6 +208,11 @@ const handlePurchase = async (gridCenter) => {
 
   console.log(`✅ Purchasing new Terracre: ${terracreId}`);
   await setDoc(terracreRef, newTerracre);
+
+  // Deduct the cost from the user's TerraBucks
+  await updateDoc(userRef, {
+    terrabucks: terrabucks - TERRACRE_COST,
+  });
 
   fetchOwnedTerracres(); // Refresh owned properties
   setPurchaseTrigger((prev) => prev + 1);
