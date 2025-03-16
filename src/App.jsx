@@ -245,7 +245,7 @@ function App() {
     const minLat = Math.floor(sw.lat() / deltaLat) * deltaLat;
     const maxLat = Math.ceil(ne.lat() / deltaLat) * deltaLat;
     const minLng = Math.floor(sw.lng() / deltaLng) * deltaLng;
-    const maxLng = Math.ceil(ne.lng() / deltaLng) * deltaLng;
+    const maxLng = Math.ceil(ne.lng() / deltaLng) * maxLng;
 
     const grid = [];
     for (let lat = minLat; lat < maxLat; lat += deltaLat) {
