@@ -3,7 +3,7 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut, getRedirectResult } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs, updateDoc } from "firebase/firestore";
-import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps-api";
+import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
@@ -11,43 +11,40 @@ import "./App.css";
 
 // Define constants for map and grid settings
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"; // Replace with actual API Key
+const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
+const GRID_SIZE = 5;
 const libraries = ["marker"];
 
-console.log("TerraMine v1.30b - Full features restored with earnings tracking ✅");
+console.log("TerraMine v1.30b - 30m grid, popup auth with URL logging, TA snaps to exact user cell");
 
 function App() {
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
-  const [totalEarnings, setTotalEarnings] = useState(0);
   const [checkInStatus, setCheckInStatus] = useState("");
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [apiLoaded, setApiLoaded] = useState(false);
+  const [isMounted, setIsMounted] = useState(true);
   const [error, setError] = useState(null);
+  const [purchaseTrigger, setPurchaseTrigger] = useState(0);
   const [mapKey, setMapKey] = useState(Date.now());
   const [zoom, setZoom] = useState(18);
   const mapRef = useRef(null);
 
   useEffect(() => {
     console.log("Auth Listener Initialized ✅");
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result && result.user) {
-          console.log("✅ Redirect Sign-In Successful:", result.user.uid);
-          setUser(result.user);
-          await initializeUser(result.user);
-        }
-      } catch (error) {
-        console.error("❌ Redirect Result Error:", error.message);
-      }
-    };
-    handleRedirectResult();
-
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      console.log("Auth State Changed ✅:", currentUser?.uid || "No user");
       if (currentUser) {
-        await initializeUser(currentUser);
+        console.log("✅ User signed in:", currentUser.uid);
+        const userRef = doc(db, "users", currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) {
+          console.log("🚀 New user detected, creating Firestore profile...");
+          await setDoc(userRef, { uid: currentUser.uid, terrabucks: 1000 });
+        }
+        setUser(currentUser);
+        fetchOwnedTerracres();
       } else {
         setUser(null);
         setOwnedTerracres([]);
@@ -57,40 +54,21 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  async function initializeUser(currentUser) {
-    const userRef = doc(db, "users", currentUser.uid);
-    const userSnap = await getDoc(userRef);
-    if (!userSnap.exists()) {
-      console.log("🚀 New user detected - Creating Firestore profile...");
-      await setDoc(userRef, { uid: currentUser.uid, terrabucks: 1000, earnings: 0 });
-      setUser({ ...currentUser, terrabucks: 1000, earnings: 0 });
-    } else {
-      const userData = userSnap.data();
-      setUser({ ...currentUser, ...userData });
-      calculateEarnings(userData.uid);
-    }
-    fetchOwnedTerracres();
-  }
-
   useEffect(() => {
-    if (!user) return;
-    console.log("Fetching User Location... 📍");
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log("✅ Location Retrieved:", position.coords);
-          setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
         },
-        (error) => {
-          console.error("❌ Location error:", error);
-          setUserLocation(defaultCenter);
-        }
+        () => setUserLocation(defaultCenter)
       );
     } else {
-      console.warn("⚠️ Geolocation not supported");
       setUserLocation(defaultCenter);
     }
-  }, [user]);
+  }, []);
 
   const fetchOwnedTerracres = useCallback(async () => {
     if (!user) return;
@@ -98,101 +76,71 @@ function App() {
       console.log("📡 Fetching Terracres for user:", user.uid);
       const terracresRef = collection(db, "terracres");
       const querySnapshot = await getDocs(terracresRef);
-      const properties = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const now = Date.now();
+
+      const properties = querySnapshot.docs
+        .map((doc) => {
+          const data = doc.data();
+          if (data.ownerId !== user.uid) return null;
+
+          // ✅ New Feature: Calculate earnings based on time owned
+          const purchaseTime = new Date(data.purchasedAt).getTime();
+          const hoursOwned = (now - purchaseTime) / (1000 * 60 * 60);
+          const earnings = (hoursOwned * data.rate).toFixed(2);
+
+          return { id: doc.id, ...data, earnings };
+        })
+        .filter(Boolean);
+
       setOwnedTerracres(properties);
     } catch (error) {
       console.error("🔥 Terracres fetch error:", error);
+      setOwnedTerracres([]);
     }
   }, [user]);
 
-  const calculateEarnings = async (userId) => {
-    try {
-      const terracresRef = collection(db, "terracres");
-      const querySnapshot = await getDocs(terracresRef);
-      let totalEarnings = 0;
-
-      querySnapshot.forEach((doc) => {
-        const terracre = doc.data();
-        if (terracre.ownerId === userId) {
-          const purchasedAt = new Date(terracre.purchasedAt);
-          const hoursOwned = (Date.now() - purchasedAt.getTime()) / (1000 * 60 * 60);
-
-          let ratePerHour = 0.01; // Default: Rock Mine (1 cent per hour)
-          if (terracre.type === "coalMine") ratePerHour = 0.05;
-          if (terracre.type === "goldMine") ratePerHour = 0.15;
-          if (terracre.type === "diamondMine") ratePerHour = 0.50;
-
-          totalEarnings += hoursOwned * ratePerHour;
-        }
-      });
-
-      setTotalEarnings(totalEarnings);
-      await updateDoc(doc(db, "users", userId), { earnings: totalEarnings });
-
-      console.log("✅ Earnings Updated:", totalEarnings);
-    } catch (error) {
-      console.error("🔥 Earnings Calculation Error:", error);
-    }
-  };
-
-  if (error) return <div>Error: {error}</div>;
-  if (!user) return <Login onLoginSuccess={setUser} />;
+  useEffect(() => {
+    if (user) fetchOwnedTerracres();
+  }, [fetchOwnedTerracres, purchaseTrigger, user]);
 
   return (
     <div className="app-container">
       <header className="app-header">
-        {user && (
-          <button className="signout-button" onClick={() => signOut(auth)}>
-            Sign Out
-          </button>
-        )}
+        {user && <button className="signout-button" onClick={() => signOut(auth)}>Sign Out</button>}
         <h1>TerraMine</h1>
       </header>
-      <p className="earnings">💰 Total Earnings: ${totalEarnings.toFixed(2)}</p>
-
       <Suspense fallback={<p>Loading map resources...</p>}>
         <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
-          {userLocation && (
-            <GoogleMap
-              key={mapKey}
-              mapContainerStyle={{ width: "100%", height: "500px" }}
-              center={userLocation}
-              zoom={zoom}
-              onLoad={(map) => {
-                mapRef.current = map;
-                map.addListener("zoom_changed", () => {
-                  setZoom(map.getZoom());
-                  setMapKey(Date.now());
-                });
-              }}
-            >
-              <Marker position={userLocation} label="You" />
+          {apiLoaded && userLocation ? (
+            <GoogleMap mapContainerStyle={{ width: "100%", height: "500px" }} center={userLocation} zoom={zoom}>
+              {user && <Marker position={userLocation} label="You" zIndex={1000} />}
               {ownedTerracres.map((terracre) => (
-                <Marker
-                  key={terracre.id}
-                  position={{ lat: terracre.lat, lng: terracre.lng }}
-                  icon={{
-                    path: "M -15,-15 L 15,-15 L 15,15 L -15,15 Z",
-                    scale: 1.5,
-                    fillColor: terracre.ownerId === user.uid ? "blue" : "green",
-                    fillOpacity: 1,
-                    strokeWeight: 2,
-                    strokeColor: "#fff",
-                  }}
-                />
+                <Marker key={terracre.id} position={{ lat: terracre.lat, lng: terracre.lng }} />
               ))}
             </GoogleMap>
+          ) : (
+            <p>Getting your location...</p>
           )}
         </LoadScript>
       </Suspense>
 
-      <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} setUser={setUser} />
-      <PurchaseButton user={user} userLocation={userLocation} fetchOwnedTerracres={fetchOwnedTerracres} />
-      {checkInStatus && <p>{checkInStatus}</p>}
+      {user && (
+        <>
+          <p className="greeting">Welcome {user.displayName || "User"}, you have {user.terrabucks ?? 0} TB.</p>
+          <CheckInButton user={user} />
+          <PurchaseButton user={user} onPurchase={() => setPurchaseTrigger(purchaseTrigger + 1)} />
+          <h3>Your Owned Terracres & Earnings</h3>
+          <ul>
+            {ownedTerracres.map((terracre) => (
+              <li key={terracre.id}>
+                <strong>{terracre.type.toUpperCase()}</strong> - Earnings: ${terracre.earnings}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   );
 }
 
 export default App;
-
-
