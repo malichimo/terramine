@@ -36,8 +36,8 @@
 
 /* Add styles for the image */
 .login-image {
-  width: 10vw; /* Use viewport width units */
-  max-width: 40px; /* Set a maximum width */
+  width: 40%; /* Set width to 40% of the page */
+  max-width: 200px; /* Set a maximum width */
   height: auto; /* Maintain aspect ratio */
   margin-bottom: 20px; /* Add some space below the image */
 }
