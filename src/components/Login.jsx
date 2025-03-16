@@ -24,7 +24,7 @@ function Login({ onLoginSuccess }) {
 
   return (
     <div className="login-container">
-      <h2>WELCOME to TerraMine</h2>
+      <h1>Welcome to TerraMine</h1>
       <img src="terramine logo.png" alt="Login" className="login-image" />
       <h2>Login</h2>
       <button
