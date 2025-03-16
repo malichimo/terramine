@@ -3,7 +3,7 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut, getRedirectResult } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs, updateDoc } from "firebase/firestore";
-import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps-api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
@@ -11,19 +11,21 @@ import "./App.css";
 
 // Define constants for map and grid settings
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
+const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace with actual API Key
 const TERRACRE_SIZE_METERS = 30;
 const libraries = ["marker"];
 
-console.log("TerraMine v1.30b - Time tracking enabled");
+console.log("TerraMine v1.30b - Full features restored with earnings tracking ✅");
 
 function App() {
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
-  const [totalEarnings, setTotalEarnings] = useState(0); // ✅ NEW: Earnings State
+  const [totalEarnings, setTotalEarnings] = useState(0);
   const [checkInStatus, setCheckInStatus] = useState("");
   const [error, setError] = useState(null);
+  const [mapKey, setMapKey] = useState(Date.now());
+  const [zoom, setZoom] = useState(18);
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -65,7 +67,7 @@ function App() {
     } else {
       const userData = userSnap.data();
       setUser({ ...currentUser, ...userData });
-      calculateEarnings(userData.uid); // ✅ NEW: Calculate earnings on login
+      calculateEarnings(userData.uid);
     }
     fetchOwnedTerracres();
   }
@@ -103,7 +105,6 @@ function App() {
     }
   }, [user]);
 
-  // ✅ NEW: Function to calculate earnings
   const calculateEarnings = async (userId) => {
     try {
       const terracresRef = collection(db, "terracres");
@@ -152,7 +153,19 @@ function App() {
       <Suspense fallback={<p>Loading map resources...</p>}>
         <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
           {userLocation && (
-            <GoogleMap mapContainerStyle={{ width: "100%", height: "500px" }} center={userLocation} zoom={15}>
+            <GoogleMap
+              key={mapKey}
+              mapContainerStyle={{ width: "100%", height: "500px" }}
+              center={userLocation}
+              zoom={zoom}
+              onLoad={(map) => {
+                mapRef.current = map;
+                map.addListener("zoom_changed", () => {
+                  setZoom(map.getZoom());
+                  setMapKey(Date.now());
+                });
+              }}
+            >
               <Marker position={userLocation} label="You" />
               {ownedTerracres.map((terracre) => (
                 <Marker
