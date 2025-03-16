@@ -3,7 +3,7 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut, getRedirectResult } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs, updateDoc } from "firebase/firestore";
-import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps-api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
@@ -11,7 +11,7 @@ import "./App.css";
 
 // Constants
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyDwh0aVmyCRil5vQTGRMUTER_W37r3r6sM";
+const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
 const libraries = ["marker"];
 
@@ -150,6 +150,9 @@ function App() {
       console.error("❌ Sign-out error:", error);
     }
   };
+
+  // ✅ Show Login Screen when not signed in
+  if (!user) return <Login onLoginSuccess={setUser} />;
 
   return (
     <div className="app-container">
