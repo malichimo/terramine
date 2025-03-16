@@ -11,7 +11,7 @@ import "./App.css";
 
 // Constants
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY";
+const GOOGLE_MAPS_API_KEY = "AIzaSyDwh0aVmyCRil5vQTGRMUTER_W37r3r6sM";
 const TERRACRE_SIZE_METERS = 30;
 const libraries = ["marker"];
 
