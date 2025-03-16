@@ -19,9 +19,11 @@ const libraries = ["marker"]; // Static libraries to fix LoadScript warning
 console.log("TerraMine v1.30b - 30m grid, popup auth with URL logging, TA snaps to exact user cell");
 
 function App() {
+  const isDevelopment = process.env.NODE_ENV === 'development';
+
   // State variables for user, location, map, and other app states
-  const [user, setUser] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
+  const [user, setUser] = useState(isDevelopment ? { uid: "devUser", displayName: "Developer", terrabucks: 1000 } : null);
+  const [userLocation, setUserLocation] = useState(isDevelopment ? defaultCenter : null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
   const [checkInStatus, setCheckInStatus] = useState("");
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -36,6 +38,8 @@ function App() {
 
   // Effect to handle authentication state changes and redirect results
   useEffect(() => {
+    if (isDevelopment) return; // Skip auth handling in development mode
+
     console.log("Auth Listener Initialized ✅");
     const handleRedirectResult = async () => {
       try {
@@ -97,11 +101,11 @@ function App() {
       setIsMounted(false);
       unsubscribe();
     };
-  }, []);
+  }, [isDevelopment, isMounted, user]);
 
   // Effect to fetch user location
   useEffect(() => {
-    if (!user) return;
+    if (!user || isDevelopment) return;
     console.log("Fetching User Location... 📍");
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -124,7 +128,7 @@ function App() {
     }
 
     return () => setIsMounted(false);
-  }, [user]);
+  }, [user, isDevelopment, isMounted]);
 
   // Function to fetch owned terracres from Firestore
   const fetchOwnedTerracres = useCallback(async () => {
@@ -166,57 +170,57 @@ function App() {
     }
   };
 
-const handlePurchase = async (gridCenter) => {
-  if (!user || !gridCenter) return;
+  const handlePurchase = async (gridCenter) => {
+    if (!user || !gridCenter) return;
 
-  const terracresRef = collection(db, "terracres");
+    const terracresRef = collection(db, "terracres");
 
-  console.log("🔹 Attempting to purchase Terracre at:", gridCenter);
+    console.log("🔹 Attempting to purchase Terracre at:", gridCenter);
 
-  const terracreId = `${gridCenter.lat.toFixed(7)}-${gridCenter.lng.toFixed(7)}`;
-  const terracreRef = doc(terracresRef, terracreId);
-  const terracreSnap = await getDoc(terracreRef);
+    const terracreId = `${gridCenter.lat.toFixed(7)}-${gridCenter.lng.toFixed(7)}`;
+    const terracreRef = doc(terracresRef, terracreId);
+    const terracreSnap = await getDoc(terracreRef);
 
-  // Check if the terracre is already owned
-  if (terracreSnap.exists()) {
-    console.log(`⚠️ Terracre ${terracreId} already owned, skipping.`);
-    return;
-  }
+    // Check if the terracre is already owned
+    if (terracreSnap.exists()) {
+      console.log(`⚠️ Terracre ${terracreId} already owned, skipping.`);
+      return;
+    }
 
-  // Check if the user has enough TerraBucks
-  const userRef = doc(db, "users", user.uid);
-  const userSnap = await getDoc(userRef);
-  const userData = userSnap.data();
-  const terrabucks = userData.terrabucks ?? 0;
+    // Check if the user has enough TerraBucks
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    const userData = userSnap.data();
+    const terrabucks = userData.terrabucks ?? 0;
 
-  const TERRACRE_COST = 100; // Define the cost of one TerraAcre
+    const TERRACRE_COST = 100; // Define the cost of one TerraAcre
 
-  if (terrabucks < TERRACRE_COST) {
-    console.log("❌ Not enough TerraBucks to purchase Terracre.");
-    setError("Not enough TerraBucks to purchase Terracre.");
-    return;
-  }
+    if (terrabucks < TERRACRE_COST) {
+      console.log("❌ Not enough TerraBucks to purchase Terracre.");
+      setError("Not enough TerraBucks to purchase Terracre.");
+      return;
+    }
 
-  // If not owned and user has enough TerraBucks, purchase it
-  const newTerracre = {
-    id: terracreId,
-    lat: gridCenter.lat,
-    lng: gridCenter.lng,
-    ownerId: user.uid,
-    purchasedAt: new Date().toISOString(),
+    // If not owned and user has enough TerraBucks, purchase it
+    const newTerracre = {
+      id: terracreId,
+      lat: gridCenter.lat,
+      lng: gridCenter.lng,
+      ownerId: user.uid,
+      purchasedAt: new Date().toISOString(),
+    };
+
+    console.log(`✅ Purchasing new Terracre: ${terracreId}`);
+    await setDoc(terracreRef, newTerracre);
+
+    // Deduct the cost from the user's TerraBucks
+    await updateDoc(userRef, {
+      terrabucks: terrabucks - TERRACRE_COST,
+    });
+
+    fetchOwnedTerracres(); // Refresh owned properties
+    setPurchaseTrigger((prev) => prev + 1);
   };
-
-  console.log(`✅ Purchasing new Terracre: ${terracreId}`);
-  await setDoc(terracreRef, newTerracre);
-
-  // Deduct the cost from the user's TerraBucks
-  await updateDoc(userRef, {
-    terrabucks: terrabucks - TERRACRE_COST,
-  });
-
-  fetchOwnedTerracres(); // Refresh owned properties
-  setPurchaseTrigger((prev) => prev + 1);
-};
 
   // Function to calculate marker scale based on latitude and zoom level
   const getMarkerScale = (lat) => {
@@ -245,7 +249,7 @@ const handlePurchase = async (gridCenter) => {
 
     const grid = [];
     for (let lat = minLat; lat < maxLat; lat += deltaLat) {
-      for (let lng = minLng; lng < maxLng; lng += deltaLng) {
+      for (let lng = minLng; lat < maxLng; lng += deltaLng) {
         const baseLat = lat;
         const baseLng = lng;
         const centerLat = baseLat + deltaLat / 2;
@@ -274,7 +278,7 @@ const handlePurchase = async (gridCenter) => {
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
     const baseLat = Math.floor(lat / deltaLat) * deltaLat;
-    const baseLng = Math.floor(lng / deltaLng) * deltaLng;
+    const baseLng = Math.floor(lng / deltaLng) * baseLng;
     const userCell = gridCells.find(
       (cell) =>
         lat >= cell.paths[0].lat && lat < cell.paths[1].lat && lng >= cell.paths[0].lng && lng < cell.paths[2].lng
@@ -286,8 +290,8 @@ const handlePurchase = async (gridCenter) => {
 
   // Render error message if any error occurs
   if (error) return <div>Error: {error}</div>;
-  // Render login component if user is not authenticated
-  if (!user && !apiLoaded) return <Login onLoginSuccess={setUser} />;
+  // Render login component if user is not authenticated and not in development mode
+  if (!user && !apiLoaded && !isDevelopment) return <Login onLoginSuccess={setUser} />;
 
   // Generate grid cells and snap user location to grid center
   const gridCells = getGridLines(userLocation);
@@ -296,12 +300,14 @@ const handlePurchase = async (gridCenter) => {
 
   return (
     <div className="app-container">
-      <header className="app-header">
-        {user && (
+      {user && (
+        <div className="signout-container">
           <button className="signout-button" onClick={handleSignOut}>
             Sign Out
           </button>
-        )}
+        </div>
+      )}
+      <header className="app-header">
         <h1>TerraMine</h1>
       </header>
       <Suspense fallback={<p>Loading map resources...</p>}>

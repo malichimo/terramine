@@ -1,3 +1,17 @@
+@font-face {
+  font-family: 'DominoBrick';
+  src: url('C:\\Users\\abafl\\OneDrive\\Documents\\GitHub\\terramine\\src\\fonts\\DominoBrick.ttf') format('truetype');
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Prevent scrolling */
+  background: linear-gradient(135deg, #e0f7fa 0%, #80deea 100%); /* Increase saturation of gradient background */
+}
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -45,27 +59,40 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between; /* Ensure elements are spaced evenly */
   min-height: 100vh;
   text-align: center;
+  padding: 1rem; /* Add padding for better spacing */
+  position: relative; /* Ensure absolute positioning works within this container */
 }
 
 .app-container h1 {
-  margin-bottom: 20px;
+  font-family: 'DominoBrick', sans-serif; /* Apply the custom font */
+  margin-bottom: 5px; /* Reduce margin to move closer to the map */
 }
 
 .google-map {
   max-width: 100%;
-  margin-bottom: 20px;
+  height: 300px; /* Further decrease the height of the map */
+  margin-bottom: 5px; /* Reduce margin to move closer to the elements below */
 }
 
 .app-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center; /* Center the header */
   align-items: center;
   width: 100%;
-  max-width: 1280px;
-  margin-bottom: 20px;
+  margin-bottom: 5px; /* Reduce margin to move closer to the map */
+}
+
+.signout-container {
+  display: flex;
+  justify-content: flex-end; /* Align the sign-out button to the right */
+  width: 100%;
+  padding: 10px; /* Add padding */
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 
 .signout-button {
@@ -84,7 +111,7 @@
 .greeting {
   font-size: 18px;
   color: #555; /* ✅ Lighter gray for better visibility */
-  margin: 20px 0;
+  margin: 5px 0; /* Reduce margin to move closer to the map */
   font-weight: 500; /* ✅ Slightly bolder for emphasis */
 }
 
@@ -101,6 +128,7 @@
 .purchase-button:hover {
   background-color: darkblue;
 }
+
 .google-login-button {
   background-color: #4285f4; /* Google Blue */
   color: white;
