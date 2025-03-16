@@ -167,12 +167,55 @@ function App() {
   };
 
   // Function to handle purchase of a terracre
-  const handlePurchase = (terracreId) => {
-    setPurchaseTrigger((prev) => prev + 1);
-    setPurchasedThisSession(terracreId);
-    console.log("✅ Purchase trigger incremented:", purchaseTrigger + 1, "Purchased:", terracreId);
-    fetchOwnedTerracres();
-    setMapKey(Date.now());
+  const handlePurchase = async (gridCenter) => {
+    if (!user || !gridCenter) return;
+  
+    const purchaseBatch = [];
+    const terracresRef = collection(db, "terracres");
+  
+    console.log("🔹 Attempting to purchase Terracre at:", gridCenter);
+  
+    // Generate 5x5 grid centered on `gridCenter`
+    const deltaLat = TERRACRE_SIZE_METERS / 111000;
+    const deltaLng = TERRACRE_SIZE_METERS / (111000 * Math.cos((gridCenter.lat * Math.PI) / 180));
+  
+    for (let row = -2; row <= 2; row++) {
+      for (let col = -2; col <= 2; col++) {
+        const newLat = gridCenter.lat + row * deltaLat;
+        const newLng = gridCenter.lng + col * deltaLng;
+        const terracreId = `${newLat.toFixed(7)}-${newLng.toFixed(7)}`;
+  
+        const terracreRef = doc(terracresRef, terracreId);
+        const terracreSnap = await getDoc(terracreRef);
+  
+        // Check if the terracre is already owned
+        if (terracreSnap.exists()) {
+          console.log(`⚠️ Terracre ${terracreId} already owned, skipping.`);
+          continue;
+        }
+  
+        // If not owned, queue it for batch purchase
+        purchaseBatch.push({
+          id: terracreId,
+          lat: newLat,
+          lng: newLng,
+          ownerId: user.uid,
+          purchasedAt: new Date().toISOString(),
+        });
+      }
+    }
+  
+    // Commit purchases in batch
+    if (purchaseBatch.length > 0) {
+      console.log(`✅ Purchasing ${purchaseBatch.length} new Terracres.`);
+      for (const terracre of purchaseBatch) {
+        await setDoc(doc(terracresRef, terracre.id), terracre);
+      }
+      fetchOwnedTerracres(); // Refresh owned properties
+      setPurchaseTrigger((prev) => prev + 1);
+    } else {
+      console.warn("⚠️ No new purchases were made.");
+    }
   };
 
   // Function to calculate marker scale based on latitude and zoom level
