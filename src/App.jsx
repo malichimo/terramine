@@ -34,7 +34,29 @@ function App() {
   const [mapKey, setMapKey] = useState(Date.now());
   const [zoom, setZoom] = useState(18);
   const [purchasedThisSession, setPurchasedThisSession] = useState(null);
+  const [totalEarnings, setTotalEarnings] = useState(0);
+
   const mapRef = useRef(null);
+
+  // Function to calculate total earnings
+  const calculateTotalEarnings = useCallback(() => {
+    const now = new Date();
+    const earnings = ownedTerracres.reduce((acc, terracre) => {
+      const lastCollected = new Date(terracre.lastCollected);
+      const hoursElapsed = (now - lastCollected) / (1000 * 60 * 60);
+      return acc + (hoursElapsed * terracre.earningRate);
+    }, 0);
+    setTotalEarnings(earnings);
+  }, [ownedTerracres]);
+
+  // Effect to update earnings every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      calculateTotalEarnings();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [calculateTotalEarnings]);
 
   // Effect to handle authentication state changes and redirect results
   useEffect(() => {
@@ -208,6 +230,8 @@ function App() {
       lng: gridCenter.lng,
       ownerId: user.uid,
       purchasedAt: new Date().toISOString(),
+      lastCollected: new Date().toISOString(),
+      earningRate: 0.05, // Example earning rate, replace with actual logic
     };
 
     console.log(`✅ Purchasing new Terracre: ${terracreId}`);
@@ -310,6 +334,7 @@ function App() {
       <header className="app-header">
         <h1>TerraMine</h1>
       </header>
+      <p className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</p>
       <Suspense fallback={<p>Loading map resources...</p>}>
         <LoadScript
           googleMapsApiKey={GOOGLE_MAPS_API_KEY}
