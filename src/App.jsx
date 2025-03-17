@@ -249,10 +249,10 @@ function App() {
     }
   }, [isDevelopment]);
 
-  // Function to get marker scale based on latitude
-  function getMarkerScale(lat) {
-    // Example scale calculation based on latitude
-    const scale = 1 + (lat - defaultCenter.lat) / 100;
+  // Function to get marker scale based on zoom level
+  function getMarkerScale(zoom) {
+    // Example scale calculation based on zoom level
+    const scale = Math.pow(2, zoom - 18);
     return Math.max(0.5, Math.min(2, scale)); // Ensure scale is between 0.5 and 2
   }
 
@@ -330,7 +330,7 @@ function App() {
                     position={snappedPosition}
                     icon={{
                       path: "M -15,-15 L 15,-15 L 15,15 L -15,15 Z",
-                      scale: getMarkerScale(snappedPosition.lat),
+                      scale: getMarkerScale(zoom),
                       fillColor: terracre.ownerId === user.uid ? "blue" : "green",
                       fillOpacity: 1,
                       strokeWeight: 2,
