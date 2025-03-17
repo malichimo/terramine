@@ -1,12 +1,12 @@
 // CheckInButton.jsx
 import React from "react";
 import { db } from "../firebase";
-import { doc, getDoc, setDoc, updateDoc, collection } from "firebase/firestore";
-import "./CheckInButton.css"; // ✅ Add CSS import
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import "./CheckInButton.css";
 import { handleCheckIn } from "../firebaseFunctions";
 
 const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
-  const handleCheckIn = async () => {
+  const handleCheckInClick = async () => {
     if (!user || !userLocation) {
       setCheckInStatus("Please log in and allow location access.");
       return;
@@ -14,7 +14,7 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
 
     try {
       // Use snapToGridCenter to get the correct terracreId
-      const center = snapToGridCenter(userLocation.lat, userLocation.lng, []); // Pass empty gridCells for now
+      const center = snapToGridCenter(userLocation.lat, userLocation.lng);
       const terracreId = `${center.lat.toFixed(7)}-${center.lng.toFixed(7)}`; // Match Firestore ID format
 
       const checkInStatus = await handleCheckIn(user, terracreId);
@@ -36,7 +36,7 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
   };
 
   // Placeholder snapToGridCenter function (to be moved to App.jsx or utils)
-  const snapToGridCenter = (lat, lng, gridCells) => {
+  const snapToGridCenter = (lat, lng) => {
     const TERRACRE_SIZE_METERS = 30;
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat * Math.PI) / 180);
@@ -44,13 +44,13 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
     const baseLat = Math.floor(lat / deltaLat) * deltaLat;
     const baseLng = Math.floor(lng / deltaLng) * deltaLng;
-    const center = { lat: baseLat + deltaLat / 2, lng: baseLng / 2 };
+    const center = { lat: baseLat + deltaLat / 2, lng: baseLng + baseLng / 2 };
     console.log("Snapped - User:", { lat, lng }, "Cell:", center);
     return center;
   };
 
   return (
-    <button className="checkin-button" onClick={handleCheckIn}>
+    <button className="checkin-button" onClick={handleCheckInClick}>
       Check In
     </button>
   );
