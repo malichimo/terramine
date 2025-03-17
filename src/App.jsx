@@ -227,6 +227,13 @@ function App() {
     }
   }, [isDevelopment]);
 
+  // Function to get marker scale based on latitude
+  function getMarkerScale(lat) {
+    // Example scale calculation based on latitude
+    const scale = 1 + (lat - defaultCenter.lat) / 100;
+    return Math.max(0.5, Math.min(2, scale)); // Ensure scale is between 0.5 and 2
+  }
+
   // Render error message if any error occurs
   if (error) return <div>Error: {error}</div>;
   // Render login component if user is not authenticated and not in development mode
