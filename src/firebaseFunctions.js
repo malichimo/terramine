@@ -40,45 +40,41 @@ export const handleSignOut = async () => {
 
 // ✅ Handle Check-In (Updated with Debugging)
 export const handleCheckIn = async (user, terracreId) => {
-  if (!user) return "Please sign in to check in.";
-  console.log("Attempting check-in for user:", user.uid, "at terracreId:", terracreId);
+  const checkInRef = doc(db, "checkins", `${user.uid}-${terracreId}`);
+  const checkInSnap = await getDoc(checkInRef);
+  const now = new Date();
+  const today = now.toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
 
-  try {
-    const terracreRef = doc(db, "terracres", terracreId);
-    const terracreSnap = await getDoc(terracreRef);
-    console.log("Terracre data:", terracreSnap.data());
-    if (!terracreSnap.exists()) return "This Terracre is unowned.";
-
-    const ownerId = terracreSnap.data().ownerID;
-    if (ownerId === user.uid) return "You can’t check into your own Terracre!";
-
-    const startOfDay = new Date().setHours(0, 0, 0, 0);
-    const q = query(
-      collection(db, "checkins"),
-      where("userId", "==", user.uid),
-      where("terracreId", "==", terracreId),
-      where("timestamp", ">=", startOfDay)
-    );
-    const querySnapshot = await getDocs(q);
-    console.log("Check-in query results:", querySnapshot.docs.map(doc => doc.data()));
-    if (!querySnapshot.empty) return "You’ve already checked in here today!";
-
-    const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
-    const currentTB = userSnap.data().terrabucks || 0;
-    await updateDoc(userRef, { terrabucks: currentTB + 1 });
-
-    await addDoc(collection(db, "checkins"), {
-      userId: user.uid,
-      username: user.displayName || user.email,
-      terracreId,
-      timestamp: Timestamp.now(),
-      message: "Checked in!",
-    });
-
-    return "Check-in successful! You earned 1 TB.";
-  } catch (error) {
-    console.error("Check-in failed:", error);
-    return "Check-in failed. Try again.";
+  if (checkInSnap.exists()) {
+    const checkInData = checkInSnap.data();
+    if (checkInData.date === today) {
+      return "You have already checked in at this Terracre today.";
+    }
   }
+
+  // Update check-in record
+  await setDoc(checkInRef, { date: today });
+
+  // Update visitor's TerraBucks
+  const userRef = doc(db, "users", user.uid);
+  const userSnap = await getDoc(userRef);
+  if (userSnap.exists()) {
+    const userData = userSnap.data();
+    await updateDoc(userRef, { terrabucks: (userData.terrabucks ?? 0) + 1 });
+  }
+
+  // Update owner's TerraBucks
+  const terracreRef = doc(db, "terracres", terracreId);
+  const terracreSnap = await getDoc(terracreRef);
+  if (terracreSnap.exists()) {
+    const terracreData = terracreSnap.data();
+    const ownerRef = doc(db, "users", terracreData.ownerId);
+    const ownerSnap = await getDoc(ownerRef);
+    if (ownerSnap.exists()) {
+      const ownerData = ownerSnap.data();
+      await updateDoc(ownerRef, { terrabucks: (ownerData.terrabucks ?? 0) + 1 });
+    }
+  }
+
+  return "Check-in successful! You and the owner earned 1 TB each.";
 };

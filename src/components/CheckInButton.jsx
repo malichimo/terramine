@@ -1,7 +1,7 @@
 // CheckInButton.jsx
 import React from "react";
 import { db } from "../firebase";
-import { doc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, collection } from "firebase/firestore";
 import "./CheckInButton.css"; // ✅ Add CSS import
 import { handleCheckIn } from "../firebaseFunctions";
 
@@ -17,11 +17,11 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
       const center = snapToGridCenter(userLocation.lat, userLocation.lng, []); // Pass empty gridCells for now
       const terracreId = `${center.lat.toFixed(7)}-${center.lng.toFixed(7)}`; // Match Firestore ID format
 
-      const status = await handleCheckIn(user, terracreId);
-      setCheckInStatus(status);
+      const checkInStatus = await handleCheckIn(user, terracreId);
+      setCheckInStatus(checkInStatus);
 
       // Update user state with new terrabucks if successful
-      if (status.includes("earned 1 TB")) {
+      if (checkInStatus.includes("earned 1 TB")) {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
@@ -44,7 +44,7 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
     const baseLat = Math.floor(lat / deltaLat) * deltaLat;
     const baseLng = Math.floor(lng / deltaLng) * deltaLng;
-    const center = { lat: baseLat + deltaLat / 2, lng: baseLng + deltaLng / 2 };
+    const center = { lat: baseLat + deltaLat / 2, lng: baseLng / 2 };
     console.log("Snapped - User:", { lat, lng }, "Cell:", center);
     return center;
   };
