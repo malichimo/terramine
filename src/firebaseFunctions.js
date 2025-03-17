@@ -45,6 +45,17 @@ export const handleCheckIn = async (user, terracreId) => {
   const now = new Date();
   const today = now.toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
 
+  const terracreRef = doc(db, "terracres", terracreId);
+  const terracreSnap = await getDoc(terracreRef);
+  if (!terracreSnap.exists()) {
+    return "This Terracre does not exist.";
+  }
+
+  const terracreData = terracreSnap.data();
+  if (terracreData.ownerId === user.uid) {
+    return "You cannot check in at your own Terracre.";
+  }
+
   if (checkInSnap.exists()) {
     const checkInData = checkInSnap.data();
     if (checkInData.date === today) {
@@ -64,16 +75,11 @@ export const handleCheckIn = async (user, terracreId) => {
   }
 
   // Update owner's TerraBucks
-  const terracreRef = doc(db, "terracres", terracreId);
-  const terracreSnap = await getDoc(terracreRef);
-  if (terracreSnap.exists()) {
-    const terracreData = terracreSnap.data();
-    const ownerRef = doc(db, "users", terracreData.ownerId);
-    const ownerSnap = await getDoc(ownerRef);
-    if (ownerSnap.exists()) {
-      const ownerData = ownerSnap.data();
-      await updateDoc(ownerRef, { terrabucks: (ownerData.terrabucks ?? 0) + 1 });
-    }
+  const ownerRef = doc(db, "users", terracreData.ownerId);
+  const ownerSnap = await getDoc(ownerRef);
+  if (ownerSnap.exists()) {
+    const ownerData = ownerSnap.data();
+    await updateDoc(ownerRef, { terrabucks: (ownerData.terrabucks ?? 0) + 1 });
   }
 
   return "Check-in successful! You and the owner earned 1 TB each.";

@@ -44,7 +44,7 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
     const baseLat = Math.floor(lat / deltaLat) * deltaLat;
     const baseLng = Math.floor(lng / deltaLng) * deltaLng;
-    const center = { lat: baseLat + deltaLat / 2, lng: baseLng + baseLng / 2 };
+    const center = { lat: baseLat + deltaLat / 2, lng: baseLng + deltaLng / 2 };
     console.log("Snapped - User:", { lat, lng }, "Cell:", center);
     return center;
   };
