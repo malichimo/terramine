@@ -253,7 +253,7 @@ function App() {
   function getMarkerScale(zoom) {
     // Example scale calculation based on zoom level
     const scale = Math.pow(2, zoom - 18);
-    return Math.max(0.5, Math.min(2, scale)); // Ensure scale is between 0.5 and 2
+    return Math.max(1, Math.min(4, scale)); // Ensure scale is between 1 and 4
   }
 
   // Render error message if any error occurs
