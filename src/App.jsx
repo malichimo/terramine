@@ -352,7 +352,7 @@ function App() {
           {apiLoaded && userLocation ? (
             <GoogleMap
               key={mapKey}
-              mapContainerStyle={{ width: "100%", height: "500px" }}
+              mapContainerClassName="map-container"
               center={userLocation || defaultCenter}
               zoom={zoom}
               onLoad={(map) => {
