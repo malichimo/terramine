@@ -210,6 +210,23 @@ function App() {
     return center;
   };
 
+  // Effect to get user location
+  useEffect(() => {
+    if (!isDevelopment) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ lat: latitude, lng: longitude });
+          console.log("✅ Location Retrieved:", position.coords);
+        },
+        (error) => {
+          console.error("❌ Error getting location:", error);
+          setError("Failed to get location.");
+        }
+      );
+    }
+  }, [isDevelopment]);
+
   // Render error message if any error occurs
   if (error) return <div>Error: {error}</div>;
   // Render login component if user is not authenticated and not in development mode
