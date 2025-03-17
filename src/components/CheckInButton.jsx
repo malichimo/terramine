@@ -18,6 +18,7 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
       const terracreId = `${center.lat.toFixed(7)}-${center.lng.toFixed(7)}`; // Match Firestore ID format
 
       const checkInStatus = await handleCheckIn(user, terracreId);
+      console.log("Check-in status:", checkInStatus); // Debugging log
       setCheckInStatus(checkInStatus);
 
       // Update user state with new terrabucks if successful
