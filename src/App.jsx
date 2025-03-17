@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, Suspense, useRef } from "react
 import { auth } from "./firebase";
 import { onAuthStateChanged, signOut, getRedirectResult } from "firebase/auth";
 import { db } from "./firebase";
-import { doc, getDoc, setDoc, collection, getDocs, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
@@ -58,101 +58,7 @@ function App() {
     return () => clearInterval(interval);
   }, [calculateTotalEarnings]);
 
-  // Effect to handle authentication state changes and redirect results
-  useEffect(() => {
-    if (isDevelopment) return; // Skip auth handling in development mode
-
-    console.log("Auth Listener Initialized ✅");
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result && result.user) {
-          console.log("✅ Redirect Sign-In Successful:", result.user.uid, result.user.email);
-          setUser(result.user);
-          const userRef = doc(db, "users", result.user.uid);
-          const userSnap = await getDoc(userRef);
-          if (!userSnap.exists()) {
-            console.log("New user detected 🚀 - Creating Firestore profile...");
-            const newUserData = { uid: result.user.uid, terrabucks: 1000 };
-            await setDoc(userRef, newUserData);
-            setUser((prev) => ({ ...prev, ...newUserData }));
-          } else {
-            const userData = userSnap.data();
-            setUser((prev) => ({ ...prev, terrabucks: userData.terrabucks ?? 1000 }));
-          }
-          fetchOwnedTerracres();
-          setMapKey(Date.now());
-        }
-      } catch (error) {
-        console.error("❌ Redirect Result Error:", error.code, error.message);
-      }
-    };
-    handleRedirectResult();
-
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (!isMounted) return;
-      console.log("Auth State Changed ✅:", currentUser?.uid || "No user");
-
-      if (currentUser && !user) {
-        const userRef = doc(db, "users", currentUser.uid);
-        try {
-          const userSnap = await getDoc(userRef);
-          if (!userSnap.exists()) {
-            console.log("New user detected 🚀 - Creating Firestore profile...");
-            const newUserData = { uid: currentUser.uid, terrabucks: 1000 };
-            await setDoc(userRef, newUserData);
-            setUser({ ...currentUser, ...newUserData });
-          } else {
-            const userData = userSnap.data();
-            setUser({ ...currentUser, terrabucks: userData.terrabucks ?? 1000 });
-          }
-          fetchOwnedTerracres();
-          setMapKey(Date.now());
-        } catch (err) {
-          console.error("Firestore auth error:", err);
-          setError("Failed to load user data.");
-        }
-      } else if (!currentUser) {
-        setUser(null);
-        setOwnedTerracres([]); // Clear ownedTerracres on sign-out
-        setMapKey(Date.now());
-      }
-    });
-
-    return () => {
-      setIsMounted(false);
-      unsubscribe();
-    };
-  }, [isDevelopment, isMounted, user]);
-
-  // Effect to fetch user location
-  useEffect(() => {
-    if (!user || isDevelopment) return;
-    console.log("Fetching User Location... 📍");
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          if (!isMounted) return;
-          console.log("✅ Location Retrieved:", position.coords);
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.error("❌ Location error:", error);
-          setUserLocation(defaultCenter);
-        }
-      );
-    } else {
-      console.warn("⚠️ Geolocation not supported");
-      setUserLocation(defaultCenter);
-    }
-
-    return () => setIsMounted(false);
-  }, [user, isDevelopment, isMounted]);
-
-  // Function to fetch owned terracres from Firestore
+  // Fetch owned terracres
   const fetchOwnedTerracres = useCallback(async () => {
     if (!user) return;
     try {
@@ -246,15 +152,7 @@ function App() {
     setPurchaseTrigger((prev) => prev + 1);
   };
 
-  // Function to calculate marker scale based on latitude and zoom level
-  const getMarkerScale = (lat) => {
-    const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
-    const scale = TERRACRE_SIZE_METERS / metersPerPixel / 35;
-    console.log("Scale calc - Lat:", lat, "Zoom:", zoom, "Meters/Pixel:", metersPerPixel, "Scale:", scale);
-    return isNaN(scale) || scale <= 0 ? 0.1 : scale;
-  };
-
-  // Function to generate grid lines for the map
+  // Function to generate grid lines
   const getGridLines = (center) => {
     if (!center || !mapRef.current) return [];
     const bounds = mapRef.current.getBounds();
@@ -294,7 +192,7 @@ function App() {
     return grid;
   };
 
-  // Function to snap user location to the center of the nearest grid cell
+  // Function to snap user location to grid center
   const snapToGridCenter = (lat, lng, gridCells) => {
     if (!gridCells || !gridCells.length) return { lat, lng };
     const metersPerDegreeLat = 111000;
