@@ -83,6 +83,27 @@ function App() {
     if (user) fetchOwnedTerracres();
   }, [fetchOwnedTerracres, purchaseTrigger, user]);
 
+  // Function to fetch user data
+  const fetchUserData = useCallback(async (uid) => {
+    try {
+      const userRef = doc(db, "users", uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        setUser((prevUser) => ({ ...prevUser, ...userData }));
+      }
+    } catch (error) {
+      console.error("🔥 User data fetch error:", error);
+    }
+  }, []);
+
+  // Effect to fetch user data on mount and when user changes
+  useEffect(() => {
+    if (user) {
+      fetchUserData(user.uid);
+    }
+  }, [user, fetchUserData]);
+
   // Function to handle user sign-out
   const handleSignOut = async () => {
     try {
@@ -149,6 +170,7 @@ function App() {
     });
 
     fetchOwnedTerracres(); // Refresh owned properties
+    fetchUserData(user.uid); // Refresh user data
     setPurchaseTrigger((prev) => prev + 1);
   };
 
