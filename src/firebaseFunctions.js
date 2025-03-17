@@ -1,7 +1,7 @@
 // src/firebaseFunctions.js
 import { auth, googleProvider, db } from "./firebase";
 import { signInWithPopup, signOut } from "firebase/auth";
-import { collection, addDoc, doc, getDoc, setDoc, query, where, getDocs, Timestamp, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, Timestamp } from "firebase/firestore";
 
 // ✅ Google Sign-In
 export const handleGoogleSignIn = async () => {
