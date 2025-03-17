@@ -59,7 +59,7 @@ const PurchaseButton = ({ user, gridCenter, setCheckInStatus, setUser, fetchOwne
 
       await updateDoc(userRef, { terrabucks: userData.terrabucks - totalCost });
       setUser((prev) => ({ ...prev, terrabucks: prev.terrabucks - totalCost }));
-      setCheckInStatus(`✅ Purchased a Terracre! -${totalCost} TB`);
+      setCheckInStatus(`✅ Purchased a ${taType.type}! -${totalCost} TB`);
 
       onPurchase(gridCenter);
       fetchOwnedTerracres();
