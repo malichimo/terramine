@@ -1,0 +1,33 @@
+.user-container {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+}
+
+.user-button {
+  padding: 6px 14px;
+  background-color: #808080;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 80px;
+}
+
+.user-button:hover {
+  background-color: #666666;
+}
+
+@media (max-width: 480px) {
+  .user-container {
+    top: 8px;
+    left: 8px;
+  }
+  
+  .user-button {
+    padding: 5px 12px;
+    font-size: 13px;
+  }
+}

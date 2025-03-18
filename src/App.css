@@ -35,28 +35,6 @@ html, body {
   gap: 10px; /* Consistent gap between elements */
 }
 
-/* Sign out button */
-.signout-container {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 2;
-}
-
-.signout-button {
-  padding: 6px 12px;
-  background-color: #ff4444;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.signout-button:hover {
-  background-color: #cc0000;
-}
-
 /* Header */
 .app-header {
   margin-bottom: 5px;
@@ -134,6 +112,37 @@ html, body {
   }
 }
 
+/* Tablet and medium-sized screens */
+@media (min-width: 481px) and (max-width: 1024px) {
+  .app-container {
+    padding: 60px 30px 30px 30px;
+    gap: 15px;
+  }
+
+  .map-container {
+    width: min(70vw, 600px);
+    height: min(70vw, 600px);
+    margin: 10px auto;
+  }
+
+  .app-header h1 {
+    font-size: 40pt;
+  }
+
+  .greeting,
+  .earnings {
+    font-size: 18px;
+    margin: 8px 0;
+  }
+
+  .button-container {
+    gap: 25px;
+    margin: 10px 0;
+    padding: 10px;
+  }
+}
+
+/* Mobile styles - keep existing but adjust breakpoint */
 @media (max-width: 480px) {
   .app-container {
     padding: 40px 10px 10px 10px;
@@ -149,10 +158,6 @@ html, body {
     font-size: 28pt;
   }
   
-  .signout-button {
-    padding: 4px 10px;
-    font-size: 12px;
-  }
   
   .greeting,
   .earnings {
@@ -166,8 +171,4 @@ html, body {
     margin: 0 auto;
   }
 
-  .signout-container {
-    top: 5px;
-    right: 5px;
-  }
 }

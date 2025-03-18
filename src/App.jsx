@@ -7,6 +7,9 @@ import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
+import SignOutButton from './components/SignOutButton';
+import UserButton from './components/UserButton';
+import UserPage from './components/UserPage';
 import "./App.css";
 
 // Define constants for map and grid settings
@@ -34,6 +37,7 @@ function App() {
   const [zoom, setZoom] = useState(18);
   const [purchasedThisSession, setPurchasedThisSession] = useState(null);
   const [totalEarnings, setTotalEarnings] = useState(0);
+  const [showUserPage, setShowUserPage] = useState(false);
 
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
@@ -326,101 +330,110 @@ function App() {
     return Math.max(1, Math.min(4, scale)); // Ensure scale is between 1 and 4
   }
 
+  const handleUserPage = () => {
+    setShowUserPage(!showUserPage);
+  };
+
   // Render error message if any error occurs
   if (error) return <div>Error: {error}</div>;
   // Render login component if user is not authenticated and not in development mode
   if (!user && !apiLoaded && !isDevelopment) return <Login onLoginSuccess={setUser} />;
 
-  // GUI 
+  // Interface/Output 
   return (
     <div className="app-container">
       {user && (
-        <div className="signout-container">
-          <button className="signout-button" onClick={handleSignOut}>
-            Sign Out
-          </button>
-        </div>
+        <>
+          {!showUserPage && <UserButton onUser={handleUserPage} />}
+          <SignOutButton onSignOut={handleSignOut} />
+        </>
       )}
-      <header className="app-header">
-        <h1>TerraMine</h1>
-      </header>
-      <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
-      <Suspense fallback={<p>Loading map resources...</p>}>
-        <LoadScript
-          googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-          libraries={libraries} // Use static libraries
-          onLoad={() => {
-            console.log("✅ LoadScript loaded");
-            setApiLoaded(true);
-            setMapLoaded(true);
-          }}
-          onError={(e) => {
-            console.error("❌ LoadScript error:", e);
-            setError("Failed to load map.");
-          }}
-        >
-          {apiLoaded && userLocation ? (
-            <GoogleMap
-              key={mapKey}
-              mapContainerClassName="map-container"
-              center={userLocation || defaultCenter}
-              zoom={zoom}
-              mapContainerStyle={{
-                width: 'min(80vw, 500px)', // Limit max width to 500px
-                aspectRatio: '1 / 1',
-                height: 'min(80vw, 500px)', // Match width for square ratio
-                margin: '10px auto',
-                display: 'block',
-                position: 'relative',
+      {showUserPage ? (
+        <UserPage user={user} onClose={() => setShowUserPage(false)} />
+      ) : (
+        <>
+          <header className="app-header">
+            <h1>TerraMine</h1>
+          </header>
+          <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
+          <Suspense fallback={<p>Loading map resources...</p>}>
+            <LoadScript
+              googleMapsApiKey={GOOGLE_MAPS_API_KEY}
+              libraries={libraries} // Use static libraries
+              onLoad={() => {
+                console.log("✅ LoadScript loaded");
+                setApiLoaded(true);
+                setMapLoaded(true);
               }}
-              onLoad={(map) => {
-                mapRef.current = map;
-                console.log("✅ GoogleMap rendered");
-                map.addListener("zoom_changed", () => {
-                  const newZoom = map.getZoom();
-                  setZoom(newZoom);
-                  setMapKey(Date.now());
-                  console.log("Zoom changed:", newZoom);
-                });
-              }}
-              onBoundsChanged={() => {
-                if (mapRef.current) {
-                  const center = mapRef.current.getCenter();
-                  setUserLocation({ lat: center.lat(), lng: center.lng() });
-                }
+              onError={(e) => {
+                console.error("❌ LoadScript error:", e);
+                setError("Failed to load map.");
               }}
             >
-              {GridPolygons}
-              {TerracreMarkers}
-            </GoogleMap>
-          ) : (
-            <p>{userLocation ? "Initializing map..." : "Getting your location..."}</p>
+              {apiLoaded && userLocation ? (
+                <GoogleMap
+                  key={mapKey}
+                  mapContainerClassName="map-container"
+                  center={userLocation || defaultCenter}
+                  zoom={zoom}
+                  mapContainerStyle={{
+                    width: 'min(80vw, 500px)', // Limit max width to 500px
+                    aspectRatio: '1 / 1',
+                    height: 'min(80vw, 500px)', // Match width for square ratio
+                    margin: '10px auto',
+                    display: 'block',
+                    position: 'relative',
+                  }}
+                  onLoad={(map) => {
+                    mapRef.current = map;
+                    console.log("✅ GoogleMap rendered");
+                    map.addListener("zoom_changed", () => {
+                      const newZoom = map.getZoom();
+                      setZoom(newZoom);
+                      setMapKey(Date.now());
+                      console.log("Zoom changed:", newZoom);
+                    });
+                  }}
+                  onBoundsChanged={() => {
+                    if (mapRef.current) {
+                      const center = mapRef.current.getCenter();
+                      setUserLocation({ lat: center.lat(), lng: center.lng() });
+                    }
+                  }}
+                >
+                  {GridPolygons}
+                  {TerracreMarkers}
+                </GoogleMap>
+              ) : (
+                <p>{userLocation ? "Initializing map..." : "Getting your location..."}</p>
+              )}
+            </LoadScript>
+          </Suspense>
+          {user && (
+            <>
+              <div className="greeting">
+                Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB available.
+              </div>
+              <div className="button-container">
+                <CheckInButton
+                  user={user}
+                  userLocation={userLocation}
+                  setCheckInStatus={setCheckInStatus}
+                  setUser={setUser}
+                />
+                <PurchaseButton
+                  user={user}
+                  userLocation={userLocation}
+                  setCheckInStatus={setCheckInStatus}
+                  setUser={setUser}
+                  fetchOwnedTerracres={fetchOwnedTerracres}
+                  onPurchase={handlePurchase}
+                  gridCenter={snappedUserGridCenter}
+                />
+              </div>
+              {checkInStatus && <p>{checkInStatus}</p>}
+            </>
           )}
-        </LoadScript>
-      </Suspense>
-      {user && (
-        <>
-          <div className="greeting">
-            Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB available.
-          </div>
-          <div className="button-container">
-            <CheckInButton
-              user={user}
-              userLocation={userLocation}
-              setCheckInStatus={setCheckInStatus}
-              setUser={setUser}
-            />
-            <PurchaseButton
-              user={user}
-              userLocation={userLocation}
-              setCheckInStatus={setCheckInStatus}
-              setUser={setUser}
-              fetchOwnedTerracres={fetchOwnedTerracres}
-              onPurchase={handlePurchase}
-              gridCenter={snappedUserGridCenter}
-            />
-          </div>
-          {checkInStatus && <p>{checkInStatus}</p>}
         </>
       )}
     </div>

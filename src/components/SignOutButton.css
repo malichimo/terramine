@@ -1,0 +1,33 @@
+.signout-container {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+}
+
+.signout-button {
+  padding: 6px 14px;
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 80px;
+}
+
+.signout-button:hover {
+  background-color: #cc0000;
+}
+
+@media (max-width: 480px) {
+  .signout-container {
+    top: 8px;
+    right: 8px;
+  }
+  
+  .signout-button {
+    padding: 5px 12px;
+    font-size: 13px;
+  }
+}
