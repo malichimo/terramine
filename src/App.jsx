@@ -329,7 +329,7 @@ function App() {
                     key={terracre.id}
                     position={snappedPosition}
                     icon={{
-                      path: "M -33,-33 L 33,-33 L 33,33 L -33,33 Z", // Adjusted size
+                      path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z", // Adjusted size
                       scale: getMarkerScale(zoom),
                       fillColor: terracre.ownerId === user.uid ? "blue" : "green",
                       fillOpacity: 1,
