@@ -190,7 +190,7 @@ function App() {
 
     const grid = [];
     for (let lat = minLat; lat < maxLat; lat += deltaLat) {
-      for (let lng = minLng; lat < maxLng; lng += deltaLng) {
+      for (let lng = minLng; lng < maxLng; lng += deltaLng) {
         const baseLat = lat;
         const baseLng = lng;
         const centerLat = baseLat + deltaLat / 2;
