@@ -375,6 +375,12 @@ function App() {
                   console.log("Zoom changed:", newZoom);
                 });
               }}
+              onBoundsChanged={() => {
+                if (mapRef.current) {
+                  const center = mapRef.current.getCenter();
+                  setUserLocation({ lat: center.lat(), lng: center.lng() });
+                }
+              }}
             >
               {GridPolygons}
               {TerracreMarkers}
