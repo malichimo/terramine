@@ -106,19 +106,29 @@ function App() {
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         const userData = userSnap.data();
-        setUser((prevUser) => ({ ...prevUser, ...userData }));
+        setUser((prevUser) => {
+          if (
+            prevUser.terrabucks === userData.terrabucks &&
+            prevUser.displayName === userData.displayName
+          ) {
+            return prevUser; // No update needed
+          }
+          return { ...prevUser, ...userData };
+        });
       }
     } catch (error) {
       console.error("🔥 User data fetch error:", error);
     }
   }, []);
 
+  const debouncedFetchUserData = useCallback(debounce(fetchUserData, 500), [fetchUserData]);
+
   // Effect to fetch user data on mount and when user changes
   useEffect(() => {
     if (user) {
-      fetchUserData(user.uid);
+      debouncedFetchUserData(user.uid);
     }
-  }, [user, fetchUserData]);
+  }, [user?.uid, debouncedFetchUserData]);
 
   // Function to handle user sign-out
   const handleSignOut = async () => {
@@ -186,8 +196,6 @@ function App() {
     });
 
     setPurchaseTrigger((prev) => prev + 1); // Only increment here
-    fetchOwnedTerracres(); // Call directly, no need to reset flag here
-    fetchUserData(user.uid);
   };
 
   // Function to generate grid lines
@@ -323,8 +331,7 @@ function App() {
   // Render login component if user is not authenticated and not in development mode
   if (!user && !apiLoaded && !isDevelopment) return <Login onLoginSuccess={setUser} />;
 
-
- // GUI 
+  // GUI 
   return (
     <div className="app-container">
       {user && (
