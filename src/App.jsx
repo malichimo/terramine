@@ -28,7 +28,6 @@ function App() {
   const [checkInStatus, setCheckInStatus] = useState("");
   const [mapLoaded, setMapLoaded] = useState(false);
   const [apiLoaded, setApiLoaded] = useState(false);
-  const [isMounted, setIsMounted] = useState(true);
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
   const [mapKey, setMapKey] = useState(Date.now());
@@ -68,15 +67,13 @@ function App() {
       const properties = querySnapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .filter((t) => t.lat && t.lng && typeof t.lat === "number" && typeof t.lng === "number");
-      if (isMounted) {
-        console.log("✅ Terracres fetched with data:", properties); // Log full data for debugging
-        setOwnedTerracres(properties);
-      }
+      console.log("✅ Terracres fetched with data:", properties); // Log full data for debugging
+      setOwnedTerracres(properties);
     } catch (error) {
       console.error("🔥 Terracres fetch error:", error);
       setOwnedTerracres([]);
     }
-  }, [user, isMounted]);
+  }, [user]);
 
   // Effect to fetch owned terracres when user or purchaseTrigger changes
   useEffect(() => {
