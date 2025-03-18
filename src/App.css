@@ -100,13 +100,13 @@ html, body {
   display: flex;
   justify-content: center;
   position: relative;
-  margin-bottom: 40px; /* Increased space below header */
+  margin-bottom: 5px; /* Increased space below header */
 }
 
 .app-header h1 {
   font-family: 'DominoBrick', sans-serif;
   margin: 0;
-  padding: 10px 0;
+  padding: 50px 0;
 }
 
 .signout-container {

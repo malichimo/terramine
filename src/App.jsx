@@ -323,6 +323,8 @@ function App() {
   // Render login component if user is not authenticated and not in development mode
   if (!user && !apiLoaded && !isDevelopment) return <Login onLoginSuccess={setUser} />;
 
+
+ // GUI 
   return (
     <div className="app-container">
       {user && (
