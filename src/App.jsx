@@ -36,6 +36,7 @@ function App() {
   const [totalEarnings, setTotalEarnings] = useState(0);
 
   const mapRef = useRef(null);
+  const fetchTerracresRef = useRef(false);
 
   // Function to calculate total earnings
   const calculateTotalEarnings = useCallback(() => {
@@ -59,7 +60,8 @@ function App() {
 
   // Fetch owned terracres
   const fetchOwnedTerracres = useCallback(async () => {
-    if (!user) return;
+    if (!user || fetchTerracresRef.current) return;
+    fetchTerracresRef.current = true;
     try {
       console.log("📡 Fetching Terracres for user:", user.uid);
       const terracresRef = collection(db, "terracres");
@@ -166,6 +168,7 @@ function App() {
       terrabucks: terrabucks - TERRACRE_COST,
     });
 
+    fetchTerracresRef.current = false; // Reset the flag to allow fetching again
     fetchOwnedTerracres(); // Refresh owned properties
     fetchUserData(user.uid); // Refresh user data
     setPurchaseTrigger((prev) => prev + 1);
