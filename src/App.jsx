@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Suspense, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, Suspense, useRef } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged, signOut, getRedirectResult } from "firebase/auth";
 import { db } from "./firebase";
@@ -74,13 +74,30 @@ function App() {
     } catch (error) {
       console.error("🔥 Terracres fetch error:", error);
       setOwnedTerracres([]);
+    } finally {
+      fetchTerracresRef.current = false; // Reset only after completion
     }
   }, [user]);
 
+  // Debounce utility
+  function debounce(func, wait) {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  }
+
+  // Debounced fetch function
+  const debouncedFetchOwnedTerracres = useCallback(
+    debounce(fetchOwnedTerracres, 500), // Wait 500ms before fetching
+    [fetchOwnedTerracres]
+  );
+
   // Effect to fetch owned terracres when user or purchaseTrigger changes
   useEffect(() => {
-    if (user) fetchOwnedTerracres();
-  }, [fetchOwnedTerracres, purchaseTrigger, user]);
+    if (user) debouncedFetchOwnedTerracres();
+  }, [debouncedFetchOwnedTerracres, purchaseTrigger, user]);
 
   // Function to fetch user data
   const fetchUserData = useCallback(async (uid) => {
@@ -168,14 +185,13 @@ function App() {
       terrabucks: terrabucks - TERRACRE_COST,
     });
 
-    fetchTerracresRef.current = false; // Reset the flag to allow fetching again
-    fetchOwnedTerracres(); // Refresh owned properties
-    fetchUserData(user.uid); // Refresh user data
-    setPurchaseTrigger((prev) => prev + 1);
+    setPurchaseTrigger((prev) => prev + 1); // Only increment here
+    fetchOwnedTerracres(); // Call directly, no need to reset flag here
+    fetchUserData(user.uid);
   };
 
   // Function to generate grid lines
-  const getGridLines = (center) => {
+  const getGridLines = useCallback((center) => {
     if (!center || !mapRef.current) return [];
     const bounds = mapRef.current.getBounds();
     if (!bounds) return [];
@@ -212,10 +228,10 @@ function App() {
     }
     console.log("Grid generated:", grid.length, "cells");
     return grid;
-  };
+  }, []);
 
   // Function to snap user location to grid center
-  const snapToGridCenter = (lat, lng, gridCells) => {
+  const snapToGridCenter = useCallback((lat, lng, gridCells) => {
     if (!gridCells || !gridCells.length) return { lat, lng };
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat * Math.PI) / 180);
@@ -230,7 +246,53 @@ function App() {
     const center = userCell ? userCell.center : { lat: baseLat + deltaLat / 2, lng: baseLng + deltaLng / 2 };
     console.log("Snapped - User:", { lat, lng }, "Cell:", center);
     return center;
-  };
+  }, []);
+
+  // Memoize grid cells and snapped user grid center
+  const gridCells = useMemo(() => getGridLines(userLocation), [userLocation, getGridLines]);
+  const snappedUserGridCenter = useMemo(
+    () => (userLocation ? snapToGridCenter(userLocation.lat, userLocation.lng, gridCells) : null),
+    [userLocation, gridCells, snapToGridCenter]
+  );
+
+  // Memoize grid polygons and terracre markers
+  const GridPolygons = useMemo(() =>
+    gridCells.map((cell, index) => (
+      <Polygon
+        key={index}
+        paths={cell.paths}
+        options={{
+          fillColor: "transparent",
+          strokeColor: "#999",
+          strokeOpacity: 0.8,
+          strokeWeight: 1,
+        }}
+      />
+    )),
+    [gridCells]
+  );
+
+  const TerracreMarkers = useMemo(() =>
+    ownedTerracres.map((terracre) => {
+      const snappedPosition = snapToGridCenter(terracre.lat, terracre.lng, gridCells);
+      return (
+        <Marker
+          key={terracre.id}
+          position={snappedPosition}
+          icon={{
+            path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
+            scale: getMarkerScale(zoom),
+            fillColor: terracre.ownerId === user.uid ? "blue" : "green",
+            fillOpacity: 1,
+            strokeWeight: 2,
+            strokeColor: "#fff",
+          }}
+          title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
+        />
+      );
+    }),
+    [ownedTerracres, zoom, user.uid, gridCells, snapToGridCenter]
+  );
 
   // Effect to get user location
   useEffect(() => {
@@ -260,11 +322,6 @@ function App() {
   if (error) return <div>Error: {error}</div>;
   // Render login component if user is not authenticated and not in development mode
   if (!user && !apiLoaded && !isDevelopment) return <Login onLoginSuccess={setUser} />;
-
-  // Generate grid cells and snap user location to grid center
-  const gridCells = getGridLines(userLocation);
-  const snappedUserGridCenter = userLocation ? snapToGridCenter(userLocation.lat, userLocation.lng, gridCells) : null;
-  const terracreId = snappedUserGridCenter ? `${snappedUserGridCenter.lat.toFixed(7)}-${snappedUserGridCenter.lng.toFixed(7)}` : null;
 
   return (
     <div className="app-container">
@@ -310,36 +367,8 @@ function App() {
                 });
               }}
             >
-              {gridCells.map((cell, index) => (
-                <Polygon
-                  key={index}
-                  paths={cell.paths}
-                  options={{
-                    fillColor: "transparent",
-                    strokeColor: "#999",
-                    strokeOpacity: 0.8,
-                    strokeWeight: 1,
-                  }}
-                />
-              ))}
-              {ownedTerracres.map((terracre) => {
-                const snappedPosition = snapToGridCenter(terracre.lat, terracre.lng, gridCells);
-                return (
-                  <Marker
-                    key={terracre.id}
-                    position={snappedPosition}
-                    icon={{
-                      path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z", // Adjusted size
-                      scale: getMarkerScale(zoom),
-                      fillColor: terracre.ownerId === user.uid ? "blue" : "green",
-                      fillOpacity: 1,
-                      strokeWeight: 2,
-                      strokeColor: "#fff",
-                    }}
-                    title={`Terracre owned by ${terracre.ownerId === user.uid ? "you" : "someone else"}`}
-                  />
-                );
-              })}
+              {GridPolygons}
+              {TerracreMarkers}
             </GoogleMap>
           ) : (
             <p>{userLocation ? "Initializing map..." : "Getting your location..."}</p>
