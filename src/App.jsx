@@ -348,21 +348,23 @@ function App() {
           <p className="greeting">
             Welcome {user.displayName || "User"}, you have {user.terrabucks ?? 0} TB available.
           </p>
-          <CheckInButton
-            user={user}
-            userLocation={userLocation}
-            setCheckInStatus={setCheckInStatus}
-            setUser={setUser}
-          />
-          <PurchaseButton
-            user={user}
-            userLocation={userLocation}
-            setCheckInStatus={setCheckInStatus}
-            setUser={setUser}
-            fetchOwnedTerracres={fetchOwnedTerracres}
-            onPurchase={handlePurchase}
-            gridCenter={snappedUserGridCenter}
-          />
+          <div className="button-container">
+            <CheckInButton
+              user={user}
+              userLocation={userLocation}
+              setCheckInStatus={setCheckInStatus}
+              setUser={setUser}
+            />
+            <PurchaseButton
+              user={user}
+              userLocation={userLocation}
+              setCheckInStatus={setCheckInStatus}
+              setUser={setUser}
+              fetchOwnedTerracres={fetchOwnedTerracres}
+              onPurchase={handlePurchase}
+              gridCenter={snappedUserGridCenter}
+            />
+          </div>
           {checkInStatus && <p>{checkInStatus}</p>}
         </>
       )}

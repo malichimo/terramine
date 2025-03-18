@@ -1,15 +1,19 @@
 @font-face {
   font-family: 'DominoBrick';
-  src: url('https://github.com/malichimo/terramine/blob/v1.30-branch/src/fonts/DominoBrick.ttf') format('truetype');
+  src: url('/src/fonts/DominoBrick.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
 }
 
+/* Reset body and html */
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden; /* Prevent scrolling */
-  background: linear-gradient(135deg, #e0f7fa 0%, #80deea 100%); /* Increase saturation of gradient background */
+  overflow: hidden;
+  background: linear-gradient(135deg, #e0f7fa 0%, #80deea 100%);
 }
 
 #root {
@@ -56,15 +60,15 @@ html, body {
 }
 
 /* General styles */
+/* Main container */
 .app-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between; /* Ensure elements are spaced evenly */
-  min-height: 100vh;
-  text-align: center;
-  padding: 10px; /* Add padding for better spacing */
-  position: relative; /* Ensure absolute positioning works within this container */
+  height: 100vh;
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .app-container h1 {
@@ -72,29 +76,43 @@ html, body {
   margin-bottom: 5px; /* Reduce margin to move closer to the map */
 }
 
+/* Map container */
 .google-map {
-  max-width: 100%;
-  height: 300px; /* Further decrease the height of the map */
-  margin-bottom: 5px; /* Reduce margin to move closer to the elements below */
+  width: min(60vh, 90%); /* Base size on viewport height */
+  height: 0; /* Reset height */
+  padding-bottom: min(60vh, 90%); /* Match width for square ratio */
+  margin: 20px auto;
+  flex-grow: 0;
+  position: relative; /* For absolute positioning of map element */
+}
+
+/* Style for the actual map element */
+.google-map > div {
+  position: absolute !important; /* Override Google Maps inline styles */
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .app-header {
-  display: flex;
-  justify-content: center; /* Center the header */
-  align-items: center;
   width: 100%;
-  text-align: center;
-  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 40px; /* Increased space below header */
+}
+
+.app-header h1 {
+  font-family: 'DominoBrick', sans-serif;
+  margin: 0;
+  padding: 10px 0;
 }
 
 .signout-container {
-  display: flex;
-  justify-content: flex-end; /* Align the sign-out button to the right */
-  width: 100%;
-  padding: 10px; /* Add padding */
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 10px;
+  right: 10px;
 }
 
 .signout-button {
@@ -111,28 +129,66 @@ html, body {
   background-color: #cc0000;
 }
 
-.greeting {
-  font-size: 18px;
-  color: #555; /* ✅ Lighter gray for better visibility */
-  margin: 5px 0; /* Reduce margin to move closer to the map */
-  font-weight: 500; /* ✅ Slightly bolder for emphasis */
-  margin-bottom: 10px;
+/* Bottom buttons */
+.button-container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 30px;
+  padding: 10px;
+}
+
+/* Add shared button styles */
+.button-container button {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin: 0; /* Remove individual button margins */
+}
+
+/* Styles for action buttons (check-in and purchase) */
+.check-in-button,
+.purchase-button {
+  height: 40px;
+  padding: 0 20px;
+  font-size: 14px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.check-in-button {
+  background-color: #4285f4;
 }
 
 .purchase-button {
   background-color: blue;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  margin: 5px;
-  font-size: 16px;
-  margin-top: 10px;
+}
+
+.check-in-button:hover {
+  background-color: #3267d6;
 }
 
 .purchase-button:hover {
   background-color: darkblue;
+}
+
+/* Text content */
+.greeting {
+  margin: 30px 0 20px 0; /* More space above greeting */
+  font-size: 16px;
+  color: #555;
+  font-weight: 500;
 }
 
 .google-login-button {
@@ -151,8 +207,8 @@ html, body {
 }
 
 .earnings {
-  font-size: 18px;
-  margin-bottom: 10px;
+  font-size: 16px;
+  margin: 10px 0 20px 0; /* Increased spacing below earnings */
 }
 
 .map-container {
@@ -195,5 +251,49 @@ html, body {
   .map-container {
     width: 100%;
     height: 300px;
+  }
+}
+
+/* Responsive styles */
+@media (max-height: 600px) {
+  .google-map {
+    width: min(40vh, 90%);
+    padding-bottom: min(40vh, 90%);
+  }
+
+  .app-header {
+    margin-bottom: 15px;
+  }
+
+  .action-button {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  .greeting,
+  .earnings {
+    font-size: 14px;
+    margin: 10px 0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-height: 700px) {
+  .google-map {
+    width: min(50vh, 90%);
+    padding-bottom: min(50vh, 90%);
+  }
+
+  .app-header {
+    margin-bottom: 20px;
+  }
+
+  .greeting {
+    margin: 15px 0 10px 0;
+  }
+
+  .button-container {
+    margin-top: 15px;
   }
 }
