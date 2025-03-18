@@ -365,13 +365,13 @@ function App() {
               mapContainerClassName="map-container"
               center={userLocation || defaultCenter}
               zoom={zoom}
-              //need to adjust map sizing/styling here instead of css for whatever reason
               mapContainerStyle={{
-                width: 'min(60vmin, 600px)',      // Slightly smaller map
-                height: 'min(60vmin, 600px)',     // Keep square ratio
-                margin: '10px auto',              // Consistent margin
-                marginTop: '5px',                 // Reduced top margin to bring map up
-                marginBottom: '0px'              // Added bottom margin for buttons
+                width: 'min(80vw, 500px)', // Limit max width to 500px
+                aspectRatio: '1 / 1',
+                height: 'min(80vw, 500px)', // Match width for square ratio
+                margin: '10px auto',
+                display: 'block',
+                position: 'relative',
               }}
               onLoad={(map) => {
                 mapRef.current = map;

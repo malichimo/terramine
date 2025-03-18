@@ -1,16 +1,21 @@
 .purchase-button {
-  padding: 12px 24px;
-  background-color: #4285f4; /* Google blue */
+  padding: 8px 16px;
+  background-color: #4285f4;
   color: white;
   border: none;
   border-radius: 4px;
-  font-size: 16px;
+  font-size: clamp(12px, 3.5vw, 16px); /* Responsive font size */
   cursor: pointer;
   transition: background-color 0.3s ease;
   height: 40px;
+  min-width: 120px;
+  max-width: 250px;
   display: flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap; /* Prevent text wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Show ... if text overflows */
 }
 
 .purchase-button:hover {

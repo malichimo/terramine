@@ -12,15 +12,15 @@ html, body {
   margin: 0;
   padding: 0;
   width: 100%;
-  height: 100%;
-  overflow: hidden;
+  height: 100vh;
+  overflow: hidden; /* Prevent scrolling */
   background: linear-gradient(135deg, #e0f7fa 0%, #80deea 100%);
 }
 
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
   text-align: center;
 }
 
@@ -28,15 +28,16 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 100vh;
+  height: 100vh;
   width: 100%;
   box-sizing: border-box;
-  padding-top: 40px;
+  padding: 50px 20px 20px 20px; /* Reduced top padding */
+  gap: 10px; /* Consistent gap between elements */
 }
 
 /* Sign out button */
 .signout-container {
-  position: fixed;
+  position: absolute;
   top: 10px;
   right: 10px;
   z-index: 2;
@@ -58,17 +59,12 @@ html, body {
 
 /* Header */
 .app-header {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 0 0 10px 0;
+  margin-bottom: 5px;
 }
 
 .app-header h1 {
   font-family: 'DominoBrick', sans-serif;
-  font-size: 45pt;
-  color: darkgreen;
+  font-size: clamp(28pt, 5vw, 45pt); /* Responsive font size */
   margin: 0;
   padding: 0;
 }
@@ -97,9 +93,18 @@ html, body {
   height: 100% !important;
 }
 
+/* Map container styles */
+.map-container {
+  width: min(60vw, 400px); /* Slightly smaller map */
+  height: min(60vw, 400px);
+  margin: 5px auto;
+  position: relative;
+  box-sizing: border-box;
+}
+
 /* Greeting */
 .greeting {
-  margin: 10px 0;
+  margin: 5px 0;
   font-size: 16px;
   color: #555;
   font-weight: 500;
@@ -110,12 +115,11 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
+  gap: 15px; /* Reduced gap */
   margin: 5px 0;
-  padding: 10px;
+  padding: 5px;
   z-index: 1;
 }
-
 
 /* Responsive styles */
 @media (max-width: 768px) {
@@ -131,7 +135,8 @@ html, body {
 
 @media (max-width: 480px) {
   .app-container {
-    padding: 5px;
+    padding: 40px 10px 10px 10px;
+    gap: 5px;
   }
   
   .google-map {
@@ -151,5 +156,16 @@ html, body {
   .greeting,
   .earnings {
     font-size: 14px;
+    margin: 5px 0; /* Reduced margins on mobile */
+  }
+  
+  .map-container {
+    width: min(75vw, 300px);
+    height: min(75vw, 300px);
+    margin: 0 auto;
+  }
+
+  .signout-container {
+    top: 5px;
   }
 }
