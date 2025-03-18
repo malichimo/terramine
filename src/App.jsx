@@ -401,7 +401,7 @@ function App() {
       {user && (
         <>
           <div className="greeting">
-            Welcome {user.displayName || "User"}, you have {user.terrabucks ?? 0} TB available.
+            Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB available.
           </div>
           <div className="button-container">
             <CheckInButton
