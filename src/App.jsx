@@ -46,14 +46,14 @@ function App() {
   const calculateTotalEarnings = useCallback(() => {
     const now = new Date();
     const earnings = ownedTerracres
-      .filter(terracre => terracre.ownerId === user.uid) // Filter for current user's terracres
+      .filter(terracre => terracre.ownerId === user?.uid) // Filter for current user's terracres
       .reduce((acc, terracre) => {
         const lastCollected = new Date(terracre.lastCollected);
         const hoursElapsed = (now - lastCollected) / (1000 * 60 * 60);
         return acc + (hoursElapsed * terracre.earningRate);
       }, 0);
     setTotalEarnings(earnings);
-  }, [ownedTerracres, user.uid]);
+  }, [ownedTerracres, user?.uid]);
 
   // Effect to update earnings every 30 seconds
   useEffect(() => {
