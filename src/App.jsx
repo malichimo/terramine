@@ -337,7 +337,7 @@ function App() {
       <header className="app-header">
         <h1>TerraMine</h1>
       </header>
-      <p className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</p>
+      <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
       <Suspense fallback={<p>Loading map resources...</p>}>
         <LoadScript
           googleMapsApiKey={GOOGLE_MAPS_API_KEY}
@@ -379,9 +379,9 @@ function App() {
       </Suspense>
       {user && (
         <>
-          <p className="greeting">
+          <div className="greeting">
             Welcome {user.displayName || "User"}, you have {user.terrabucks ?? 0} TB available.
-          </p>
+          </div>
           <div className="button-container">
             <CheckInButton
               user={user}
