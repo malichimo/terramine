@@ -291,7 +291,7 @@ function App() {
         />
       );
     }),
-    [ownedTerracres, zoom, user.uid, gridCells, snapToGridCenter]
+    [ownedTerracres, zoom, user?.uid, gridCells, snapToGridCenter]
   );
 
   // Effect to get user location
