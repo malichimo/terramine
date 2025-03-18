@@ -358,6 +358,14 @@ function App() {
               mapContainerClassName="map-container"
               center={userLocation || defaultCenter}
               zoom={zoom}
+              //need to adjust map sizing/styling here instead of css for whatever reason
+              mapContainerStyle={{
+                width: 'min(60vmin, 600px)',      // Slightly smaller map
+                height: 'min(60vmin, 600px)',     // Keep square ratio
+                margin: '10px auto',              // Consistent margin
+                marginTop: '5px',                 // Reduced top margin to bring map up
+                marginBottom: '0px'              // Added bottom margin for buttons
+              }}
               onLoad={(map) => {
                 mapRef.current = map;
                 console.log("✅ GoogleMap rendered");

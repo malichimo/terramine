@@ -1,6 +1,7 @@
 import React from "react";
 import { db } from "../firebase";
 import { doc, getDoc, setDoc, updateDoc, collection } from "firebase/firestore";
+import "./PurchaseButton.css";  // Add this import
 
 // Define TA types with different earning rates
 const TA_TYPES = [

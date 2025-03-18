@@ -1,15 +1,18 @@
 .checkin-button {
-  padding: 12px 24px; /* Larger for touch-friendliness */
-  background-color: #4CAF50; /* Green to suggest action/positive */
+  padding: 12px 24px;
+  background-color: #4CAF50;
   color: white;
   border: none;
   border-radius: 4px;
-  font-size: 16px; /* Readable on mobile */
+  font-size: 16px;
   cursor: pointer;
-  margin-top: 20px; /* Space above button */
-  transition: background-color 0.3s ease; /* Smooth hover effect */
+  transition: background-color 0.3s ease;
+  height: 40px; /* Match heights */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .checkin-button:hover {
-  background-color: #45a049; /* Darker green on hover */
+  background-color: #45a049;
 }
