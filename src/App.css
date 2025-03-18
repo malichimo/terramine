@@ -76,6 +76,11 @@ html, body {
   margin-bottom: 5px; /* Reduce margin to move closer to the map */
 }
 
+.earnings h3 {
+  font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+  padding-top: 0px;
+}
+
 /* Map container */
 .google-map {
   width: min(60vh, 90%); /* Base size on viewport height */
