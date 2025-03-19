@@ -12,19 +12,16 @@ import UserButton from './components/UserButton';
 import UserPage from './components/UserPage';
 import "./App.css";
 
-// Define constants for map and grid settings
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
-const GRID_SIZE = 5;
-const libraries = ["places"]; // Use "places" library for Google Maps
+const libraries = ["places"];
 
 console.log("TerraMine v1.30b - 30m grid, popup auth with URL logging, TA snaps to exact user cell");
 
 function App() {
   const isDevelopment = process.env.NODE_ENV === 'development';
 
-  // State variables for user, location, map, and other app states
   const [user, setUser] = useState(isDevelopment ? { uid: "devUser", displayName: "Developer", terrabucks: 1000 } : null);
   const [userLocation, setUserLocation] = useState(isDevelopment ? defaultCenter : null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
@@ -42,11 +39,10 @@ function App() {
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
 
-  // Function to calculate total earnings for the current user
   const calculateTotalEarnings = useCallback(() => {
     const now = new Date();
     const earnings = ownedTerracres
-      .filter(terracre => terracre.ownerId === user.uid) // Filter for current user's terracres
+      .filter(terracre => terracre.ownerId === user.uid)
       .reduce((acc, terracre) => {
         const lastCollected = new Date(terracre.lastCollected);
         const hoursElapsed = (now - lastCollected) / (1000 * 60 * 60);
@@ -55,7 +51,6 @@ function App() {
     setTotalEarnings(earnings);
   }, [ownedTerracres, user.uid]);
 
-  // Effect to update earnings every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       calculateTotalEarnings();
@@ -64,7 +59,6 @@ function App() {
     return () => clearInterval(interval);
   }, [calculateTotalEarnings]);
 
-  // Fetch owned terracres
   const fetchOwnedTerracres = useCallback(async () => {
     if (!user || fetchTerracresRef.current) return;
     fetchTerracresRef.current = true;
@@ -75,17 +69,16 @@ function App() {
       const properties = querySnapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .filter((t) => t.lat && t.lng && typeof t.lat === "number" && typeof t.lng === "number");
-      console.log("✅ Terracres fetched with data:", properties); // Log full data for debugging
+      console.log("✅ Terracres fetched with data:", properties);
       setOwnedTerracres(properties);
     } catch (error) {
       console.error("🔥 Terracres fetch error:", error);
       setOwnedTerracres([]);
     } finally {
-      fetchTerracresRef.current = false; // Reset only after completion
+      fetchTerracresRef.current = false;
     }
   }, [user]);
 
-  // Debounce utility
   function debounce(func, wait) {
     let timeout;
     return (...args) => {
@@ -94,18 +87,15 @@ function App() {
     };
   }
 
-  // Debounced fetch function
   const debouncedFetchOwnedTerracres = useCallback(
-    debounce(fetchOwnedTerracres, 500), // Wait 500ms before fetching
+    debounce(fetchOwnedTerracres, 500),
     [fetchOwnedTerracres]
   );
 
-  // Effect to fetch owned terracres when user or purchaseTrigger changes
   useEffect(() => {
     if (user) debouncedFetchOwnedTerracres();
   }, [debouncedFetchOwnedTerracres, purchaseTrigger, user]);
 
-  // Function to fetch user data
   const fetchUserData = useCallback(async (uid) => {
     try {
       const userRef = doc(db, "users", uid);
@@ -117,7 +107,7 @@ function App() {
             prevUser.terrabucks === userData.terrabucks &&
             prevUser.displayName === userData.displayName
           ) {
-            return prevUser; // No update needed
+            return prevUser;
           }
           return { ...prevUser, ...userData };
         });
@@ -129,14 +119,12 @@ function App() {
 
   const debouncedFetchUserData = useCallback(debounce(fetchUserData, 500), [fetchUserData]);
 
-  // Effect to fetch user data on mount and when user changes
   useEffect(() => {
     if (user) {
       debouncedFetchUserData(user.uid);
     }
   }, [user?.uid, debouncedFetchUserData]);
 
-  // Function to handle user sign-out
   const handleSignOut = async () => {
     try {
       await signOut(auth);
@@ -162,19 +150,17 @@ function App() {
     const terracreRef = doc(terracresRef, terracreId);
     const terracreSnap = await getDoc(terracreRef);
 
-    // Check if the terracre is already owned
     if (terracreSnap.exists()) {
       console.log(`⚠️ Terracre ${terracreId} already owned, skipping.`);
       return;
     }
 
-    // Check if the user has enough TerraBucks
     const userRef = doc(db, "users", user.uid);
     const userSnap = await getDoc(userRef);
     const userData = userSnap.data();
     const terrabucks = userData.terrabucks ?? 0;
 
-    const TERRACRE_COST = 100; // Define the cost of one TerraAcre
+    const TERRACRE_COST = 100;
 
     if (terrabucks < TERRACRE_COST) {
       console.log("❌ Not enough TerraBucks to purchase Terracre.");
@@ -182,7 +168,6 @@ function App() {
       return;
     }
 
-    // If not owned and user has enough TerraBucks, purchase it
     const newTerracre = {
       id: terracreId,
       lat: gridCenter.lat,
@@ -190,21 +175,19 @@ function App() {
       ownerId: user.uid,
       purchasedAt: new Date().toISOString(),
       lastCollected: new Date().toISOString(),
-      earningRate: 0.05, // Example earning rate, replace with actual logic
+      earningRate: 0.05,
     };
 
     console.log(`✅ Purchasing new Terracre: ${terracreId}`);
     await setDoc(terracreRef, newTerracre);
 
-    // Deduct the cost from the user's TerraBucks
     await updateDoc(userRef, {
       terrabucks: terrabucks - TERRACRE_COST,
     });
 
-    setPurchaseTrigger((prev) => prev + 1); // Only increment here
+    setPurchaseTrigger((prev) => prev + 1);
   };
 
-  // Function to generate grid lines
   const getGridLines = useCallback((center) => {
     if (!center || !mapRef.current) return [];
     const bounds = mapRef.current.getBounds();
@@ -244,7 +227,6 @@ function App() {
     return grid;
   }, []);
 
-  // Function to snap user location to grid center
   const snapToGridCenter = useCallback((lat, lng, gridCells) => {
     if (!gridCells || !gridCells.length) return { lat, lng };
     const metersPerDegreeLat = 111000;
@@ -262,14 +244,12 @@ function App() {
     return center;
   }, []);
 
-  // Memoize grid cells and snapped user grid center
   const gridCells = useMemo(() => getGridLines(userLocation), [userLocation, getGridLines]);
   const snappedUserGridCenter = useMemo(
     () => (userLocation ? snapToGridCenter(userLocation.lat, userLocation.lng, gridCells) : null),
     [userLocation, gridCells, snapToGridCenter]
   );
 
-  // Memoize grid polygons and terracre markers
   const GridPolygons = useMemo(() =>
     gridCells.map((cell, index) => (
       <Polygon
@@ -308,7 +288,6 @@ function App() {
     [ownedTerracres, zoom, user?.uid, gridCells, snapToGridCenter]
   );
 
-  // Effect to get user location
   useEffect(() => {
     if (!isDevelopment) {
       navigator.geolocation.getCurrentPosition(
@@ -325,23 +304,18 @@ function App() {
     }
   }, [isDevelopment]);
 
-  // Function to get marker scale based on zoom level
   function getMarkerScale(zoom) {
-    // Example scale calculation based on zoom level
     const scale = Math.pow(2, zoom - 18);
-    return Math.max(1, Math.min(4, scale)); // Ensure scale is between 1 and 4
+    return Math.max(1, Math.min(4, scale));
   }
 
   const handleUserPage = () => {
     setShowUserPage(!showUserPage);
   };
 
-  // Render error message if any error occurs
   if (error) return <div>Error: {error}</div>;
-  // Render login component if user is not authenticated and not in development mode
   if (!user && !apiLoaded && !isDevelopment) return <Login onLoginSuccess={setUser} />;
 
-  // Interface/Output 
   return (
     <div className="app-container">
       {user && (
@@ -361,7 +335,7 @@ function App() {
           <Suspense fallback={<p>Loading map resources...</p>}>
             <LoadScript
               googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-              libraries={libraries} // Use static libraries
+              libraries={libraries}
               onLoad={() => {
                 console.log("✅ LoadScript loaded");
                 setApiLoaded(true);
@@ -379,9 +353,9 @@ function App() {
                   center={userLocation || defaultCenter}
                   zoom={zoom}
                   mapContainerStyle={{
-                    width: 'min(80vw, 500px)', // Limit max width to 500px
+                    width: 'min(80vw, 500px)',
                     aspectRatio: '1 / 1',
-                    height: 'min(80vw, 500px)', // Match width for square ratio
+                    height: 'min(80vw, 500px)',
                     margin: '10px auto',
                     display: 'block',
                     position: 'relative',
