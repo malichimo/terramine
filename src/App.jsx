@@ -313,6 +313,12 @@ function App() {
     setShowUserPage(!showUserPage);
   };
 
+  // Calculate the number of mines of each type
+  const rockMines = ownedTerracres.filter(terracre => terracre.type === 'rock').length;
+  const coalMines = ownedTerracres.filter(terracre => terracre.type === 'coal').length;
+  const goldMines = ownedTerracres.filter(terracre => terracre.type === 'gold').length;
+  const diamondMines = ownedTerracres.filter(terracre => terracre.type === 'diamond').length;
+
   if (error) return <div>Error: {error}</div>;
   if (!user && !apiLoaded && !isDevelopment) return <Login onLoginSuccess={setUser} />;
 
@@ -325,7 +331,7 @@ function App() {
         </>
       )}
       {showUserPage ? (
-        <UserPage user={user} onClose={() => setShowUserPage(false)} earnings={totalEarnings} rockMines={0} coalMines={0} goldMines={0} diamondMines={0} checkInMessages={[]} />
+        <UserPage user={user} onClose={() => setShowUserPage(false)} earnings={totalEarnings} rockMines={rockMines} coalMines={coalMines} goldMines={goldMines} diamondMines={diamondMines} checkInMessages={[]} />
       ) : (
         <>
           <header className="app-header">
