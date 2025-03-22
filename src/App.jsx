@@ -408,6 +408,20 @@ const diamondMines = ownedTerracres.filter(
                 >
                   {GridPolygons}
                   {TerracreMarkers}
+                  {userLocation && (
+                    <Marker
+                      position={userLocation}
+                      icon={{
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 8,
+                        fillColor: "#4285F4", // Google's blue
+                        fillOpacity: 1,
+                        strokeWeight: 2,
+                        strokeColor: "#ffffff",
+                      }}
+                      title="You"
+                    />
+                  )}
                 </GoogleMap>
               ) : (
                 <p>{userLocation ? "Initializing map..." : "Getting your location..."}</p>
