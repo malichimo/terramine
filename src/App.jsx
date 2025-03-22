@@ -315,21 +315,31 @@ function App() {
   };
 
   // ✅ Fixed logic (counts only mines owned by the current user)
+ // 🗺️ Optional: typeMap for consistent handling or future use
+const typeMap = {
+  'Rock Mine': 'rock',
+  'Coal Mine': 'coal',
+  'Gold Mine': 'gold',
+  'Diamond Mine': 'diamond',
+};
+
+// 🧮 Corrected counts based on taType and ownership
 const rockMines = ownedTerracres.filter(
-  (terracre) => terracre.type === 'rock' && terracre.ownerId === user?.uid
+  (terracre) => terracre.taType === 'Rock Mine' && terracre.ownerId === user?.uid
 ).length;
 
 const coalMines = ownedTerracres.filter(
-  (terracre) => terracre.type === 'coal' && terracre.ownerId === user?.uid
+  (terracre) => terracre.taType === 'Coal Mine' && terracre.ownerId === user?.uid
 ).length;
 
 const goldMines = ownedTerracres.filter(
-  (terracre) => terracre.type === 'gold' && terracre.ownerId === user?.uid
+  (terracre) => terracre.taType === 'Gold Mine' && terracre.ownerId === user?.uid
 ).length;
 
 const diamondMines = ownedTerracres.filter(
-  (terracre) => terracre.type === 'diamond' && terracre.ownerId === user?.uid
+  (terracre) => terracre.taType === 'Diamond Mine' && terracre.ownerId === user?.uid
 ).length;
+
 
 
   if (error) return <div>Error: {error}</div>;
