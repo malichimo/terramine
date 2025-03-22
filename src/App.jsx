@@ -314,11 +314,23 @@ function App() {
     setShowUserPage(!showUserPage);
   };
 
-  // Calculate the number of mines of each type
-  const rockMines = ownedTerracres.filter(terracre => terracre.type === 'rock').length;
-  const coalMines = ownedTerracres.filter(terracre => terracre.type === 'coal').length;
-  const goldMines = ownedTerracres.filter(terracre => terracre.type === 'gold').length;
-  const diamondMines = ownedTerracres.filter(terracre => terracre.type === 'diamond').length;
+  // ✅ Fixed logic (counts only mines owned by the current user)
+const rockMines = ownedTerracres.filter(
+  (terracre) => terracre.type === 'rock' && terracre.ownerId === user?.uid
+).length;
+
+const coalMines = ownedTerracres.filter(
+  (terracre) => terracre.type === 'coal' && terracre.ownerId === user?.uid
+).length;
+
+const goldMines = ownedTerracres.filter(
+  (terracre) => terracre.type === 'gold' && terracre.ownerId === user?.uid
+).length;
+
+const diamondMines = ownedTerracres.filter(
+  (terracre) => terracre.type === 'diamond' && terracre.ownerId === user?.uid
+).length;
+
 
   if (error) return <div>Error: {error}</div>;
   if (!user && !apiLoaded && !isDevelopment) return <Login onLoginSuccess={setUser} />;
