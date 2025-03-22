@@ -176,6 +176,7 @@ function App() {
       purchasedAt: new Date().toISOString(),
       lastCollected: new Date().toISOString(),
       earningRate: 0.05,
+      type: "rock" // Example type, replace with actual logic
     };
 
     console.log(`✅ Purchasing new Terracre: ${terracreId}`);
