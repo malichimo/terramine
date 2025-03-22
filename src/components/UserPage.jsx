@@ -12,10 +12,11 @@ const UserPage = ({ user, onClose, earnings, rockMines, coalMines, goldMines, di
         <p>Name: {user.displayName}</p>
         <p>TerraBucks: {user.terrabucks}</p>
         <p>Earnings from Mines: ${earnings.toFixed(2)}</p>
-        <p># of Rock Mines: {rockMines}</p>
-        <p># of Coal Mines: {coalMines}</p>
-        <p># of Gold Mines: {goldMines}</p>
-        <p># of Diamond Mines: {diamondMines}</p>
+        <p>🪨 Rock Mines: {rockMines}</p>
+        <p>⛏️ Coal Mines: {coalMines}</p>
+        <p>🪙 Gold Mines: {goldMines}</p>
+        <p>💎 Diamond Mines: {diamondMines}</p>
+
         <div className="check-in-messages">
           <h2>Check-In Messages</h2>
           <ul>
