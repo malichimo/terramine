@@ -245,11 +245,11 @@ function App() {
     return center;
   }, []);
 
-  const gridCells = useMemo(() => getGridLines(userLocation), [userLocation, getGridLines]);
-  const snappedUserGridCenter = useMemo(
-    () => (userLocation ? snapToGridCenter(userLocation.lat, userLocation.lng, gridCells) : null),
-    [userLocation, gridCells, snapToGridCenter]
-  );
+  const gridCells = useMemo(() => getGridLines(userLocation), [userLocation, mapRef.current]);
+  const snappedUserGridCenter = useMemo(() => {
+    if (!userLocation || !gridCells.length) return null;
+    return snapToGridCenter(userLocation.lat, userLocation.lng, gridCells);
+  }, [userLocation, gridCells]);
 
   const GridPolygons = useMemo(() =>
     gridCells.map((cell, index) => (
@@ -392,11 +392,15 @@ const diamondMines = ownedTerracres.filter(
                   onLoad={(map) => {
                     mapRef.current = map;
                     console.log("✅ GoogleMap rendered");
+                    let zoomTimeout;
                     map.addListener("zoom_changed", () => {
-                      const newZoom = map.getZoom();
-                      setZoom(newZoom);
-                      setMapKey(Date.now());
-                      console.log("Zoom changed:", newZoom);
+                      clearTimeout(zoomTimeout);
+                      zoomTimeout = setTimeout(() => {
+                        const newZoom = map.getZoom();
+                        setZoom(newZoom);
+                        setMapKey(Date.now());
+                        console.log("Zoom changed:", newZoom);
+                      }, 300); // Delay to prevent rapid firing
                     });
                   }}
                   onBoundsChanged={() => {
