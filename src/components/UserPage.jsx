@@ -1,4 +1,4 @@
-import React, { useEffect } from "react"; // ⬅️ Add useEffect here
+import React, { useEffect } from "react";
 import "./UserPage.css";
 
 const UserPage = ({
@@ -11,7 +11,6 @@ const UserPage = ({
   diamondMines,
   checkInMessages,
 }) => {
-  // ✅ Add this to track mounting/unmounting
   useEffect(() => {
     console.log("📦 UserPage mounted");
     return () => {
@@ -45,10 +44,6 @@ const UserPage = ({
       </div>
     </div>
   );
-    useEffect(() => {
-      console.log(`🔁 showUserPage is now: ${showUserPage}`);
-    }, [showUserPage]);
-    
 };
 
 export default UserPage;
