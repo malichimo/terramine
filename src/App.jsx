@@ -141,32 +141,75 @@ function App() {
 
   const handlePurchase = async (gridCenter) => {
     if (!user || !gridCenter) return;
-
+  
     const terracresRef = collection(db, "terracres");
-
+  
     console.log("🔹 Attempting to purchase Terracre at:", gridCenter);
-
+  
     const terracreId = `${gridCenter.lat.toFixed(7)}-${gridCenter.lng.toFixed(7)}`;
     const terracreRef = doc(terracresRef, terracreId);
     const terracreSnap = await getDoc(terracreRef);
-
+  
     if (terracreSnap.exists()) {
       console.log(`⚠️ Terracre ${terracreId} already owned, skipping.`);
       return;
     }
-
+  
     const userRef = doc(db, "users", user.uid);
     const userSnap = await getDoc(userRef);
     const userData = userSnap.data();
     const terrabucks = userData.terrabucks ?? 0;
-
+  
     const TERRACRE_COST = 100;
-
+  
     if (terrabucks < TERRACRE_COST) {
       console.log("❌ Not enough TerraBucks to purchase Terracre.");
       setError("Not enough TerraBucks to purchase Terracre.");
       return;
     }
+  
+    // 🎯 Clearly labeled probabilities for TA types (editable later via UI)
+    const TA_PROBABILITIES = [
+      { type: "Rock Mine", rate: 0.05, chance: 0.5 },
+      { type: "Coal Mine", rate: 0.1, chance: 0.3 },
+      { type: "Gold Mine", rate: 0.2, chance: 0.15 },
+      { type: "Diamond Mine", rate: 0.5, chance: 0.05 },
+    ];
+  
+    const getRandomTaType = () => {
+      const rand = Math.random();
+      let sum = 0;
+      for (const ta of TA_PROBABILITIES) {
+        sum += ta.chance;
+        if (rand <= sum) return ta;
+      }
+      return TA_PROBABILITIES[0]; // fallback
+    };
+  
+    const chosenType = getRandomTaType(); // 🧠 Assigned based on weighted randomness
+  
+    const newTerracre = {
+      id: terracreId,
+      lat: gridCenter.lat,
+      lng: gridCenter.lng,
+      ownerId: user.uid,
+      purchasedAt: new Date().toISOString(),
+      lastCollected: new Date().toISOString(),
+      earningRate: chosenType.rate,
+      taType: chosenType.type, // ✅ using taType consistently
+    };
+  
+    console.log(`✅ Purchasing new ${chosenType.type} with ID ${terracreId}`);
+  
+    await setDoc(terracreRef, newTerracre);
+  
+    await updateDoc(userRef, {
+      terrabucks: terrabucks - TERRACRE_COST,
+    });
+  
+    setPurchaseTrigger((prev) => prev + 1);
+  };
+  
 
     const newTerracre = {
       id: terracreId,
