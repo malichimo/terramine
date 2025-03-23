@@ -199,7 +199,7 @@ function App() {
     )?.center || { lat, lng };
   }, []);
 
-  const gridCells = useMemo(() => getGridLines(userLocation), [userLocation]);
+  const gridCells = useMemo(() => (mapLoaded ? getGridLines(userLocation) : []), [userLocation, mapLoaded]);
   const snappedUserGridCenter = useMemo(() => {
     if (!userLocation || !gridCells.length) return null;
     return snapToGridCenter(userLocation.lat, userLocation.lng, gridCells);
