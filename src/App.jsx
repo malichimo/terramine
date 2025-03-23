@@ -138,6 +138,24 @@ function App() {
     }),
     [ownedTerracres, zoom, user?.uid]
   );
+  const fetchOwnedTerracres = useCallback(async () => {
+    if (!user || fetchTerracresRef.current) return;
+    fetchTerracresRef.current = true;
+    try {
+      const terracresRef = collection(db, "terracres");
+      const snapshot = await getDocs(terracresRef);
+      const userTerracres = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(doc => doc.ownerId === user.uid);
+  
+      setOwnedTerracres(userTerracres);
+    } catch (err) {
+      console.error("🔥 Error fetching owned Terracres:", err);
+      setOwnedTerracres([]);
+    } finally {
+      fetchTerracresRef.current = false;
+    }
+  }, [user]);  
 
   const handlePurchase = async (gridCenter) => {
     if (!user || !gridCenter) return;
