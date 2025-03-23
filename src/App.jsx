@@ -188,27 +188,6 @@ function App() {
   
     const chosenType = getRandomTaType(); // 🧠 Assigned based on weighted randomness
   
-    const newTerracre = {
-      id: terracreId,
-      lat: gridCenter.lat,
-      lng: gridCenter.lng,
-      ownerId: user.uid,
-      purchasedAt: new Date().toISOString(),
-      lastCollected: new Date().toISOString(),
-      earningRate: chosenType.rate,
-      taType: chosenType.type, // ✅ using taType consistently
-    };
-  
-    console.log(`✅ Purchasing new ${chosenType.type} with ID ${terracreId}`);
-  
-    await setDoc(terracreRef, newTerracre);
-  
-    await updateDoc(userRef, {
-      terrabucks: terrabucks - TERRACRE_COST,
-    });
-  
-    setPurchaseTrigger((prev) => prev + 1);
-  };
   
 
     const newTerracre = {
