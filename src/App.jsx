@@ -207,6 +207,19 @@ function App() {
   // -- Type counts --
   const countMines = (type) =>
     ownedTerracres.filter((t) => t.taType === type && t.ownerId === user?.uid).length;
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      console.log("✅ User signed out");
+      setUser(null);
+      setApiLoaded(false);
+      setMapLoaded(false);
+      window.location.reload();
+    } catch (error) {
+      console.error("❌ Sign-out error:", error);
+      setError("Failed to sign out.");
+    }
+  };
 
   if (error) return <div>Error: {error}</div>;
   if (!user && !apiLoaded && !isDevelopment) return <Login onLoginSuccess={setUser} />;
