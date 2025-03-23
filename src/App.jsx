@@ -190,27 +190,6 @@ function App() {
   
   
 
-    const newTerracre = {
-      id: terracreId,
-      lat: gridCenter.lat,
-      lng: gridCenter.lng,
-      ownerId: user.uid,
-      purchasedAt: new Date().toISOString(),
-      lastCollected: new Date().toISOString(),
-      earningRate: 0.05,
-      taType: "Rock Mine" // Example type, replace with actual logic
-    };
-
-    console.log(`✅ Purchasing new Terracre: ${terracreId}`);
-    await setDoc(terracreRef, newTerracre);
-
-    await updateDoc(userRef, {
-      terrabucks: terrabucks - TERRACRE_COST,
-    });
-
-    setPurchaseTrigger((prev) => prev + 1);
-  };
-
   const getGridLines = useCallback((center) => {
     if (!center || !mapRef.current) return [];
     const bounds = mapRef.current.getBounds();
@@ -484,5 +463,5 @@ const diamondMines = ownedTerracres.filter(
     </div>
   );
 }
-
+}
 export default App;

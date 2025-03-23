@@ -1,7 +1,24 @@
-import React from "react";
+import React, { useEffect } from "react"; // ⬅️ Add useEffect here
 import "./UserPage.css";
 
-const UserPage = ({ user, onClose, earnings, rockMines, coalMines, goldMines, diamondMines, checkInMessages }) => {
+const UserPage = ({
+  user,
+  onClose,
+  earnings,
+  rockMines,
+  coalMines,
+  goldMines,
+  diamondMines,
+  checkInMessages,
+}) => {
+  // ✅ Add this to track mounting/unmounting
+  useEffect(() => {
+    console.log("📦 UserPage mounted");
+    return () => {
+      console.log("👋 UserPage unmounted");
+    };
+  }, []);
+
   return (
     <div className="user-page">
       <div className="page-header">
@@ -28,6 +45,10 @@ const UserPage = ({ user, onClose, earnings, rockMines, coalMines, goldMines, di
       </div>
     </div>
   );
+    useEffect(() => {
+      console.log(`🔁 showUserPage is now: ${showUserPage}`);
+    }, [showUserPage]);
+    
 };
 
 export default UserPage;
