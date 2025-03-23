@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, Suspense, useRef } from "react";
 import { auth } from "./firebase";
-import { onAuthStateChanged, signOut, getRedirectResult } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
@@ -17,182 +17,54 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 
-console.log("TerraMine v1.30b - 30m grid, popup auth with URL logging, TA snaps to exact user cell");
+console.log("TerraMine v1.30c - Snapped grid purchase, reduced re-renders");
 
 function App() {
-  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isDevelopment = process.env.NODE_ENV === "development";
 
   const [user, setUser] = useState(isDevelopment ? { uid: "devUser", displayName: "Developer", terrabucks: 1000 } : null);
   const [userLocation, setUserLocation] = useState(isDevelopment ? defaultCenter : null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
+  const [mapKey, setMapKey] = useState(Date.now());
+  const [zoom, setZoom] = useState(18);
+  const [totalEarnings, setTotalEarnings] = useState(0);
+  const [showUserPage, setShowUserPage] = useState(false);
   const [checkInStatus, setCheckInStatus] = useState("");
-  const [mapLoaded, setMapLoaded] = useState(false);
   const [apiLoaded, setApiLoaded] = useState(false);
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
-  const [mapKey, setMapKey] = useState(Date.now());
-  const [zoom, setZoom] = useState(18);
-  const [purchasedThisSession, setPurchasedThisSession] = useState(null);
-  const [totalEarnings, setTotalEarnings] = useState(0);
-  const [showUserPage, setShowUserPage] = useState(false);
 
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
 
-  const calculateTotalEarnings = useCallback(() => {
-    const now = new Date();
-    const earnings = ownedTerracres
-      .filter(terracre => terracre.ownerId === user?.uid)
-      .reduce((acc, terracre) => {
-        const lastCollected = new Date(terracre.lastCollected);
-        const hoursElapsed = (now - lastCollected) / (1000 * 60 * 60);
-        return acc + (hoursElapsed * terracre.earningRate);
-      }, 0);
-    setTotalEarnings(earnings);
-  }, [ownedTerracres, user?.uid]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      calculateTotalEarnings();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [calculateTotalEarnings]);
-
-  const fetchOwnedTerracres = useCallback(async () => {
-    if (!user || fetchTerracresRef.current) return;
-    fetchTerracresRef.current = true;
-    try {
-      console.log("📡 Fetching Terracres for user:", user.uid);
-      const terracresRef = collection(db, "terracres");
-      const querySnapshot = await getDocs(terracresRef);
-      const properties = querySnapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((t) => t.lat && t.lng && typeof t.lat === "number" && typeof t.lng === "number");
-      console.log("✅ Terracres fetched with data:", properties);
-      setOwnedTerracres(properties);
-    } catch (error) {
-      console.error("🔥 Terracres fetch error:", error);
-      setOwnedTerracres([]);
-    } finally {
-      fetchTerracresRef.current = false;
-    }
-  }, [user]);
-
-  function debounce(func, wait) {
-    let timeout;
-    return (...args) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
+  // ---- Snapping and Grid Helpers ----
+  const getGridIdFromLatLng = (lat, lng) => {
+    const metersPerDegreeLat = 111000;
+    const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat * Math.PI) / 180);
+    const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
+    const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
+    const snappedLat = Math.floor(lat / deltaLat) * deltaLat + deltaLat / 2;
+    const snappedLng = Math.floor(lng / deltaLng) * deltaLng + deltaLng / 2;
+    return {
+      lat: snappedLat,
+      lng: snappedLng,
+      id: `${snappedLat.toFixed(7)}-${snappedLng.toFixed(7)}`
     };
-  }
+  };
 
-  const debouncedFetchOwnedTerracres = useCallback(
-    debounce(fetchOwnedTerracres, 500),
-    [fetchOwnedTerracres]
-  );
-
-  useEffect(() => {
-    if (user) debouncedFetchOwnedTerracres();
-  }, [debouncedFetchOwnedTerracres, purchaseTrigger, user]);
-
-  const fetchUserData = useCallback(async (uid) => {
-    try {
-      const userRef = doc(db, "users", uid);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        const userData = userSnap.data();
-        setUser((prevUser) => {
-          if (
-            prevUser.terrabucks === userData.terrabucks &&
-            prevUser.displayName === userData.displayName
-          ) {
-            return prevUser;
-          }
-          return { ...prevUser, ...userData };
-        });
-      }
-    } catch (error) {
-      console.error("🔥 User data fetch error:", error);
-    }
+  const snapToGridCenter = useCallback((lat, lng, gridCells) => {
+    const cell = gridCells?.find(cell =>
+      lat >= cell.paths[0].lat && lat < cell.paths[1].lat &&
+      lng >= cell.paths[0].lng && lng < cell.paths[2].lng
+    );
+    return cell?.center ?? getGridIdFromLatLng(lat, lng);
   }, []);
-
-  const debouncedFetchUserData = useCallback(debounce(fetchUserData, 500), [fetchUserData]);
-
-  useEffect(() => {
-    if (user) {
-      debouncedFetchUserData(user.uid);
-    }
-  }, [user?.uid, debouncedFetchUserData]);
-
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-      console.log("✅ User signed out");
-      setUser(null);
-      setApiLoaded(false);
-      setMapLoaded(false);
-      window.location.reload();
-    } catch (error) {
-      console.error("❌ Sign-out error:", error);
-      setError("Failed to sign out.");
-    }
-  };
-
-  const handlePurchase = async (gridCenter) => {
-    if (!user || !gridCenter) return;
-
-    const terracresRef = collection(db, "terracres");
-
-    console.log("🔹 Attempting to purchase Terracre at:", gridCenter);
-
-    const terracreId = `${gridCenter.lat.toFixed(7)}-${gridCenter.lng.toFixed(7)}`;
-    const terracreRef = doc(terracresRef, terracreId);
-    const terracreSnap = await getDoc(terracreRef);
-
-    if (terracreSnap.exists()) {
-      console.log(`⚠️ Terracre ${terracreId} already owned, skipping.`);
-      return;
-    }
-
-    const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
-    const userData = userSnap.data();
-    const terrabucks = userData.terrabucks ?? 0;
-
-    const TERRACRE_COST = 100;
-
-    if (terrabucks < TERRACRE_COST) {
-      console.log("❌ Not enough TerraBucks to purchase Terracre.");
-      setError("Not enough TerraBucks to purchase Terracre.");
-      return;
-    }
-
-    const newTerracre = {
-      id: terracreId,
-      lat: gridCenter.lat,
-      lng: gridCenter.lng,
-      ownerId: user.uid,
-      purchasedAt: new Date().toISOString(),
-      lastCollected: new Date().toISOString(),
-      earningRate: 0.05,
-      type: "rock" // Example type, replace with actual logic
-    };
-
-    console.log(`✅ Purchasing new Terracre: ${terracreId}`);
-    await setDoc(terracreRef, newTerracre);
-
-    await updateDoc(userRef, {
-      terrabucks: terrabucks - TERRACRE_COST,
-    });
-
-    setPurchaseTrigger((prev) => prev + 1);
-  };
 
   const getGridLines = useCallback((center) => {
     if (!center || !mapRef.current) return [];
     const bounds = mapRef.current.getBounds();
     if (!bounds) return [];
+
     const ne = bounds.getNorthEast();
     const sw = bounds.getSouthWest();
     const metersPerDegreeLat = 111000;
@@ -200,51 +72,29 @@ function App() {
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
 
-    const minLat = Math.floor(sw.lat() / deltaLat) * deltaLat;
-    const maxLat = Math.ceil(ne.lat() / deltaLat) * deltaLat;
-    const minLng = Math.floor(sw.lng() / deltaLng) * deltaLng;
-    const maxLng = Math.ceil(ne.lng() / deltaLng) * deltaLng;
-
     const grid = [];
-    for (let lat = minLat; lat < maxLat; lat += deltaLat) {
-      for (let lng = minLng; lng < maxLng; lng += deltaLng) {
-        const baseLat = lat;
-        const baseLng = lng;
+    for (let lat = sw.lat(); lat < ne.lat(); lat += deltaLat) {
+      for (let lng = sw.lng(); lng < ne.lng(); lng += deltaLng) {
+        const baseLat = Math.floor(lat / deltaLat) * deltaLat;
+        const baseLng = Math.floor(lng / deltaLng) * deltaLng;
         const centerLat = baseLat + deltaLat / 2;
         const centerLng = baseLng + deltaLng / 2;
+
         grid.push({
+          center: { lat: centerLat, lng: centerLng },
           paths: [
             { lat: baseLat, lng: baseLng },
             { lat: baseLat + deltaLat, lng: baseLng },
             { lat: baseLat + deltaLat, lng: baseLng + deltaLng },
             { lat: baseLat, lng: baseLng + deltaLng },
-            { lat: baseLat, lng: baseLng },
-          ],
-          center: { lat: centerLat, lng: centerLng },
+            { lat: baseLat, lng: baseLng }
+          ]
         });
       }
     }
-    console.log("Grid generated:", grid.length, "cells");
+
     return grid;
   }, []);
-
-  const snapToGridCenter = useCallback((lat, lng, gridCells) => {
-    if (!gridCells || !gridCells.length) return { lat, lng };
-    const metersPerDegreeLat = 111000;
-    const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat * Math.PI) / 180);
-    const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
-    const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
-    const baseLat = Math.floor(lat / deltaLat) * deltaLat;
-    const baseLng = Math.floor(lng / deltaLng) * deltaLng;
-    const userCell = gridCells.find(
-      (cell) =>
-        lat >= cell.paths[0].lat && lat < cell.paths[1].lat && lng >= cell.paths[0].lng && lng < cell.paths[2].lng
-    );
-    const center = userCell ? userCell.center : { lat: baseLat + deltaLat / 2, lng: baseLng + deltaLng / 2 };
-    console.log("Snapped - User:", { lat, lng }, "Cell:", center);
-    return center;
-  }, []);
-
   const gridCells = useMemo(() => getGridLines(userLocation), [userLocation, mapRef.current]);
   const snappedUserGridCenter = useMemo(() => {
     if (!userLocation || !gridCells.length) return null;
@@ -269,14 +119,14 @@ function App() {
 
   const TerracreMarkers = useMemo(() =>
     ownedTerracres.map((terracre) => {
-      const snappedPosition = snapToGridCenter(terracre.lat, terracre.lng, gridCells);
+      const { lat, lng } = getGridIdFromLatLng(terracre.lat, terracre.lng);
       return (
         <Marker
           key={terracre.id}
-          position={snappedPosition}
+          position={{ lat, lng }}
           icon={{
             path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
-            scale: getMarkerScale(zoom),
+            scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
             fillColor: terracre.ownerId === user.uid ? "blue" : "green",
             fillOpacity: 1,
             strokeWeight: 2,
@@ -286,61 +136,77 @@ function App() {
         />
       );
     }),
-    [ownedTerracres, zoom, user?.uid, gridCells, snapToGridCenter]
+    [ownedTerracres, zoom, user?.uid]
   );
+
+  const handlePurchase = async (gridCenter) => {
+    if (!user || !gridCenter) return;
+    const snapped = getGridIdFromLatLng(gridCenter.lat, gridCenter.lng);
+    const terracreId = snapped.id;
+    const terracresRef = collection(db, "terracres");
+    const terracreRef = doc(terracresRef, terracreId);
+    const terracreSnap = await getDoc(terracreRef);
+
+    if (terracreSnap.exists()) {
+      console.log(`⚠️ Terracre ${terracreId} already owned`);
+      return;
+    }
+
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    const userData = userSnap.data();
+    const terrabucks = userData.terrabucks ?? 0;
+    const TERRACRE_COST = 100;
+
+    if (terrabucks < TERRACRE_COST) {
+      setError("Not enough TerraBucks to purchase.");
+      return;
+    }
+
+    const newTerracre = {
+      id: terracreId,
+      lat: snapped.lat,
+      lng: snapped.lng,
+      ownerId: user.uid,
+      purchasedAt: new Date().toISOString(),
+      lastCollected: new Date().toISOString(),
+      earningRate: 0.05,
+      taType: "Rock Mine"
+    };
+
+    await setDoc(terracreRef, newTerracre);
+    await updateDoc(userRef, { terrabucks: terrabucks - TERRACRE_COST });
+    setPurchaseTrigger((prev) => prev + 1);
+  };
 
   useEffect(() => {
     if (!isDevelopment) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserLocation({ lat: latitude, lng: longitude });
-          console.log("✅ Location Retrieved:", position.coords);
+        (pos) => {
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         },
-        (error) => {
-          console.error("❌ Error getting location:", error);
-          setError("Failed to get location.");
-        }
+        (err) => setError("Failed to get location.")
       );
     }
   }, [isDevelopment]);
 
-  function getMarkerScale(zoom) {
-    const scale = Math.pow(2, zoom - 18);
-    return Math.max(1, Math.min(4, scale));
-  }
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      const earnings = ownedTerracres
+        .filter(t => t.ownerId === user?.uid)
+        .reduce((acc, t) => {
+          const hours = (now - new Date(t.lastCollected)) / (1000 * 60 * 60);
+          return acc + hours * (t.earningRate ?? 0);
+        }, 0);
+      setTotalEarnings(earnings);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [ownedTerracres, user?.uid]);
 
-  const handleUserPage = () => {
-    setShowUserPage(!showUserPage);
-  };
-
-  // ✅ Fixed logic (counts only mines owned by the current user)
- // 🗺️ Optional: typeMap for consistent handling or future use
-const typeMap = {
-  'Rock Mine': 'rock',
-  'Coal Mine': 'coal',
-  'Gold Mine': 'gold',
-  'Diamond Mine': 'diamond',
-};
-
-// 🧮 Corrected counts based on taType and ownership
-const rockMines = ownedTerracres.filter(
-  (terracre) => terracre.taType === 'Rock Mine' && terracre.ownerId === user?.uid
-).length;
-
-const coalMines = ownedTerracres.filter(
-  (terracre) => terracre.taType === 'Coal Mine' && terracre.ownerId === user?.uid
-).length;
-
-const goldMines = ownedTerracres.filter(
-  (terracre) => terracre.taType === 'Gold Mine' && terracre.ownerId === user?.uid
-).length;
-
-const diamondMines = ownedTerracres.filter(
-  (terracre) => terracre.taType === 'Diamond Mine' && terracre.ownerId === user?.uid
-).length;
-
-
+  // -- Type counts --
+  const countMines = (type) =>
+    ownedTerracres.filter((t) => t.taType === type && t.ownerId === user?.uid).length;
 
   if (error) return <div>Error: {error}</div>;
   if (!user && !apiLoaded && !isDevelopment) return <Login onLoginSuccess={setUser} />;
@@ -349,12 +215,21 @@ const diamondMines = ownedTerracres.filter(
     <div className="app-container">
       {user && (
         <>
-          {!showUserPage && <UserButton onUser={handleUserPage} />}
+          {!showUserPage && <UserButton onUser={() => setShowUserPage(true)} />}
           <SignOutButton onSignOut={handleSignOut} />
         </>
       )}
       {showUserPage ? (
-        <UserPage user={user} onClose={() => setShowUserPage(false)} earnings={totalEarnings} rockMines={rockMines} coalMines={coalMines} goldMines={goldMines} diamondMines={diamondMines} checkInMessages={[]} />
+        <UserPage
+          user={user}
+          onClose={() => setShowUserPage(false)}
+          earnings={totalEarnings}
+          rockMines={countMines("Rock Mine")}
+          coalMines={countMines("Coal Mine")}
+          goldMines={countMines("Gold Mine")}
+          diamondMines={countMines("Diamond Mine")}
+          checkInMessages={[]}
+        />
       ) : (
         <>
           <header className="app-header">
@@ -365,15 +240,8 @@ const diamondMines = ownedTerracres.filter(
             <LoadScript
               googleMapsApiKey={GOOGLE_MAPS_API_KEY}
               libraries={libraries}
-              onLoad={() => {
-                console.log("✅ LoadScript loaded");
-                setApiLoaded(true);
-                setMapLoaded(true);
-              }}
-              onError={(e) => {
-                console.error("❌ LoadScript error:", e);
-                setError("Failed to load map.");
-              }}
+              onLoad={() => setApiLoaded(true)}
+              onError={(e) => setError("Failed to load map.")}
             >
               {apiLoaded && userLocation ? (
                 <GoogleMap
@@ -382,32 +250,18 @@ const diamondMines = ownedTerracres.filter(
                   center={userLocation || defaultCenter}
                   zoom={zoom}
                   mapContainerStyle={{
-                    width: 'min(80vw, 500px)',
-                    aspectRatio: '1 / 1',
-                    height: 'min(80vw, 500px)',
-                    margin: '10px auto',
-                    display: 'block',
-                    position: 'relative',
+                    width: "min(80vw, 500px)",
+                    height: "min(80vw, 500px)",
+                    aspectRatio: "1 / 1",
+                    margin: "10px auto",
                   }}
                   onLoad={(map) => {
                     mapRef.current = map;
-                    console.log("✅ GoogleMap rendered");
-                    let zoomTimeout;
                     map.addListener("zoom_changed", () => {
-                      clearTimeout(zoomTimeout);
-                      zoomTimeout = setTimeout(() => {
-                        const newZoom = map.getZoom();
-                        setZoom(newZoom);
-                        setMapKey(Date.now());
-                        console.log("Zoom changed:", newZoom);
-                      }, 300); // Delay to prevent rapid firing
+                      const newZoom = map.getZoom();
+                      setZoom(newZoom);
+                      setMapKey(Date.now());
                     });
-                  }}
-                  onBoundsChanged={() => {
-                    if (mapRef.current) {
-                      const center = mapRef.current.getCenter();
-                      setUserLocation({ lat: center.lat(), lng: center.lng() });
-                    }
                   }}
                 >
                   {GridPolygons}
@@ -418,10 +272,10 @@ const diamondMines = ownedTerracres.filter(
                       icon={{
                         path: google.maps.SymbolPath.CIRCLE,
                         scale: 8,
-                        fillColor: "#4285F4", // Google's blue
+                        fillColor: "#4285F4",
                         fillOpacity: 1,
                         strokeWeight: 2,
-                        strokeColor: "#ffffff",
+                        strokeColor: "#fff",
                       }}
                       title="You"
                     />
@@ -432,31 +286,27 @@ const diamondMines = ownedTerracres.filter(
               )}
             </LoadScript>
           </Suspense>
-          {user && (
-            <>
-              <div className="greeting">
-                Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB available.
-              </div>
-              <div className="button-container">
-                <CheckInButton
-                  user={user}
-                  userLocation={userLocation}
-                  setCheckInStatus={setCheckInStatus}
-                  setUser={setUser}
-                />
-                <PurchaseButton
-                  user={user}
-                  userLocation={userLocation}
-                  setCheckInStatus={setCheckInStatus}
-                  setUser={setUser}
-                  fetchOwnedTerracres={fetchOwnedTerracres}
-                  onPurchase={handlePurchase}
-                  gridCenter={snappedUserGridCenter}
-                />
-              </div>
-              {checkInStatus && <p>{checkInStatus}</p>}
-            </>
-          )}
+          <div className="greeting">
+            Welcome, {user?.displayName || "User"}! You have {user?.terrabucks ?? 0} TB available.
+          </div>
+          <div className="button-container">
+            <CheckInButton
+              user={user}
+              userLocation={userLocation}
+              setCheckInStatus={setCheckInStatus}
+              setUser={setUser}
+            />
+            <PurchaseButton
+              user={user}
+              userLocation={userLocation}
+              setCheckInStatus={setCheckInStatus}
+              setUser={setUser}
+              fetchOwnedTerracres={fetchOwnedTerracres}
+              onPurchase={handlePurchase}
+              gridCenter={snappedUserGridCenter}
+            />
+          </div>
+          {checkInStatus && <p>{checkInStatus}</p>}
         </>
       )}
     </div>
