@@ -65,6 +65,7 @@ function App() {
 
     if (terracreSnap.exists()) {
       console.log(`⚠️ Terracre ${terracreId} already owned`);
+      setCheckInStatus("You cannot purchase this property. It is already owned.");  // ✅ Added this line for user feedback
       return;
     }
 
