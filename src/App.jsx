@@ -65,10 +65,8 @@ function App() {
 
     if (terracreSnap.exists()) {
       console.log(`⚠️ Terracre ${terracreId} already owned`);
-      setCheckInStatus("This Terracre is already owned. Try a different location.");
       return;
     }
-    setTimeout(() => setCheckInStatus(""), 5000);    
 
     const userRef = doc(db, "users", user.uid);
     const userSnap = await getDoc(userRef);
