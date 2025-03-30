@@ -61,18 +61,9 @@ function App() {
 
     const terracreId = `${gridCenter.lat.toFixed(7)}-${gridCenter.lng.toFixed(7)}`;
     const terracreRef = doc(db, "terracres", terracreId);
-    
-    const terracresSnapshot = await getDocs(collection(db, "terracres"));
-    const terracres = terracresSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    const alreadyOwned = terracres.some(t =>
-      Math.abs(t.lat - gridCenter.lat) <= 0.00027027 &&
-      Math.abs(t.lng - gridCenter.lng) <= 0.00034193
-    );
-    if (alreadyOwned) {
-      console.log(`⚠️ A Terracre at this location already exists.`);
-      return;
-    }
-    
+    const terracreSnap = await getDoc(terracreRef);
+
+    if (terracreSnap.exists()) {
       console.log(`⚠️ Terracre ${terracreId} already owned`);
       return;
     }
