@@ -1,81 +1,79 @@
-
-import React from "react";
-import "./CheckInButton.css";
-import { doc, getDoc, setDoc, updateDoc, collection, addDoc } from "firebase/firestore";
+import React, { useState } from "react";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import "./CheckInButton.css";
 
 const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
-  const TERRACRE_SIZE_METERS = 30;
-  const metersPerDegreeLat = 111000;
-
-  const getGridCenter = (lat, lng) => {
-    const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
-    const deltaLng = TERRACRE_SIZE_METERS / (metersPerDegreeLat * Math.cos(lat * Math.PI / 180));
-    const baseLat = Math.floor(lat / deltaLat) * deltaLat;
-    const baseLng = Math.floor(lng / deltaLng) * deltaLng;
-    return {
-      lat: parseFloat((baseLat + deltaLat / 2).toFixed(7)),
-      lng: parseFloat((baseLng + deltaLng / 2).toFixed(7)),
-    };
-  };
+  const [message, setMessage] = useState("");
 
   const handleCheckIn = async () => {
     if (!user || !userLocation) return;
 
-    const gridCenter = getGridCenter(userLocation.lat, userLocation.lng);
-    const terracreId = `${gridCenter.lat}-${gridCenter.lng}`;
-    const checkInId = `${user.uid}_${terracreId}`;
-    const checkInRef = doc(db, "check-ins", checkInId);
+    const gridLat = userLocation.lat.toFixed(7);
+    const gridLng = userLocation.lng.toFixed(7);
+    const gridId = `${gridLat}-${gridLng}`;
+    const locationRef = doc(db, "terracres", gridId);
+    const locationSnap = await getDoc(locationRef);
+
+    if (!locationSnap.exists()) {
+      setCheckInStatus("❌ Check-in failed. This location is not owned.");
+      return;
+    }
+
+    const ownerId = locationSnap.data().ownerId;
+    if (!ownerId || ownerId === user.uid) {
+      setCheckInStatus("❌ Cannot check-in to your own property.");
+      return;
+    }
+
+    const checkInId = `${user.uid}-${gridId}`;
+    const checkInRef = doc(db, "checkins", checkInId);
     const checkInSnap = await getDoc(checkInRef);
 
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-
+    const today = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
     if (checkInSnap.exists() && checkInSnap.data().date === today) {
-      setCheckInStatus("You already checked in here today.");
+      setCheckInStatus("✅ You already checked in here today.");
       return;
     }
 
-    const terracreRef = doc(db, "terracres", terracreId);
-    const terracreSnap = await getDoc(terracreRef);
-    if (!terracreSnap.exists()) {
-      setCheckInStatus("Check-In failed: Terracre not found.");
-      return;
-    }
-
-    const taData = terracreSnap.data();
-    const ownerId = taData.ownerId;
-
-    const message = prompt("Leave a message for the owner:");
-    await setDoc(checkInRef, {
-      userId: user.uid,
-      terracreId,
-      date: today,
-      message: message || "",
-      timestamp: new Date().toISOString(),
-    });
-
-    // Update visitor's TB
+    // Award 1 TB to visitor
     const userRef = doc(db, "users", user.uid);
     const userSnap = await getDoc(userRef);
-    const userTB = userSnap.data()?.terrabucks || 0;
-    await updateDoc(userRef, { terrabucks: userTB + 1 });
-    setUser(prev => ({ ...prev, terrabucks: userTB + 1 }));
+    const userData = userSnap.data();
+    await updateDoc(userRef, { terrabucks: (userData.terrabucks || 0) + 1 });
+    setUser({ ...user, terrabucks: (userData.terrabucks || 0) + 1 });
 
-    // Update owner's TB
-    if (ownerId && ownerId !== user.uid) {
-      const ownerRef = doc(db, "users", ownerId);
-      const ownerSnap = await getDoc(ownerRef);
-      const ownerTB = ownerSnap.data()?.terrabucks || 0;
-      await updateDoc(ownerRef, { terrabucks: ownerTB + 1 });
+    // Award 1 TB to owner
+    const ownerRef = doc(db, "users", ownerId);
+    const ownerSnap = await getDoc(ownerRef);
+    if (ownerSnap.exists()) {
+      const ownerData = ownerSnap.data();
+      await updateDoc(ownerRef, { terrabucks: (ownerData.terrabucks || 0) + 1 });
     }
 
-    setCheckInStatus("✅ Check-In successful! You earned 1 TB.");
+    // Save check-in log
+    await setDoc(checkInRef, {
+      date: today,
+      message: message || "",
+    });
+
+    setCheckInStatus("✅ Check-in successful!");
+    setMessage("");
   };
 
   return (
-    <button className="check-in-button" onClick={handleCheckIn}>
-      Check-In
-    </button>
+    <div className="check-in-section">
+      <input
+        type="text"
+        placeholder="Leave a message for the owner"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        className="check-in-message-input"
+      />
+      <button className="check-in-button" onClick={handleCheckIn}>
+        Check-In
+      </button>
+    </div>
   );
 };
 
