@@ -1,90 +1,79 @@
-import React from "react";
-import { db } from "../firebase";
-import { collection, getDoc, getDocs, doc, setDoc, updateDoc } from "firebase/firestore";
-import "./CheckInButton.css";
 
-const TERRACRE_SIZE_METERS = 30;
+import React from "react";
+import "./CheckInButton.css";
+import { doc, getDoc, setDoc, updateDoc, collection, addDoc } from "firebase/firestore";
+import { db } from "../firebase";
 
 const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
-  const getSnappedTerracreId = (lat, lng) => {
-    const metersPerDegreeLat = 111000;
-    const metersPerDegreeLng = metersPerDegreeLat * Math.cos(lat * Math.PI / 180);
-    const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
-    const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
+  const TERRACRE_SIZE_METERS = 30;
+  const metersPerDegreeLat = 111000;
 
+  const getGridCenter = (lat, lng) => {
+    const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
+    const deltaLng = TERRACRE_SIZE_METERS / (metersPerDegreeLat * Math.cos(lat * Math.PI / 180));
     const baseLat = Math.floor(lat / deltaLat) * deltaLat;
     const baseLng = Math.floor(lng / deltaLng) * deltaLng;
-
-    const snappedLat = baseLat + deltaLat / 2;
-    const snappedLng = baseLng + deltaLng / 2;
-
-    return `${snappedLat.toFixed(7)}-${snappedLng.toFixed(7)}`;
+    return {
+      lat: parseFloat((baseLat + deltaLat / 2).toFixed(7)),
+      lng: parseFloat((baseLng + deltaLng / 2).toFixed(7)),
+    };
   };
 
   const handleCheckIn = async () => {
-    if (!user || !userLocation) {
-      setCheckInStatus("Check-In failed: Missing user or location.");
+    if (!user || !userLocation) return;
+
+    const gridCenter = getGridCenter(userLocation.lat, userLocation.lng);
+    const terracreId = `${gridCenter.lat}-${gridCenter.lng}`;
+    const checkInId = `${user.uid}_${terracreId}`;
+    const checkInRef = doc(db, "check-ins", checkInId);
+    const checkInSnap = await getDoc(checkInRef);
+
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    if (checkInSnap.exists() && checkInSnap.data().date === today) {
+      setCheckInStatus("You already checked in here today.");
       return;
     }
 
-    const terracreId = getSnappedTerracreId(userLocation.lat, userLocation.lng);
     const terracreRef = doc(db, "terracres", terracreId);
     const terracreSnap = await getDoc(terracreRef);
-
     if (!terracreSnap.exists()) {
-      setCheckInStatus("Check-In failed: This area is not owned.");
+      setCheckInStatus("Check-In failed: Terracre not found.");
       return;
     }
 
-    const terracreData = terracreSnap.data();
+    const taData = terracreSnap.data();
+    const ownerId = taData.ownerId;
 
-    if (terracreData.ownerId === user.uid) {
-      setCheckInStatus("You cannot check in at your own Terracre.");
-      return;
-    }
-
-    const checkInRef = doc(db, "check-ins", `${terracreId}_${user.uid}`);
-    const checkInSnap = await getDoc(checkInRef);
-    const today = new Date().toISOString().split("T")[0];
-
-    if (checkInSnap.exists()) {
-      const lastDate = checkInSnap.data().date;
-      if (lastDate === today) {
-        setCheckInStatus("You already checked in here today.");
-        return;
-      }
-    }
-
-    // Update check-in data
+    const message = prompt("Leave a message for the owner:");
     await setDoc(checkInRef, {
       userId: user.uid,
       terracreId,
       date: today,
-      message: "",
+      message: message || "",
+      timestamp: new Date().toISOString(),
     });
 
-    // Award 1 TerraBuck to user and owner
+    // Update visitor's TB
     const userRef = doc(db, "users", user.uid);
-    const ownerRef = doc(db, "users", terracreData.ownerId);
+    const userSnap = await getDoc(userRef);
+    const userTB = userSnap.data()?.terrabucks || 0;
+    await updateDoc(userRef, { terrabucks: userTB + 1 });
+    setUser(prev => ({ ...prev, terrabucks: userTB + 1 }));
 
-    const [userSnap, ownerSnap] = await Promise.all([getDoc(userRef), getDoc(ownerRef)]);
-
-    if (userSnap.exists()) {
-      const current = userSnap.data().terrabucks ?? 0;
-      await updateDoc(userRef, { terrabucks: current + 1 });
-      setUser(prev => ({ ...prev, terrabucks: current + 1 }));
+    // Update owner's TB
+    if (ownerId && ownerId !== user.uid) {
+      const ownerRef = doc(db, "users", ownerId);
+      const ownerSnap = await getDoc(ownerRef);
+      const ownerTB = ownerSnap.data()?.terrabucks || 0;
+      await updateDoc(ownerRef, { terrabucks: ownerTB + 1 });
     }
 
-    if (ownerSnap.exists()) {
-      const current = ownerSnap.data().terrabucks ?? 0;
-      await updateDoc(ownerRef, { terrabucks: current + 1 });
-    }
-
-    setCheckInStatus("✅ Check-In successful. You earned 1 TerraBuck!");
+    setCheckInStatus("✅ Check-In successful! You earned 1 TB.");
   };
 
   return (
-    <button className="checkin-button" onClick={handleCheckIn}>
+    <button className="check-in-button" onClick={handleCheckIn}>
       Check-In
     </button>
   );
