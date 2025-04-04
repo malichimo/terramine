@@ -33,7 +33,6 @@ function App() {
   const [mapKey, setMapKey] = useState(Date.now());
   const [zoom, setZoom] = useState(18);
   const [totalEarnings, setTotalEarnings] = useState(0);
-  const [purchaseMessage, setPurchaseMessage] = useState("");
   const [showUserPage, setShowUserPage] = useState(false);
 
   const mapRef = useRef(null);
@@ -65,16 +64,30 @@ function App() {
     const terracreSnap = await getDoc(terracreRef);
 
     if (terracreSnap.exists()) {
-    console.log(`⚠️ Terracre ${terracreId} already owned`);
-    setPurchaseMessage("You cannot purchase this property. It is already owned.");
-    setTimeout(() => setPurchaseMessage(""), 3000);
-    return;
-}    }
+      console.log(`⚠️ Terracre ${terracreId} already owned`);
+      setCheckInStatus("You cannot purchase this property. It is already owned.");  // ✅ Added this line for user feedback
+      return;
+    }
 
-    const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
-    const userData = userSnap.data();
-    const terrabucks = userData.terrabucks ?? 0;
+    useEffect(() => {
+
+      const fetchData = async () => {
+
+        const userRef = doc(db, "users", user.uid);
+
+        const userSnap = await getDoc(userRef);
+
+        const userData = userSnap.data();
+
+        const terrabucks = userData.terrabucks ?? 0;
+
+        // move your additional logic here if needed
+
+      };
+
+      if (user) fetchData();
+
+    }, [user]);
 
     const TERRACRE_COST = 100;
     if (terrabucks < TERRACRE_COST) {
@@ -98,8 +111,6 @@ function App() {
     await setDoc(terracreRef, newTerracre);
     await updateDoc(userRef, { terrabucks: terrabucks - TERRACRE_COST });
     setPurchaseTrigger((prev) => prev + 1);
-    setPurchaseMessage(`You purchased a ${chosenType.type}!`);
-    setTimeout(() => setPurchaseMessage(""), 3000);
   };
 
   const calculateTotalEarnings = useCallback(() => {
@@ -340,7 +351,6 @@ function App() {
             <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} setUser={setUser} />
             <PurchaseButton user={user} userLocation={userLocation} setUser={setUser} onPurchase={handlePurchase} gridCenter={snappedUserGridCenter} />
           </div>
-          {purchaseMessage && <p className="purchase-message">{purchaseMessage}</p>}
           {checkInStatus && <p>{checkInStatus}</p>}
         </>
       )}
