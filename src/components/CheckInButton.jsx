@@ -1,87 +1,93 @@
 import React from "react";
-import "./CheckInButton.css";
-import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import { collection, getDoc, getDocs, doc, setDoc, updateDoc } from "firebase/firestore";
+import "./CheckInButton.css";
+
+const TERRACRE_SIZE_METERS = 30;
 
 const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
-  const TERRACRE_SIZE_METERS = 30;
-  const metersPerDegreeLat = 111000;
-
-  const getGridCenter = (lat, lng) => {
+  const getSnappedTerracreId = (lat, lng) => {
+    const metersPerDegreeLat = 111000;
+    const metersPerDegreeLng = metersPerDegreeLat * Math.cos(lat * Math.PI / 180);
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
-    const deltaLng = TERRACRE_SIZE_METERS / (metersPerDegreeLat * Math.cos(lat * Math.PI / 180));
+    const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
+
     const baseLat = Math.floor(lat / deltaLat) * deltaLat;
     const baseLng = Math.floor(lng / deltaLng) * deltaLng;
-    return {
-      lat: parseFloat((baseLat + deltaLat / 2).toFixed(7)),
-      lng: parseFloat((baseLng + deltaLng / 2).toFixed(7)),
-    };
+
+    const snappedLat = baseLat + deltaLat / 2;
+    const snappedLng = baseLng + deltaLng / 2;
+
+    return `${snappedLat.toFixed(7)}-${snappedLng.toFixed(7)}`;
   };
 
   const handleCheckIn = async () => {
-    if (!user || !userLocation) return;
+    if (!user || !userLocation) {
+      setCheckInStatus("Check-In failed: Missing user or location.");
+      return;
+    }
 
-    const center = getGridCenter(userLocation.lat, userLocation.lng);
-    const terracreId = `${center.lat}-${center.lng}`;
+    const terracreId = getSnappedTerracreId(userLocation.lat, userLocation.lng);
     const terracreRef = doc(db, "terracres", terracreId);
     const terracreSnap = await getDoc(terracreRef);
 
-    // ❌ No TA here
     if (!terracreSnap.exists()) {
-      showStatus("🚫 No property found at this location.");
+      setCheckInStatus("Check-In failed: This area is not owned.");
       return;
     }
 
-    const taData = terracreSnap.data();
+    const terracreData = terracreSnap.data();
 
-    // ❌ Own property (optional rule)
-    if (taData.ownerId === user.uid) {
-      showStatus("ℹ️ This is your own Terracre. Check-in not required.");
+    if (terracreData.ownerId === user.uid) {
+      setCheckInStatus("You cannot check in at your own Terracre.");
       return;
     }
 
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    const checkInId = `${user.uid}_${center.lat}_${center.lng}_${today}`;
-    const checkInRef = doc(db, "check-ins", checkInId);
+    const checkInRef = doc(db, "check-ins", `${terracreId}_${user.uid}`);
+    const checkInSnap = await getDoc(checkInRef);
+    const today = new Date().toISOString().split("T")[0];
 
-    try {
-      const existing = await getDoc(checkInRef);
-      if (existing.exists()) {
-        showStatus("⚠️ You've already checked in here today.");
+    if (checkInSnap.exists()) {
+      const lastDate = checkInSnap.data().date;
+      if (lastDate === today) {
+        setCheckInStatus("You already checked in here today.");
         return;
       }
-
-      await setDoc(checkInRef, {
-        uid: user.uid,
-        lat: center.lat,
-        lng: center.lng,
-        timestamp: new Date().toISOString(),
-      });
-
-      showStatus("✅ Check-in successful! +1 TB");
-      setUser(prev => ({ ...prev, terrabucks: (prev.terrabucks ?? 0) + 1 }));
-    } catch (error) {
-      console.error("Check-in error:", error);
-      showStatus("❌ Check-in failed.");
     }
-  };
 
-  const showStatus = (message) => {
-    const el = document.createElement("div");
-    el.className = "purchase-message";
-    el.textContent = message;
-    document.body.appendChild(el);
-    setTimeout(() => {
-      if (el.parentNode) el.parentNode.removeChild(el);
-    }, 5000);
+    // Update check-in data
+    await setDoc(checkInRef, {
+      userId: user.uid,
+      terracreId,
+      date: today,
+      message: "",
+    });
+
+    // Award 1 TerraBuck to user and owner
+    const userRef = doc(db, "users", user.uid);
+    const ownerRef = doc(db, "users", terracreData.ownerId);
+
+    const [userSnap, ownerSnap] = await Promise.all([getDoc(userRef), getDoc(ownerRef)]);
+
+    if (userSnap.exists()) {
+      const current = userSnap.data().terrabucks ?? 0;
+      await updateDoc(userRef, { terrabucks: current + 1 });
+      setUser(prev => ({ ...prev, terrabucks: current + 1 }));
+    }
+
+    if (ownerSnap.exists()) {
+      const current = ownerSnap.data().terrabucks ?? 0;
+      await updateDoc(ownerRef, { terrabucks: current + 1 });
+    }
+
+    setCheckInStatus("✅ Check-In successful. You earned 1 TerraBuck!");
   };
 
   return (
     <button className="checkin-button" onClick={handleCheckIn}>
-      Check In
+      Check-In
     </button>
   );
 };
 
 export default CheckInButton;
-
