@@ -25,7 +25,7 @@ const PurchaseButton = ({ user, userLocation, setUser, onPurchase, gridCenter })
       if (messageEl.parentNode) {
         messageEl.parentNode.removeChild(messageEl);
       }
-    }, 3000);
+    }, 6000);
   };
 
   return (
