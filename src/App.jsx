@@ -100,23 +100,6 @@ function App() {
     return { message: `✅ You purchased a ${chosenType.type}!` };
   };
 
-    const chosenType = getRandomTaType();
-
-    const newTerracre = {
-      id: terracreId,
-      lat: gridCenter.lat,
-      lng: gridCenter.lng,
-      ownerId: user.uid,
-      purchasedAt: new Date().toISOString(),
-      lastCollected: new Date().toISOString(),
-      earningRate: chosenType.rate,
-      taType: chosenType.type,
-    };
-
-    await setDoc(terracreRef, newTerracre);
-    await updateDoc(userRef, { terrabucks: terrabucks - TERRACRE_COST });
-    setPurchaseTrigger((prev) => prev + 1);
-  };
 
   const calculateTotalEarnings = useCallback(() => {
     const now = new Date();
