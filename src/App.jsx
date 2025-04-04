@@ -57,28 +57,48 @@ function App() {
   };
 
   const handlePurchase = async (gridCenter) => {
-    if (!user || !gridCenter) return;
-
+    if (!user || !gridCenter) {
+      return { message: "User or location not available." };
+    }
+  
     const terracreId = `${gridCenter.lat.toFixed(7)}-${gridCenter.lng.toFixed(7)}`;
     const terracreRef = doc(db, "terracres", terracreId);
     const terracreSnap = await getDoc(terracreRef);
-
+  
     if (terracreSnap.exists()) {
       console.log(`⚠️ Terracre ${terracreId} already owned`);
-      setCheckInStatus("You cannot purchase this property. It is already owned.");  // ✅ Added this line for user feedback
-      return;
+      return { message: "You cannot purchase this property. It is already owned." };
     }
-
+  
     const userRef = doc(db, "users", user.uid);
     const userSnap = await getDoc(userRef);
     const userData = userSnap.data();
     const terrabucks = userData.terrabucks ?? 0;
-
+  
     const TERRACRE_COST = 100;
     if (terrabucks < TERRACRE_COST) {
-      setError("Not enough TerraBucks to purchase.");
-      return;
+      return { message: "Not enough TerraBucks to purchase." };
     }
+  
+    const chosenType = getRandomTaType();
+  
+    const newTerracre = {
+      id: terracreId,
+      lat: gridCenter.lat,
+      lng: gridCenter.lng,
+      ownerId: user.uid,
+      purchasedAt: new Date().toISOString(),
+      lastCollected: new Date().toISOString(),
+      earningRate: chosenType.rate,
+      taType: chosenType.type,
+    };
+  
+    await setDoc(terracreRef, newTerracre);
+    await updateDoc(userRef, { terrabucks: terrabucks - TERRACRE_COST });
+    setPurchaseTrigger((prev) => prev + 1);
+  
+    return { message: `✅ You purchased a ${chosenType.type}!` };
+  };
 
     const chosenType = getRandomTaType();
 
