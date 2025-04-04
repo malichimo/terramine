@@ -219,20 +219,22 @@ html, body {
   animation: fadeInOut 2.8s forwards;
 }
 
+.message-bar {
+  ...
+  animation: fadeInOut 6s ease-in-out forwards;
+}
+
 @keyframes fadeInOut {
   0% {
     opacity: 0;
-    transform: translateX(-50%) translateY(-10px);
+    transform: translateX(-50%) translateY(20px);
   }
-  10% {
+  10%, 90% {
     opacity: 1;
-    transform: translateX(-50%) translateY(0px);
-  }
-  90% {
-    opacity: 1;
+    transform: translateX(-50%) translateY(0);
   }
   100% {
     opacity: 0;
-    transform: translateX(-50%) translateY(-10px);
+    transform: translateX(-50%) translateY(20px);
   }
 }
