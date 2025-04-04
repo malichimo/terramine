@@ -22,6 +22,24 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
     if (!user || !userLocation) return;
 
     const center = getGridCenter(userLocation.lat, userLocation.lng);
+    const terracreId = `${center.lat}-${center.lng}`;
+    const terracreRef = doc(db, "terracres", terracreId);
+    const terracreSnap = await getDoc(terracreRef);
+
+    // ❌ No TA here
+    if (!terracreSnap.exists()) {
+      showStatus("🚫 No property found at this location.");
+      return;
+    }
+
+    const taData = terracreSnap.data();
+
+    // ❌ Own property (optional rule)
+    if (taData.ownerId === user.uid) {
+      showStatus("ℹ️ This is your own Terracre. Check-in not required.");
+      return;
+    }
+
     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     const checkInId = `${user.uid}_${center.lat}_${center.lng}_${today}`;
     const checkInRef = doc(db, "check-ins", checkInId);
@@ -55,7 +73,7 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
     document.body.appendChild(el);
     setTimeout(() => {
       if (el.parentNode) el.parentNode.removeChild(el);
-    }, 4000);
+    }, 5000);
   };
 
   return (
@@ -66,3 +84,4 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
 };
 
 export default CheckInButton;
+
