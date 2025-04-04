@@ -173,7 +173,20 @@ html, body {
 
 }
 
-
+.message-bar {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  opacity: 0;
+  animation: fadeInOut 3s ease-in-out forwards;
+  z-index: 9999;
+}
 
 @keyframes fadeInOut {
   0% {
@@ -206,22 +219,20 @@ html, body {
   animation: fadeInOut 2.8s forwards;
 }
 
-.message-bar {
-  ...
-  animation: fadeInOut 6s ease-in-out forwards;
-}
-
 @keyframes fadeInOut {
   0% {
     opacity: 0;
-    transform: translateX(-50%) translateY(20px);
+    transform: translateX(-50%) translateY(-10px);
   }
-  10%, 90% {
+  10% {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateX(-50%) translateY(0px);
+  }
+  90% {
+    opacity: 1;
   }
   100% {
     opacity: 0;
-    transform: translateX(-50%) translateY(20px);
+    transform: translateX(-50%) translateY(-10px);
   }
 }
