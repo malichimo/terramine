@@ -69,25 +69,10 @@ function App() {
       return;
     }
 
-    useEffect(() => {
-
-      const fetchData = async () => {
-
-        const userRef = doc(db, "users", user.uid);
-
-        const userSnap = await getDoc(userRef);
-
-        const userData = userSnap.data();
-
-        const terrabucks = userData.terrabucks ?? 0;
-
-        // move your additional logic here if needed
-
-      };
-
-      if (user) fetchData();
-
-    }, [user]);
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    const userData = userSnap.data();
+    const terrabucks = userData.terrabucks ?? 0;
 
     const TERRACRE_COST = 100;
     if (terrabucks < TERRACRE_COST) {
@@ -359,4 +344,3 @@ function App() {
 }
 
 export default App;
-
