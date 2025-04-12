@@ -47,14 +47,13 @@ const UserPage = ({
         <div className="check-in-messages">
           <h2>Check-In Messages</h2>
           <ul>
-            {checkInMessages.length === 0 ? (
-              <li>No messages yet.</li>
-            ) : (
-              checkInMessages.map((message, index) => (
-                <li key={index}>{message}</li>
-              ))
-            )}
+            {checkInMessages.map((entry, index) => (
+              <li key={index}>
+                <strong>{entry.username}</strong>: {entry.message}
+              </li>
+            ))}
           </ul>
+
         </div>
       </div>
     </div>
