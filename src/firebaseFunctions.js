@@ -7,6 +7,10 @@ import {
   setDoc,
   updateDoc,
   Timestamp,
+  collection,
+  query,
+  where,
+  getDocs
 } from "firebase/firestore";
 
 // ✅ Google Sign-In
@@ -99,4 +103,21 @@ export const handleCheckIn = async (user, terracreId, message = "") => {
   }
 
   return "✅ Check-in successful! You and the TA owner earned 1 TB.";
+};
+
+// ✅ Get Check-In Messages for a specific user (by TA owner)
+export const getCheckInMessages = async (ownerId) => {
+  const q = query(collection(db, "checkins"), where("terracreOwner", "==", ownerId));
+  const querySnapshot = await getDocs(q);
+
+  const messages = [];
+  for (const docSnap of querySnapshot.docs) {
+    const data = docSnap.data();
+    if (data.message) {
+      const userSnap = await getDoc(doc(db, "users", data.userId));
+      const username = userSnap.exists() ? userSnap.data().name || "Unknown" : "Unknown";
+      messages.push(`${username}: ${data.message}`);
+    }
+  }
+  return messages;
 };
