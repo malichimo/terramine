@@ -1,4 +1,7 @@
-import React, { useEffect } from "react";
+
+import React, { useEffect, useState } from "react";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "../firebase";
 import "./UserPage.css";
 
 const UserPage = ({
@@ -9,14 +12,22 @@ const UserPage = ({
   coalMines,
   goldMines,
   diamondMines,
-  checkInMessages,
 }) => {
+  const [checkInMessages, setCheckInMessages] = useState([]);
+
   useEffect(() => {
-    console.log("📦 UserPage mounted");
-    return () => {
-      console.log("👋 UserPage unmounted");
+    const fetchMessages = async () => {
+      if (!user) return;
+      const q = query(collection(db, "checkins"), where("terracreOwnerId", "==", user.uid));
+      const snapshot = await getDocs(q);
+      const messages = snapshot.docs
+        .map(doc => doc.data())
+        .filter(data => data.message)
+        .map(data => `${data.userId}: ${data.message}`);
+      setCheckInMessages(messages);
     };
-  }, []);
+    fetchMessages();
+  }, [user]);
 
   return (
     <div className="user-page">
@@ -36,9 +47,13 @@ const UserPage = ({
         <div className="check-in-messages">
           <h2>Check-In Messages</h2>
           <ul>
-            {checkInMessages.map((message, index) => (
-              <li key={index}>{message}</li>
-            ))}
+            {checkInMessages.length === 0 ? (
+              <li>No messages yet.</li>
+            ) : (
+              checkInMessages.map((message, index) => (
+                <li key={index}>{message}</li>
+              ))
+            )}
           </ul>
         </div>
       </div>
