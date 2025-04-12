@@ -62,7 +62,8 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
         />
       )}
       <button className="checkin-button" onClick={() => setShowInput(true)}>
-        {showInput ? "Confirm Check-In" : "Check In"}
+        {showInput ? "Confirm Message" : "Check In"}
+
       </button>
       {showInput && (
         <button className="checkin-button cancel" onClick={() => setShowInput(false)}>
