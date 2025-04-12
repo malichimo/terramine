@@ -1,7 +1,13 @@
 // src/firebaseFunctions.js
 import { auth, googleProvider, db } from "./firebase";
 import { signInWithPopup, signOut } from "firebase/auth";
-import { doc, getDoc, setDoc, updateDoc, Timestamp } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  Timestamp,
+} from "firebase/firestore";
 
 // ✅ Google Sign-In
 export const handleGoogleSignIn = async () => {
@@ -38,49 +44,59 @@ export const handleSignOut = async () => {
   }
 };
 
-// ✅ Handle Check-In (Updated with Debugging)
-export const handleCheckIn = async (user, terracreId) => {
+// ✅ Handle Check-In (with message saving)
+export const handleCheckIn = async (user, terracreId, message = "") => {
   const checkInRef = doc(db, "checkins", `${user.uid}-${terracreId}`);
   const checkInSnap = await getDoc(checkInRef);
   const now = new Date();
-  const today = now.toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
+  const today = now.toISOString().split("T")[0]; // YYYY-MM-DD
 
   const terracreRef = doc(db, "terracres", terracreId);
   const terracreSnap = await getDoc(terracreRef);
   if (!terracreSnap.exists()) {
-    return "This Terracre does not exist.";
+    return "This TA does not exist.";
   }
 
   const terracreData = terracreSnap.data();
   if (terracreData.ownerId === user.uid) {
-    return "You cannot check in at your own Terracre.";
+    return "You cannot check in at your own TA.";
   }
 
   if (checkInSnap.exists()) {
     const checkInData = checkInSnap.data();
     if (checkInData.date === today) {
-      return "You have already checked in at this Terracre today.";
+      return "You have already checked in at this TA today.";
     }
   }
 
-  // Update check-in record
-  await setDoc(checkInRef, { date: today });
+  // Save check-in with message
+  await setDoc(checkInRef, {
+    date: today,
+    userId: user.uid,
+    terracreId,
+    message: message.trim(),
+    timestamp: new Date().toISOString(),
+  });
 
-  // Update visitor's TerraBucks
+  // Reward user
   const userRef = doc(db, "users", user.uid);
   const userSnap = await getDoc(userRef);
   if (userSnap.exists()) {
     const userData = userSnap.data();
-    await updateDoc(userRef, { terrabucks: (userData.terrabucks ?? 0) + 1 });
+    await updateDoc(userRef, {
+      terrabucks: (userData.terrabucks ?? 0) + 1,
+    });
   }
 
-  // Update owner's TerraBucks
+  // Reward owner
   const ownerRef = doc(db, "users", terracreData.ownerId);
   const ownerSnap = await getDoc(ownerRef);
   if (ownerSnap.exists()) {
     const ownerData = ownerSnap.data();
-    await updateDoc(ownerRef, { terrabucks: (ownerData.terrabucks ?? 0) + 1 });
+    await updateDoc(ownerRef, {
+      terrabucks: (ownerData.terrabucks ?? 0) + 1,
+    });
   }
 
-  return "Check-in successful! You and the owner earned 1 TB each.";
+  return "✅ Check-in successful! You and the TA owner earned 1 TB.";
 };
