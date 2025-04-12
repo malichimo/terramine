@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -11,7 +10,7 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
 
   const handleCheckInClick = async () => {
     if (!user || !userLocation) {
-      setCheckInStatus("Please log in and allow location access.");
+      setCheckInStatus("⚠️ Please log in and allow location access.");
       return;
     }
 
@@ -19,10 +18,10 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
       const center = snapToGridCenter(userLocation.lat, userLocation.lng);
       const terracreId = `${center.lat.toFixed(7)}-${center.lng.toFixed(7)}`;
 
-      const checkInStatus = await handleCheckIn(user, terracreId, message.trim());
-      setCheckInStatus(checkInStatus);
+      const result = await handleCheckIn(user, terracreId, message.trim());
+      setCheckInStatus(result);
 
-      if (checkInStatus.includes("earned 1 TB")) {
+      if (result.includes("earned 1 TB")) {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
@@ -32,7 +31,12 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
       }
     } catch (error) {
       console.error("Check-in error:", error);
-      setCheckInStatus("Check-In failed. This TA is not owned.");
+      const errorMsg = error?.message || "";
+      if (errorMsg.includes("not owned")) {
+        setCheckInStatus("❌ Check-In failed. This TA is not owned.");
+      } else {
+        setCheckInStatus("❌ Check-In failed due to an unknown error.");
+      }
     }
 
     setShowInput(false);
@@ -61,19 +65,19 @@ const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
           onChange={(e) => setMessage(e.target.value)}
         />
       )}
-      <button className="checkin-button" onClick={() => setShowInput(true)}>
-        {showInput ? "Confirm Message" : "Check In"}
-
-      </button>
-      {showInput && (
-        <button className="checkin-button cancel" onClick={() => setShowInput(false)}>
-          Cancel
+      {!showInput ? (
+        <button className="checkin-button" onClick={() => setShowInput(true)}>
+          Check In
         </button>
-      )}
-      {showInput && (
-        <button className="checkin-button confirm" onClick={handleCheckInClick}>
-          Submit
-        </button>
+      ) : (
+        <>
+          <button className="checkin-button confirm" onClick={handleCheckInClick}>
+            Confirm Message
+          </button>
+          <button className="checkin-button cancel" onClick={() => setShowInput(false)}>
+            Cancel
+          </button>
+        </>
       )}
     </div>
   );
