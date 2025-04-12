@@ -236,3 +236,16 @@ html, body {
     transform: translateX(-50%) translateY(-10px);
   }
 }
+
+.checkin-gallery-button {
+  margin-top: 10px;
+  background-color: #444;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.checkin-gallery-button:hover {
+  background-color: #333;
+}

@@ -243,6 +243,7 @@ function App() {
   if (!user && !isDevelopment) return <Login onLoginSuccess={setUser} />;
 
   return (
+    
     <div className="app-container">
       {user && (
         <>
@@ -333,7 +334,27 @@ function App() {
               )}
             </LoadScript>
           </Suspense>
-
+          <div className="button-container">
+            <CheckInButton
+              user={user}
+              userLocation={userLocation}
+              setCheckInStatus={setCheckInStatus}
+              setUser={setUser}
+            />
+            <PurchaseButton
+              user={user}
+              userLocation={userLocation}
+              setUser={setUser}
+              onPurchase={handlePurchase}
+              gridCenter={snappedUserGridCenter}
+            />
+            <button
+              className="checkin-gallery-button"
+              onClick={() => setShowUserPage(true)}
+            >
+              View Check-In Gallery
+            </button>
+          </div>
           <div className="greeting">Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB.</div>
           <div className="button-container">
             <button className="gallery-button">View Check-In Gallery</button>
