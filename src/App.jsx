@@ -26,6 +26,7 @@ function App() {
   const [userLocation, setUserLocation] = useState(isDevelopment ? defaultCenter : null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
   const [checkInStatus, setCheckInStatus] = useState("");
+  const [checkInMessages, setCheckInMessages] = useState([]);
   const [apiLoaded, setApiLoaded] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [error, setError] = useState(null);
@@ -38,7 +39,6 @@ function App() {
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
 
-  // 🧠 TA probabilities
   const TA_PROBABILITIES = [
     { type: "Rock Mine", rate: 0.05, chance: 0.5 },
     { type: "Coal Mine", rate: 0.1, chance: 0.3 },
@@ -57,31 +57,20 @@ function App() {
   };
 
   const handlePurchase = async (gridCenter) => {
-    if (!user || !gridCenter) {
-      return { message: "User or location not available." };
-    }
-  
+    if (!user || !gridCenter) return { message: "User or location not available." };
     const terracreId = `${gridCenter.lat.toFixed(7)}-${gridCenter.lng.toFixed(7)}`;
     const terracreRef = doc(db, "terracres", terracreId);
     const terracreSnap = await getDoc(terracreRef);
-  
-    if (terracreSnap.exists()) {
-      console.log(`⚠️ Terracre ${terracreId} already owned`);
-      return { message: "You cannot purchase this property. It is already owned." };
-    }
-  
+    if (terracreSnap.exists()) return { message: "You cannot purchase this property. It is already owned." };
+
     const userRef = doc(db, "users", user.uid);
     const userSnap = await getDoc(userRef);
     const userData = userSnap.data();
     const terrabucks = userData.terrabucks ?? 0;
-  
     const TERRACRE_COST = 100;
-    if (terrabucks < TERRACRE_COST) {
-      return { message: "Not enough TerraBucks to purchase." };
-    }
-  
+    if (terrabucks < TERRACRE_COST) return { message: "Not enough TerraBucks to purchase." };
+
     const chosenType = getRandomTaType();
-  
     const newTerracre = {
       id: terracreId,
       lat: gridCenter.lat,
@@ -92,14 +81,12 @@ function App() {
       earningRate: chosenType.rate,
       taType: chosenType.type,
     };
-  
+
     await setDoc(terracreRef, newTerracre);
     await updateDoc(userRef, { terrabucks: terrabucks - TERRACRE_COST });
     setPurchaseTrigger((prev) => prev + 1);
-  
     return { message: `✅ You purchased a ${chosenType.type}!` };
   };
-
 
   const calculateTotalEarnings = useCallback(() => {
     const now = new Date();
@@ -113,9 +100,7 @@ function App() {
   }, [ownedTerracres, user?.uid]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      calculateTotalEarnings();
-    }, 30000);
+    const interval = setInterval(() => calculateTotalEarnings(), 30000);
     return () => clearInterval(interval);
   }, [calculateTotalEarnings]);
 
@@ -125,10 +110,24 @@ function App() {
     try {
       const querySnapshot = await getDocs(collection(db, "terracres"));
       const all = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setOwnedTerracres(all.filter(t => t.lat && t.lng));
+      const owned = all.filter(t => t.lat && t.lng);
+      setOwnedTerracres(owned);
+      const checkInsSnapshot = await getDocs(collection(db, "checkins"));
+      const messages = [];
+      for (const docSnap of checkInsSnapshot.docs) {
+        const data = docSnap.data();
+        if (owned.some(t => t.id === data.terracreId && t.ownerId === user.uid) && data.message) {
+          const visitorRef = doc(db, "users", data.userId);
+          const visitorSnap = await getDoc(visitorRef);
+          const visitorName = visitorSnap.exists() ? visitorSnap.data().name : "Unknown visitor";
+          messages.push(`${visitorName}: ${data.message}`);
+        }
+      }
+      setCheckInMessages(messages);
     } catch (err) {
-      console.error("🔥 Error fetching terracres:", err);
+      console.error("🔥 Error fetching terracres or check-ins:", err);
       setOwnedTerracres([]);
+      setCheckInMessages([]);
     } finally {
       fetchTerracresRef.current = false;
     }
@@ -165,14 +164,12 @@ function App() {
     if (!center || !mapRef.current) return [];
     const bounds = mapRef.current.getBounds();
     if (!bounds) return [];
-
     const ne = bounds.getNorthEast();
     const sw = bounds.getSouthWest();
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = metersPerDegreeLat * Math.cos(center.lat * Math.PI / 180);
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
-
     const grid = [];
     for (let lat = sw.lat(); lat < ne.lat(); lat += deltaLat) {
       for (let lng = sw.lng(); lng < ne.lng(); lng += deltaLng) {
@@ -250,7 +247,6 @@ function App() {
           <SignOutButton onSignOut={handleSignOut} />
         </>
       )}
-
       {showUserPage ? (
         <UserPage
           user={user}
@@ -260,7 +256,7 @@ function App() {
           coalMines={ownedTerracres.filter(t => t.taType === "Coal Mine" && t.ownerId === user?.uid).length}
           goldMines={ownedTerracres.filter(t => t.taType === "Gold Mine" && t.ownerId === user?.uid).length}
           diamondMines={ownedTerracres.filter(t => t.taType === "Diamond Mine" && t.ownerId === user?.uid).length}
-          checkInMessages={[]}
+          checkInMessages={checkInMessages}
         />
       ) : (
         <>
@@ -319,7 +315,7 @@ function App() {
                     <Marker
                       position={userLocation}
                       icon={{
-                        path: google.maps.SymbolPath.CIRCLE,
+                        path: window.google?.maps?.SymbolPath?.CIRCLE || 0,
                         scale: 8,
                         fillColor: "#4285F4",
                         fillOpacity: 1,
