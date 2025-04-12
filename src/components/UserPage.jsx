@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import "./UserPage.css";
 
@@ -18,14 +17,31 @@ const UserPage = ({
   useEffect(() => {
     const fetchMessages = async () => {
       if (!user) return;
-      const q = query(collection(db, "checkins"), where("terracreOwnerId", "==", user.uid));
-      const snapshot = await getDocs(q);
-      const messages = snapshot.docs
-        .map(doc => doc.data())
-        .filter(data => data.message)
-        .map(data => `${data.userId}: ${data.message}`);
+      const snapshot = await getDocs(collection(db, "checkins"));
+      const messages = [];
+
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data();
+        if (!data.terracreId || !data.message) continue;
+
+        // Get terracre to see if current user is the owner
+        const terracreRef = doc(db, "terracres", data.terracreId);
+        const terracreSnap = await getDoc(terracreRef);
+        const terracre = terracreSnap.exists() ? terracreSnap.data() : null;
+
+        if (terracre?.ownerId === user.uid) {
+          // Get the visitor's name
+          const visitorRef = doc(db, "users", data.userId);
+          const visitorSnap = await getDoc(visitorRef);
+          const visitorName = visitorSnap.exists() ? visitorSnap.data().name || "Anonymous" : "Unknown visitor";
+
+          messages.push({ username: visitorName, message: data.message });
+        }
+      }
+
       setCheckInMessages(messages);
     };
+
     fetchMessages();
   }, [user]);
 
@@ -47,13 +63,16 @@ const UserPage = ({
         <div className="check-in-messages">
           <h2>Check-In Messages</h2>
           <ul>
-            {checkInMessages.map((entry, index) => (
-              <li key={index}>
-                <strong>{entry.username}</strong>: {entry.message}
-              </li>
-            ))}
+            {checkInMessages.length === 0 ? (
+              <li>No check-ins yet.</li>
+            ) : (
+              checkInMessages.map((entry, index) => (
+                <li key={index}>
+                  <strong>{entry.username}</strong>: {entry.message}
+                </li>
+              ))
+            )}
           </ul>
-
         </div>
       </div>
     </div>
