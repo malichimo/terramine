@@ -1,85 +1,67 @@
-import React, { useState } from "react";
+
+import React from "react";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import { doc, getDoc } from "firebase/firestore";
-import { handleCheckIn } from "../firebaseFunctions";
-import "./CheckInButton.css";
 
-const CheckInButton = ({ user, userLocation, setCheckInStatus, setUser }) => {
-  const [showInput, setShowInput] = useState(false);
-  const [message, setMessage] = useState("");
-
-  const handleCheckInClick = async () => {
-    if (!user || !userLocation) {
-      setCheckInStatus("⚠️ Please log in and allow location access.");
+const CheckInButton = ({ user, userLocation, snappedGridCenter, setCheckInStatus, setUser }) => {
+  const handleCheckIn = async () => {
+    if (!user || !snappedGridCenter) {
+      setCheckInStatus("User or location not available.");
       return;
     }
 
-    try {
-      const center = snapToGridCenter(userLocation.lat, userLocation.lng);
-      const terracreId = `${center.lat.toFixed(7)}-${center.lng.toFixed(7)}`;
+    const terracreId = `${snappedGridCenter.lat.toFixed(7)}-${snappedGridCenter.lng.toFixed(7)}`;
+    const checkInRef = doc(db, "checkins", `${user.uid}-${terracreId}`);
+    const terracreRef = doc(db, "terracres", terracreId);
 
-      const result = await handleCheckIn(user, terracreId, message.trim());
-      setCheckInStatus(result);
-
-      if (result.includes("earned 1 TB")) {
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const newUserData = userSnap.data();
-          setUser((prevUser) => ({ ...prevUser, terrabucks: newUserData.terrabucks }));
-        }
-      }
-    } catch (error) {
-      console.error("Check-in error:", error);
-      const errorMsg = error?.message || "";
-      if (errorMsg.includes("not owned")) {
-        setCheckInStatus("❌ Check-In failed. This TA is not owned.");
-      } else {
-        setCheckInStatus("❌ Check-In failed due to an unknown error.");
-      }
+    const terracreSnap = await getDoc(terracreRef);
+    if (!terracreSnap.exists()) {
+      setCheckInStatus("This TA does not exist.");
+      return;
     }
 
-    setShowInput(false);
-    setMessage("");
-  };
+    const terracreData = terracreSnap.data();
+    if (terracreData.ownerId === user.uid) {
+      setCheckInStatus("You cannot check in at your own TA.");
+      return;
+    }
 
-  const snapToGridCenter = (lat, lng) => {
-    const TERRACRE_SIZE_METERS = 30;
-    const metersPerDegreeLat = 111000;
-    const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat * Math.PI) / 180);
-    const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
-    const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
-    const baseLat = Math.floor(lat / deltaLat) * deltaLat;
-    const baseLng = Math.floor(lng / deltaLng) * deltaLng;
-    return { lat: baseLat + deltaLat / 2, lng: baseLng + deltaLng / 2 };
+    const today = new Date().toISOString().split("T")[0];
+    const existingSnap = await getDoc(checkInRef);
+
+    if (existingSnap.exists() && existingSnap.data().date === today) {
+      setCheckInStatus("You have already checked in at this TA today.");
+      return;
+    }
+
+    await setDoc(checkInRef, {
+      date: today,
+      userId: user.uid,
+      terracreId,
+      message: "Checked in!",
+      timestamp: new Date().toISOString(),
+    });
+
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      await updateDoc(userRef, { terrabucks: (userData.terrabucks || 0) + 1 });
+      setUser({ ...user, terrabucks: (userData.terrabucks || 0) + 1 });
+    }
+
+    const ownerRef = doc(db, "users", terracreData.ownerId);
+    const ownerSnap = await getDoc(ownerRef);
+    if (ownerSnap.exists()) {
+      const ownerData = ownerSnap.data();
+      await updateDoc(ownerRef, { terrabucks: (ownerData.terrabucks || 0) + 1 });
+    }
+
+    setCheckInStatus("✅ Check-in successful! You and the TA owner earned 1 TB.");
   };
 
   return (
-    <div className="checkin-container">
-      {showInput && (
-        <input
-          type="text"
-          className="checkin-message-input"
-          placeholder="Leave a message for the TA owner"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-        />
-      )}
-      {!showInput ? (
-        <button className="checkin-button" onClick={() => setShowInput(true)}>
-          Check In
-        </button>
-      ) : (
-        <>
-          <button className="checkin-button confirm" onClick={handleCheckInClick}>
-            Confirm Message
-          </button>
-          <button className="checkin-button cancel" onClick={() => setShowInput(false)}>
-            Cancel
-          </button>
-        </>
-      )}
-    </div>
+    <button onClick={handleCheckIn}>Tap to Check-In</button>
   );
 };
 
