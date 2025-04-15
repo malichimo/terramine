@@ -10,7 +10,7 @@ import PurchaseButton from "./components/PurchaseButton";
 import SignOutButton from "./components/SignOutButton";
 import UserButton from "./components/UserButton";
 import UserPage from "./components/UserPage";
-import CheckInGallery from "./components/CheckInGallery"; // Added gallery component import
+import CheckInGallery from "./components/CheckInGallery";
 import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
@@ -36,24 +36,24 @@ function App() {
   const [zoom, setZoom] = useState(18);
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [showUserPage, setShowUserPage] = useState(false);
-  const [showGallery, setShowGallery] = useState(false); // New state for gallery view
+  const [showGallery, setShowGallery] = useState(false);
 
   const mapRef = useRef(null);
+  const fetchTerracresRef = useRef(false);
 
-  // ⛏️ Loading screen logic
-const loadingMessages = [
-  "Sharpening axes...",
-  "Digging holes...",
-  "Checking the canaries...",
-  "Hauling ore...",
-  "Polishing gems...",
-  "Firing up the furnace...",
-  "Mapping new tunnels...",
-  "Counting TerraBucks...",
-  "Loading cart full of loot..."
-];
+  // 🪓 Loading screen logic
+  const loadingMessages = [
+    "Sharpening axes...",
+    "Digging holes...",
+    "Checking the canaries...",
+    "Hauling ore...",
+    "Polishing gems...",
+    "Firing up the furnace...",
+    "Mapping new tunnels...",
+    "Counting TerraBucks...",
+    "Loading cart full of loot..."
+  ];
 
-function App() {
   const [loading, setLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
 
@@ -78,19 +78,7 @@ function App() {
     );
   }
 
-  return (
-    <div className="app-container">
-      <h1>Welcome to TerraMine</h1>
-      {/* The rest of the app goes here */}
-    </div>
-  );
-}
-
-export default App;
-
-  
-  const fetchTerracresRef = useRef(false);
-
+  // TA generation
   const TA_PROBABILITIES = [
     { type: "Rock Mine", rate: 0.05, chance: 0.5 },
     { type: "Coal Mine", rate: 0.1, chance: 0.3 },
@@ -164,6 +152,7 @@ export default App;
       const all = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const owned = all.filter(t => t.lat && t.lng);
       setOwnedTerracres(owned);
+
       const checkInsSnapshot = await getDocs(collection(db, "checkins"));
       const messages = [];
       for (const docSnap of checkInsSnapshot.docs) {
