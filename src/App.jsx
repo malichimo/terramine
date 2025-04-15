@@ -39,6 +39,56 @@ function App() {
   const [showGallery, setShowGallery] = useState(false); // New state for gallery view
 
   const mapRef = useRef(null);
+
+  // ⛏️ Loading screen logic
+const loadingMessages = [
+  "Sharpening axes...",
+  "Digging holes...",
+  "Checking the canaries...",
+  "Hauling ore...",
+  "Polishing gems...",
+  "Firing up the furnace...",
+  "Mapping new tunnels...",
+  "Counting TerraBucks...",
+  "Loading cart full of loot..."
+];
+
+function App() {
+  const [loading, setLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const index = Math.floor(Math.random() * loadingMessages.length);
+      setLoadingMessage(loadingMessages[index]);
+    }, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    setTimeout(() => setLoading(false), 4000);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <h1>TerraMine</h1>
+        <p>{loadingMessage}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app-container">
+      <h1>Welcome to TerraMine</h1>
+      {/* The rest of the app goes here */}
+    </div>
+  );
+}
+
+export default App;
+
+  
   const fetchTerracresRef = useRef(false);
 
   const TA_PROBABILITIES = [
