@@ -10,7 +10,7 @@ import PurchaseButton from "./components/PurchaseButton";
 import SignOutButton from "./components/SignOutButton";
 import UserButton from "./components/UserButton";
 import UserPage from "./components/UserPage";
-import CheckInGallery from "./components/CheckInGallery";
+import CheckInGallery from "./components/CheckInGallery"; // Added gallery component import
 import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
@@ -18,11 +18,12 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 
+console.log("🌍 TerraMine v1.30b - Stable full version loaded");
+
 function App() {
   const isDevelopment = process.env.NODE_ENV === "development";
 
   const [user, setUser] = useState(isDevelopment ? { uid: "devUser", displayName: "Developer", terrabucks: 1000 } : null);
-  const [userChecked, setUserChecked] = useState(false);
   const [userLocation, setUserLocation] = useState(isDevelopment ? defaultCenter : null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
   const [checkInStatus, setCheckInStatus] = useState("");
@@ -35,51 +36,10 @@ function App() {
   const [zoom, setZoom] = useState(18);
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [showUserPage, setShowUserPage] = useState(false);
-  const [showGallery, setShowGallery] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadingMessage, setLoadingMessage] = useState("Sharpening axes...");
-
-  const loadingMessages = [
-    "Sharpening axes...",
-    "Digging holes...",
-    "Checking the canaries...",
-    "Hauling ore...",
-    "Polishing gems...",
-    "Firing up the furnace...",
-    "Mapping new tunnels...",
-    "Counting TerraBucks...",
-    "Loading cart full of loot..."
-  ];
+  const [showGallery, setShowGallery] = useState(false); // New state for gallery view
 
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const index = Math.floor(Math.random() * loadingMessages.length);
-      setLoadingMessage(loadingMessages[index]);
-    }, 1500);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (userChecked) {
-      const timer = setTimeout(() => setLoading(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [userChecked]);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
-      } else {
-        setUser(null);
-      }
-      setUserChecked(true);
-    });
-    return () => unsubscribe();
-  }, []);
 
   const TA_PROBABILITIES = [
     { type: "Rock Mine", rate: 0.05, chance: 0.5 },
@@ -191,6 +151,17 @@ function App() {
     if (user) fetchUserData(user.uid);
   }, [user?.uid, fetchUserData]);
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
+      } else {
+        setUser(null);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   const getGridLines = useCallback((center) => {
     if (!center || !mapRef.current) return [];
     const bounds = mapRef.current.getBounds();
@@ -252,23 +223,33 @@ function App() {
     />
   )), [ownedTerracres, zoom, gridCells, snapToGridCenter, user?.uid]);
 
-  if (loading || !userChecked) {
-    return (
-      <div className="loading-screen">
-        <h1>TerraMine</h1>
-        <p>{loadingMessage}</p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!isDevelopment) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => setError("Failed to get location.")
+      );
+    }
+  }, [isDevelopment]);
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    setUser(null);
+    window.location.reload();
+  };
 
   if (error) return <div>Error: {error}</div>;
   if (!user && !isDevelopment) return <Login onLoginSuccess={setUser} />;
 
   return (
     <div className="app-container">
-      {!showUserPage && <UserButton onUser={() => setShowUserPage(true)} />}
-      <SignOutButton onSignOut={() => { signOut(auth); setUser(null); }} />
-      <button onClick={() => setShowGallery(true)}>📸 View Check-In Gallery</button>
+      {user && (
+        <>
+          {!showUserPage && <UserButton onUser={() => setShowUserPage(true)} />}
+          <SignOutButton onSignOut={handleSignOut} />
+          <button onClick={() => setShowGallery(true)}>📸 View Check-In Gallery</button>
+        </>
+      )}
       {showUserPage ? (
         <UserPage
           user={user}
@@ -353,6 +334,7 @@ function App() {
               )}
             </LoadScript>
           </Suspense>
+
           <div className="greeting">Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB.</div>
           <div className="button-container">
             <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} setUser={setUser} />
