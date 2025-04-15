@@ -10,7 +10,7 @@ import PurchaseButton from "./components/PurchaseButton";
 import SignOutButton from "./components/SignOutButton";
 import UserButton from "./components/UserButton";
 import UserPage from "./components/UserPage";
-import CheckInGallery from "./components/CheckInGallery"; // Added gallery component import
+import CheckInGallery from "./components/CheckInGallery";
 import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
@@ -36,11 +36,49 @@ function App() {
   const [zoom, setZoom] = useState(18);
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [showUserPage, setShowUserPage] = useState(false);
-  const [showGallery, setShowGallery] = useState(false); // New state for gallery view
+  const [showGallery, setShowGallery] = useState(false);
 
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
 
+  // 🪓 Loading screen logic
+  const loadingMessages = [
+    "Sharpening axes...",
+    "Digging holes...",
+    "Checking the canaries...",
+    "Hauling ore...",
+    "Polishing gems...",
+    "Firing up the furnace...",
+    "Mapping new tunnels...",
+    "Counting TerraBucks...",
+    "Loading cart full of loot..."
+  ];
+
+  const [loading, setLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const index = Math.floor(Math.random() * loadingMessages.length);
+      setLoadingMessage(loadingMessages[index]);
+    }, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    setTimeout(() => setLoading(false), 4000);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <h1>TerraMine</h1>
+        <p>{loadingMessage}</p>
+      </div>
+    );
+  }
+
+  // TA generation
   const TA_PROBABILITIES = [
     { type: "Rock Mine", rate: 0.05, chance: 0.5 },
     { type: "Coal Mine", rate: 0.1, chance: 0.3 },
@@ -59,11 +97,7 @@ function App() {
   };
 
   const handlePurchase = async (gridCenter) => {
-    console.log("🛒 handlePurchase called with:", { user, gridCenter });
-  
-    if (!user || !gridCenter) {
-      return { message: "User or location not available." };
-    }
+    if (!user || !gridCenter) return { message: "User or location not available." };
     const terracreId = `${gridCenter.lat.toFixed(7)}-${gridCenter.lng.toFixed(7)}`;
     const terracreRef = doc(db, "terracres", terracreId);
     const terracreSnap = await getDoc(terracreRef);
@@ -118,6 +152,7 @@ function App() {
       const all = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const owned = all.filter(t => t.lat && t.lng);
       setOwnedTerracres(owned);
+
       const checkInsSnapshot = await getDocs(collection(db, "checkins"));
       const messages = [];
       for (const docSnap of checkInsSnapshot.docs) {
@@ -243,9 +278,7 @@ function App() {
   };
 
   if (error) return <div>Error: {error}</div>;
-  if ((!user && !isDevelopment) || !userLocation) {
-    return <Login onLoginSuccess={setUser} />;
-  }
+  if (!user && !isDevelopment) return <Login onLoginSuccess={setUser} />;
 
   return (
     <div className="app-container">
@@ -354,3 +387,19 @@ function App() {
 }
 
 export default App;
+  const TerracreMarkers = useMemo(() => ownedTerracres.map(t => (
+    <Marker
+      key={t.id}
+      position={snapToGridCenter(t.lat, t.lng, gridCells)}
+      icon={{
+        path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
+        scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
+        fillColor: t.ownerId === user?.uid ? "blue" : "green",
+        fillOpacity: 1,
+        strokeWeight: 2,
+        strokeColor: "#fff",
+      }}
+    />
+  )), [ownedTerracres, zoom, gridCells, snapToGridCenter, user?.uid]);
+
+
