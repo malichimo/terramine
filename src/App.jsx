@@ -66,8 +66,13 @@ function App() {
   }, []);
 
   useEffect(() => {
-    setTimeout(() => setLoading(false), 4000);
-  }, []);
+    const delay = setTimeout(() => {
+      if (user !== null) {
+        setLoading(false);
+      }
+    }, 4000);
+    return () => clearTimeout(delay);
+  }, [user]);
 
   if (loading) {
     return (

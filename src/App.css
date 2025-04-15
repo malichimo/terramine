@@ -271,11 +271,24 @@ html, body {
   animation: pulse 2s infinite;
 }
 
-.loading-screen p {
-  font-size: 1.5em;
-  font-style: italic;
-  color: #87ceeb;
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw; /* 🔧 Fix full screen width */
+  background-color: #1b1b1b;
+  color: #f5f5dc;
+  font-family: 'Courier New', Courier, monospace;
+  text-align: center;
+  animation: fadeIn 1s ease-in-out;
+  position: fixed; /* 💡 Ensures it overlays everything */
+  top: 0;
+  left: 0;
+  z-index: 9999;
 }
+
 
 /* ✨ Animations */
 @keyframes pulse {
