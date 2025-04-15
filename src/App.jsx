@@ -387,19 +387,6 @@ function App() {
 }
 
 export default App;
-  const TerracreMarkers = useMemo(() => ownedTerracres.map(t => (
-    <Marker
-      key={t.id}
-      position={snapToGridCenter(t.lat, t.lng, gridCells)}
-      icon={{
-        path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
-        scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
-        fillColor: t.ownerId === user?.uid ? "blue" : "green",
-        fillOpacity: 1,
-        strokeWeight: 2,
-        strokeColor: "#fff",
-      }}
-    />
-  )), [ownedTerracres, zoom, gridCells, snapToGridCenter, user?.uid]);
+
 
 
