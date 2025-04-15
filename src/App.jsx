@@ -323,7 +323,12 @@ function App() {
               )}
             </LoadScript>
           </Suspense>
-          <div className="greeting">Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB.</div>
+          {user && (
+            <div className="greeting">
+              Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB.
+            </div>
+          )}
+
           <div className="button-container">
             <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} setUser={setUser} />
             <PurchaseButton user={user} userLocation={userLocation} setUser={setUser} onPurchase={handlePurchase} gridCenter={snappedUserGridCenter} />
