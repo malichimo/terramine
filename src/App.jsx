@@ -21,6 +21,8 @@ const libraries = ["places"];
 console.log("🌍 TerraMine v1.30b - Stable full version loaded");
 
 function App() {
+  const [userChecked, setUserChecked] = useState(false);
+
   const isDevelopment = process.env.NODE_ENV === "development";
 
   const [user, setUser] = useState(isDevelopment ? { uid: "devUser", displayName: "Developer", terrabucks: 1000 } : null);
@@ -69,14 +71,14 @@ function App() {
     setTimeout(() => setLoading(false), 4000);
   }, []);
 
-  if (loading) {
-    return (
-      <div className="loading-screen">
-        <h1>TerraMine</h1>
-        <p>{loadingMessage}</p>
-      </div>
-    );
-  }
+  if (loading || !userChecked) {     return (
+    <div className="loading-screen">
+      <h1>TerraMine</h1>
+      <p>{loadingMessage}</p>
+    </div>
+  );
+ }
+
 
   // TA generation
   const TA_PROBABILITIES = [
@@ -191,6 +193,8 @@ function App() {
   }, [user?.uid, fetchUserData]);
 
   useEffect(() => {
+    setUserChecked(true);
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
