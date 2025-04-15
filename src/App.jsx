@@ -59,7 +59,11 @@ function App() {
   };
 
   const handlePurchase = async (gridCenter) => {
-    if (!user || !gridCenter) return { message: "User or location not available." };
+    console.log("🛒 handlePurchase called with:", { user, gridCenter });
+  
+    if (!user || !gridCenter) {
+      return { message: "User or location not available." };
+    }
     const terracreId = `${gridCenter.lat.toFixed(7)}-${gridCenter.lng.toFixed(7)}`;
     const terracreRef = doc(db, "terracres", terracreId);
     const terracreSnap = await getDoc(terracreRef);
@@ -239,7 +243,9 @@ function App() {
   };
 
   if (error) return <div>Error: {error}</div>;
-  if (!user && !isDevelopment) return <Login onLoginSuccess={setUser} />;
+  if ((!user && !isDevelopment) || !userLocation) {
+    return <Login onLoginSuccess={setUser} />;
+  }
 
   return (
     <div className="app-container">
