@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, Suspense, useRef } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -24,6 +25,7 @@ function App() {
   const isDevelopment = process.env.NODE_ENV === "development";
 
   const [user, setUser] = useState(isDevelopment ? { uid: "devUser", displayName: "Developer", terrabucks: 1000 } : null);
+  const [userChecked, setUserChecked] = useState(false);
   const [userLocation, setUserLocation] = useState(isDevelopment ? defaultCenter : null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
   const [checkInStatus, setCheckInStatus] = useState("");
@@ -64,10 +66,23 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (user !== null) {
-      setTimeout(() => setLoading(false), 4000);
+    if (userChecked) {
+      const timer = setTimeout(() => setLoading(false), 3000);
+      return () => clearTimeout(timer);
     }
-  }, [user]);
+  }, [userChecked]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
+      } else {
+        setUser(null);
+      }
+      setUserChecked(true);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const TA_PROBABILITIES = [
     { type: "Rock Mine", rate: 0.05, chance: 0.5 },
@@ -179,17 +194,6 @@ function App() {
     if (user) fetchUserData(user.uid);
   }, [user?.uid, fetchUserData]);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
-      } else {
-        setUser(null);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
   const getGridLines = useCallback((center) => {
     if (!center || !mapRef.current) return [];
     const bounds = mapRef.current.getBounds();
@@ -251,22 +255,7 @@ function App() {
     />
   )), [ownedTerracres, zoom, gridCells, snapToGridCenter, user?.uid]);
 
-  useEffect(() => {
-    if (!isDevelopment) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setError("Failed to get location.")
-      );
-    }
-  }, [isDevelopment]);
-
-  const handleSignOut = async () => {
-    await signOut(auth);
-    setUser(null);
-    window.location.reload();
-  };
-
-  if (loading) {
+  if (loading || !userChecked) {
     return (
       <div className="loading-screen">
         <h1>TerraMine</h1>
