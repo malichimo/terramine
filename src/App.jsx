@@ -21,17 +21,16 @@ const libraries = ["places"];
 console.log("🌍 TerraMine v1.30b - Stable full version loaded");
 
 function App() {
-  const [userChecked, setUserChecked] = useState(false);
-
   const isDevelopment = process.env.NODE_ENV === "development";
-
   const [user, setUser] = useState(isDevelopment ? { uid: "devUser", displayName: "Developer", terrabucks: 1000 } : null);
+  const [userChecked, setUserChecked] = useState(false);
   const [userLocation, setUserLocation] = useState(isDevelopment ? defaultCenter : null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
   const [checkInStatus, setCheckInStatus] = useState("");
   const [checkInMessages, setCheckInMessages] = useState([]);
   const [apiLoaded, setApiLoaded] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [dynamicLoading, setDynamicLoading] = useState(true);
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
   const [mapKey, setMapKey] = useState(Date.now());
@@ -43,7 +42,7 @@ function App() {
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
 
-  // 🪓 Loading screen logic
+  // 🪓 Animated loading message
   const loadingMessages = [
     "Sharpening axes...",
     "Digging holes...",
@@ -55,8 +54,6 @@ function App() {
     "Counting TerraBucks...",
     "Loading cart full of loot..."
   ];
-
-  const [loading, setLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
 
   useEffect(() => {
@@ -68,19 +65,25 @@ function App() {
   }, []);
 
   useEffect(() => {
-    setTimeout(() => setLoading(false), 4000);
-  }, []);
+    if (user && mapLoaded && userLocation) {
+      const timeout = setTimeout(() => setDynamicLoading(false), 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [user, mapLoaded, userLocation]);
 
-  if (loading || !userChecked) {     return (
-    <div className="loading-screen">
-      <h1>TerraMine</h1>
-      <p>{loadingMessage}</p>
-    </div>
-  );
- }
+  if (!user && !isDevelopment && userChecked) {
+    return <Login onLoginSuccess={setUser} />;
+  }
 
+  if ((dynamicLoading || !userChecked) && user) {
+    return (
+      <div className="loading-screen">
+        <h1>TerraMine</h1>
+        <p>{loadingMessage}</p>
+      </div>
+    );
+  }
 
-  // TA generation
   const TA_PROBABILITIES = [
     { type: "Rock Mine", rate: 0.05, chance: 0.5 },
     { type: "Coal Mine", rate: 0.1, chance: 0.3 },
@@ -109,11 +112,10 @@ function App() {
     const userSnap = await getDoc(userRef);
     const userData = userSnap.data();
     const terrabucks = userData.terrabucks ?? 0;
-    const TERRACRE_COST = 100;
-    if (terrabucks < TERRACRE_COST) return { message: "Not enough TerraBucks to purchase." };
+    if (terrabucks < 100) return { message: "Not enough TerraBucks to purchase." };
 
     const chosenType = getRandomTaType();
-    const newTerracre = {
+    await setDoc(terracreRef, {
       id: terracreId,
       lat: gridCenter.lat,
       lng: gridCenter.lng,
@@ -122,11 +124,10 @@ function App() {
       lastCollected: new Date().toISOString(),
       earningRate: chosenType.rate,
       taType: chosenType.type,
-    };
+    });
 
-    await setDoc(terracreRef, newTerracre);
-    await updateDoc(userRef, { terrabucks: terrabucks - TERRACRE_COST });
-    setPurchaseTrigger((prev) => prev + 1);
+    await updateDoc(userRef, { terrabucks: terrabucks - 100 });
+    setPurchaseTrigger(prev => prev + 1);
     return { message: `✅ You purchased a ${chosenType.type}!` };
   };
 
@@ -142,7 +143,7 @@ function App() {
   }, [ownedTerracres, user?.uid]);
 
   useEffect(() => {
-    const interval = setInterval(() => calculateTotalEarnings(), 30000);
+    const interval = setInterval(calculateTotalEarnings, 30000);
     return () => clearInterval(interval);
   }, [calculateTotalEarnings]);
 
@@ -150,23 +151,19 @@ function App() {
     if (!user || fetchTerracresRef.current) return;
     fetchTerracresRef.current = true;
     try {
-      const querySnapshot = await getDocs(collection(db, "terracres"));
-      const all = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const all = (await getDocs(collection(db, "terracres"))).docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const owned = all.filter(t => t.lat && t.lng);
       setOwnedTerracres(owned);
-
-      const checkInsSnapshot = await getDocs(collection(db, "checkins"));
-      const messages = [];
-      for (const docSnap of checkInsSnapshot.docs) {
+      const checkIns = (await getDocs(collection(db, "checkins"))).docs;
+      const messages = await Promise.all(checkIns.map(async docSnap => {
         const data = docSnap.data();
         if (owned.some(t => t.id === data.terracreId && t.ownerId === user.uid) && data.message) {
-          const visitorRef = doc(db, "users", data.userId);
-          const visitorSnap = await getDoc(visitorRef);
-          const visitorName = visitorSnap.exists() ? visitorSnap.data().name : "Unknown visitor";
-          messages.push(`${visitorName}: ${data.message}`);
+          const visitor = await getDoc(doc(db, "users", data.userId));
+          return `${visitor.exists() ? visitor.data().name : "Unknown visitor"}: ${data.message}`;
         }
-      }
-      setCheckInMessages(messages);
+        return null;
+      }));
+      setCheckInMessages(messages.filter(Boolean));
     } catch (err) {
       console.error("🔥 Error fetching terracres or check-ins:", err);
       setOwnedTerracres([]);
@@ -176,33 +173,18 @@ function App() {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (user) fetchOwnedTerracres();
-  }, [user, purchaseTrigger, fetchOwnedTerracres]);
-
-  const fetchUserData = useCallback(async (uid) => {
-    const userSnap = await getDoc(doc(db, "users", uid));
-    if (userSnap.exists()) {
-      const data = userSnap.data();
-      setUser(prev => ({ ...prev, ...data }));
-    }
-  }, []);
+  useEffect(() => { if (user) fetchOwnedTerracres(); }, [user, purchaseTrigger, fetchOwnedTerracres]);
 
   useEffect(() => {
-    if (user) fetchUserData(user.uid);
-  }, [user?.uid, fetchUserData]);
-
-  useEffect(() => {
-    setUserChecked(true);
-
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
       } else {
         setUser(null);
       }
+      setUserChecked(true);
     });
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
   const getGridLines = useCallback((center) => {
@@ -211,25 +193,21 @@ function App() {
     if (!bounds) return [];
     const ne = bounds.getNorthEast();
     const sw = bounds.getSouthWest();
-    const metersPerDegreeLat = 111000;
-    const metersPerDegreeLng = metersPerDegreeLat * Math.cos(center.lat * Math.PI / 180);
-    const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
-    const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
+    const mLat = 111000, mLng = mLat * Math.cos(center.lat * Math.PI / 180);
+    const dLat = TERRACRE_SIZE_METERS / mLat, dLng = TERRACRE_SIZE_METERS / mLng;
     const grid = [];
-    for (let lat = sw.lat(); lat < ne.lat(); lat += deltaLat) {
-      for (let lng = sw.lng(); lng < ne.lng(); lng += deltaLng) {
-        const baseLat = Math.floor(lat / deltaLat) * deltaLat;
-        const baseLng = Math.floor(lng / deltaLng) * deltaLng;
-        const centerLat = baseLat + deltaLat / 2;
-        const centerLng = baseLng + deltaLng / 2;
+    for (let lat = sw.lat(); lat < ne.lat(); lat += dLat) {
+      for (let lng = sw.lng(); lng < ne.lng(); lng += dLng) {
+        const baseLat = Math.floor(lat / dLat) * dLat;
+        const baseLng = Math.floor(lng / dLng) * dLng;
         grid.push({
-          center: { lat: centerLat, lng: centerLng },
+          center: { lat: baseLat + dLat / 2, lng: baseLng + dLng / 2 },
           paths: [
             { lat: baseLat, lng: baseLng },
-            { lat: baseLat + deltaLat, lng: baseLng },
-            { lat: baseLat + deltaLat, lng: baseLng + deltaLng },
-            { lat: baseLat, lng: baseLng + deltaLng },
-            { lat: baseLat, lng: baseLng }
+            { lat: baseLat + dLat, lng: baseLng },
+            { lat: baseLat + dLat, lng: baseLng + dLng },
+            { lat: baseLat, lng: baseLng + dLng },
+            { lat: baseLat, lng: baseLng },
           ]
         });
       }
@@ -251,6 +229,15 @@ function App() {
     return snapToGridCenter(userLocation.lat, userLocation.lng, gridCells);
   }, [userLocation, gridCells]);
 
+  useEffect(() => {
+    if (!isDevelopment) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => setError("Failed to get location.")
+      );
+    }
+  }, [isDevelopment]);
+
   const TerracreMarkers = useMemo(() => ownedTerracres.map(t => (
     <Marker
       key={t.id}
@@ -266,30 +253,12 @@ function App() {
     />
   )), [ownedTerracres, zoom, gridCells, snapToGridCenter, user?.uid]);
 
-  useEffect(() => {
-    if (!isDevelopment) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setError("Failed to get location.")
-      );
-    }
-  }, [isDevelopment]);
-
-  const handleSignOut = async () => {
-    await signOut(auth);
-    setUser(null);
-    window.location.reload();
-  };
-
-  if (error) return <div>Error: {error}</div>;
-  if (!user && !isDevelopment) return <Login onLoginSuccess={setUser} />;
-
   return (
     <div className="app-container">
       {user && (
         <>
           {!showUserPage && <UserButton onUser={() => setShowUserPage(true)} />}
-          <SignOutButton onSignOut={handleSignOut} />
+          <SignOutButton onSignOut={() => { signOut(auth); setUser(null); }} />
           <button onClick={() => setShowGallery(true)}>📸 View Check-In Gallery</button>
         </>
       )}
@@ -328,8 +297,7 @@ function App() {
                   onLoad={(map) => {
                     mapRef.current = map;
                     map.addListener("zoom_changed", () => {
-                      const z = map.getZoom();
-                      setZoom(z);
+                      setZoom(map.getZoom());
                       setMapKey(Date.now());
                     });
                   }}
@@ -346,38 +314,15 @@ function App() {
                     margin: "10px auto"
                   }}
                 >
-                  {gridCells.map((cell, index) => (
-                    <Polygon
-                      key={index}
-                      paths={cell.paths}
-                      options={{
-                        fillColor: "transparent",
-                        strokeColor: "#999",
-                        strokeOpacity: 0.8,
-                        strokeWeight: 1,
-                      }}
-                    />
+                  {gridCells.map((cell, i) => (
+                    <Polygon key={i} paths={cell.paths} options={{ fillColor: "transparent", strokeColor: "#999", strokeOpacity: 0.8, strokeWeight: 1 }} />
                   ))}
                   {TerracreMarkers}
-                  {userLocation && (
-                    <Marker
-                      position={userLocation}
-                      icon={{
-                        path: window.google?.maps?.SymbolPath?.CIRCLE || 0,
-                        scale: 8,
-                        fillColor: "#4285F4",
-                        fillOpacity: 1,
-                        strokeWeight: 2,
-                        strokeColor: "#fff",
-                      }}
-                      title="You"
-                    />
-                  )}
+                  <Marker position={userLocation} icon={{ path: window.google?.maps?.SymbolPath?.CIRCLE || 0, scale: 8, fillColor: "#4285F4", fillOpacity: 1, strokeWeight: 2, strokeColor: "#fff" }} title="You" />
                 </GoogleMap>
               )}
             </LoadScript>
           </Suspense>
-
           <div className="greeting">Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB.</div>
           <div className="button-container">
             <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} setUser={setUser} />
@@ -391,6 +336,3 @@ function App() {
 }
 
 export default App;
-
-
-
