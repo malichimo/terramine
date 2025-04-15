@@ -255,18 +255,7 @@ function App() {
     />
   )), [ownedTerracres, zoom, gridCells, snapToGridCenter, user?.uid]);
 
-  if (!userChecked) {
-    // Still checking auth status – return nothing or a minimal spinner if you want
-    return null;
-  }
-  
-  if (!user && !isDevelopment) {
-    // Show login screen first
-    return <Login onLoginSuccess={setUser} />;
-  }
-  
-  if (loading) {
-    // Show loading screen only after user signs in
+  if (loading || !userChecked) {
     return (
       <div className="loading-screen">
         <h1>TerraMine</h1>
