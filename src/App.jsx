@@ -37,11 +37,9 @@ function App() {
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [showUserPage, setShowUserPage] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState("Sharpening axes...");
 
-  const mapRef = useRef(null);
-  const fetchTerracresRef = useRef(false);
-
-  // 🪓 Loading screen logic
   const loadingMessages = [
     "Sharpening axes...",
     "Digging holes...",
@@ -54,8 +52,8 @@ function App() {
     "Loading cart full of loot..."
   ];
 
-  const [loading, setLoading] = useState(true);
-  const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
+  const mapRef = useRef(null);
+  const fetchTerracresRef = useRef(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -66,22 +64,11 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const delay = setTimeout(() => {
-      setLoading(false);
-    }, 4000);
-    return () => clearTimeout(delay);
+    if (user !== null) {
+      setTimeout(() => setLoading(false), 4000);
+    }
   }, [user]);
 
-  if (loading) {
-    return (
-      <div className="loading-screen">
-        <h1>TerraMine</h1>
-        <p>{loadingMessage}</p>
-      </div>
-    );
-  }
-
-  // TA generation
   const TA_PROBABILITIES = [
     { type: "Rock Mine", rate: 0.05, chance: 0.5 },
     { type: "Coal Mine", rate: 0.1, chance: 0.3 },
@@ -155,7 +142,6 @@ function App() {
       const all = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const owned = all.filter(t => t.lat && t.lng);
       setOwnedTerracres(owned);
-
       const checkInsSnapshot = await getDocs(collection(db, "checkins"));
       const messages = [];
       for (const docSnap of checkInsSnapshot.docs) {
@@ -280,6 +266,15 @@ function App() {
     window.location.reload();
   };
 
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <h1>TerraMine</h1>
+        <p>{loadingMessage}</p>
+      </div>
+    );
+  }
+
   if (error) return <div>Error: {error}</div>;
   if (!user && !isDevelopment) return <Login onLoginSuccess={setUser} />;
 
@@ -376,7 +371,6 @@ function App() {
               )}
             </LoadScript>
           </Suspense>
-
           <div className="greeting">Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB.</div>
           <div className="button-container">
             <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} setUser={setUser} />
