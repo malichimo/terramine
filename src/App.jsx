@@ -203,16 +203,17 @@ function App() {
   }, [user?.uid, fetchUserData]);
 
   useEffect(() => {
-    setUserChecked(true);
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
       } else {
         setUser(null);
       }
+      setUserChecked(true); // ✅ only run this once auth check is done
     });
     return () => unsubscribe();
   }, []);
+  
 
   const getGridLines = useCallback((center) => {
     if (!center || !mapRef.current) return [];
@@ -291,7 +292,7 @@ function App() {
   };
 
   if (error) return <div>Error: {error}</div>;
-  if (!user && !isDevelopment) return <Login onLoginSuccess={setUser} />;
+
 
   return (
     <div className="app-container">
