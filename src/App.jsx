@@ -71,7 +71,16 @@ function App() {
     setTimeout(() => setLoading(false), 4000);
   }, []);
 
-  if (loading || !userChecked) {
+  if (!userChecked) {
+    return null; // wait silently until auth is checked
+  }
+  
+  if (!user && !isDevelopment) {
+    return <Login onLoginSuccess={setUser} />;
+  }
+  
+  // show loading screen only after login
+  if (loading) {
     return (
       <div className="loading-screen">
         <h1>TerraMine</h1>
@@ -79,6 +88,7 @@ function App() {
       </div>
     );
   }
+  
 
   const TA_PROBABILITIES = [
     { type: "Rock Mine", rate: 0.05, chance: 0.5 },
