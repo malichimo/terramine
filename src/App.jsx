@@ -11,6 +11,7 @@ import SignOutButton from "./components/SignOutButton";
 import UserButton from "./components/UserButton";
 import UserPage from "./components/UserPage";
 import CheckInGallery from "./components/CheckInGallery";
+import ErrorBoundary from "./components/ErrorBoundary";
 import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
@@ -137,7 +138,7 @@ function App() {
         (err) => {
           console.error("📍 Geolocation failed:", err);
           setError("Failed to get location. Using default location.");
-          setUserLocation(defaultCenter); // Fallback to default center
+          setUserLocation(defaultCenter);
         }
       );
     }
@@ -166,6 +167,11 @@ function App() {
       <div className="loading-screen">
         <h1>TerraMine</h1>
         <p>{loadingMessage || "Loading..."}</p>
+        {user && <SignOutButton onSignOut={async () => {
+          await signOut(auth);
+          setUser(null);
+          window.location.reload();
+        }} />}
       </div>
     );
   }
@@ -246,7 +252,10 @@ function App() {
     try {
       const querySnapshot = await getDocs(collection(db, "terracres"));
       const all = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const owned = all.filter(t => t.lat && t.lng);
+      // Deduplicate by id
+      const uniqueTerracres = Array.from(new Map(all.map(t => [t.id, t])).values());
+      console.log("🏞️ Fetched terracres:", uniqueTerracres);
+      const owned = uniqueTerracres.filter(t => t.lat && t.lng);
       setOwnedTerracres(owned);
 
       const checkInsSnapshot = await getDocs(collection(db, "checkins"));
@@ -315,168 +324,180 @@ function App() {
         });
       }
     }
+    console.log("📍 Generated grid cells:", grid.length);
     return grid;
   }, []);
 
   const snapToGridCenter = useCallback((lat, lng, gridCells) => {
     if (!gridCells.length) return { lat, lng };
-    return gridCells.find(cell =>
+    const snapped = gridCells.find(cell =>
       lat >= cell.paths[0].lat && lat < cell.paths[1].lat &&
       lng >= cell.paths[0].lng && lng < cell.paths[2].lng
     )?.center || { lat, lng };
+    return snapped;
   }, []);
 
-  const gridCells = useMemo(() => (mapLoaded ? getGridLines(userLocation) : []), [userLocation, mapLoaded]);
+  const gridCells = useMemo(() => (mapLoaded && userLocation ? getGridLines(userLocation) : []), [userLocation, mapLoaded]);
   const snappedUserGridCenter = useMemo(() => {
     if (!userLocation || !gridCells.length) return null;
     return snapToGridCenter(userLocation.lat, userLocation.lng, gridCells);
-  }, [userLocation, gridCells]);
+  }, [userLocation, gridCells, snapToGridCenter]);
 
-  const TerracreMarkers = useMemo(() => ownedTerracres.map(t => (
-    <Marker
-      key={t.id}
-      position={snapToGridCenter(t.lat, t.lng, gridCells)}
-      icon={{
-        path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
-        scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
-        fillColor: t.ownerId === user?.uid ? "blue" : "green",
-        fillOpacity: 1,
-        strokeWeight: 2,
-        strokeColor: "#fff",
-      }}
-    />
-  )), [ownedTerracres, zoom, gridCells, snapToGridCenter, user?.uid]);
+  const TerracreMarkers = useMemo(() => {
+    console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
+    return ownedTerracres.map((t, index) => (
+      <Marker
+        key={`${t.id}-${index}`} // Ensure unique key
+        position={snapToGridCenter(t.lat, t.lng, gridCells)}
+        icon={{
+          path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
+          scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
+          fillColor: t.ownerId === user?.uid ? "blue" : "green",
+          fillOpacity: 1,
+          strokeWeight: 2,
+          strokeColor: "#fff",
+        }}
+      />
+    ));
+  }, [ownedTerracres, zoom, gridCells, snapToGridCenter, user?.uid]);
 
   const handleSignOut = async () => {
-    await signOut(auth);
-    setUser(null);
-    window.location.reload();
+    try {
+      await signOut(auth);
+      setUser(null);
+      window.location.reload();
+    } catch (err) {
+      console.error("🔥 Sign-out failed:", err);
+      setError("Failed to sign out.");
+    }
   };
 
   if (error) return <div>Error: {error}</div>;
 
   return (
-    <div className="app-container">
-      {user && (
-        <>
-          {!showUserPage && <UserButton onUser={() => setShowUserPage(true)} />}
-          <SignOutButton onSignOut={handleSignOut} />
-          <button onClick={() => setShowGallery(true)}>📸 View Check-In Gallery</button>
-        </>
-      )}
-      {showUserPage ? (
-        <UserPage
-          user={user}
-          onClose={() => setShowUserPage(false)}
-          earnings={totalEarnings}
-          rockMines={ownedTerracres.filter(t => t.taType === "Rock Mine" && t.ownerId === user?.uid).length}
-          coalMines={ownedTerracres.filter(t => t.taType === "Coal Mine" && t.ownerId === user?.uid).length}
-          goldMines={ownedTerracres.filter(t => t.taType === "Gold Mine" && t.ownerId === user?.uid).length}
-          diamondMines={ownedTerracres.filter(t => t.taType === "Diamond Mine" && t.ownerId === user?.uid).length}
-          checkInMessages={checkInMessages}
-        />
-      ) : showGallery ? (
-        <CheckInGallery messages={checkInMessages} onClose={() => setShowGallery(false)} />
-      ) : (
-        <>
-          <header className="app-header"><h1>TerraMine</h1></header>
-          <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
-          <Suspense fallback={<p>Loading map...</p>}>
-            <LoadScript
-              googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-              libraries={libraries}
-              onLoad={() => {
-                console.log("🗺️ Google Maps API loaded");
-                setApiLoaded(true);
-                setMapLoaded(true);
-              }}
-              onError={(err) => {
-                console.error("🗺️ Google Maps API failed to load:", err);
-                setError("Failed to load Google Maps.");
-              }}
-            >
-              {apiLoaded && userLocation ? (
-                <GoogleMap
-                  key={mapKey}
-                  mapContainerClassName="map-container"
-                  center={userLocation}
-                  zoom={zoom}
-                  onLoad={(map) => {
-                    console.log("🗺️ Google Map component loaded");
-                    mapRef.current = map;
-                    map.addListener("zoom_changed", () => {
-                      const z = map.getZoom();
-                      setZoom(z);
-                      setMapKey(Date.now());
-                    });
-                  }}
-                  onBoundsChanged={() => {
-                    if (mapRef.current) {
-                      const c = mapRef.current.getCenter();
-                      setUserLocation({ lat: c.lat(), lng: c.lng() });
-                    }
-                  }}
-                  mapContainerStyle={{
-                    width: "min(80vw, 500px)",
-                    height: "min(80vw, 500px)",
-                    aspectRatio: "1 / 1",
-                    margin: "10px auto"
-                  }}
-                >
-                  {gridCells.map((cell, index) => (
-                    <Polygon
-                      key={index}
-                      paths={cell.paths}
-                      options={{
-                        fillColor: "transparent",
-                        strokeColor: "#999",
-                        strokeOpacity: 0.8,
-                        strokeWeight: 1,
-                      }}
-                    />
-                  ))}
-                  {TerracreMarkers}
-                  {userLocation && (
-                    <Marker
-                      position={userLocation}
-                      icon={{
-                        path: window.google?.maps?.SymbolPath?.CIRCLE || 0,
-                        scale: 8,
-                        fillColor: "#4285F4",
-                        fillOpacity: 1,
-                        strokeWeight: 2,
-                        strokeColor: "#fff",
-                      }}
-                      title="You"
-                    />
-                  )}
-                </GoogleMap>
-              ) : (
-                <p>Waiting for location...</p>
-              )}
-            </LoadScript>
-          </Suspense>
+    <ErrorBoundary>
+      <div className="app-container">
+        {user && (
+          <>
+            {!showUserPage && <UserButton onUser={() => setShowUserPage(true)} />}
+            <SignOutButton onSignOut={handleSignOut} />
+            <button onClick={() => setShowGallery(true)}>📸 View Check-In Gallery</button>
+          </>
+        )}
+        {showUserPage ? (
+          <UserPage
+            user={user}
+            onClose={() => setShowUserPage(false)}
+            earnings={totalEarnings}
+            rockMines={ownedTerracres.filter(t => t.taType === "Rock Mine" && t.ownerId === user?.uid).length}
+            coalMines={ownedTerracres.filter(t => t.taType === "Coal Mine" && t.ownerId === user?.uid).length}
+            goldMines={ownedTerracres.filter(t => t.taType === "Gold Mine" && t.ownerId === user?.uid).length}
+            diamondMines={ownedTerracres.filter(t => t.taType === "Diamond Mine" && t.ownerId === user?.uid).length}
+            checkInMessages={checkInMessages}
+          />
+        ) : showGallery ? (
+          <CheckInGallery messages={checkInMessages} onClose={() => setShowGallery(false)} />
+        ) : (
+          <>
+            <header className="app-header"><h1>TerraMine</h1></header>
+            <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
+            <Suspense fallback={<p>Loading map...</p>}>
+              <LoadScript
+                googleMapsApiKey={GOOGLE_MAPS_API_KEY}
+                libraries={libraries}
+                onLoad={() => {
+                  console.log("🗺️ Google Maps API loaded");
+                  setApiLoaded(true);
+                  setMapLoaded(true);
+                }}
+                onError={(err) => {
+                  console.error("🗺️ Google Maps API failed to load:", err);
+                  setError("Failed to load Google Maps.");
+                }}
+              >
+                {apiLoaded && userLocation ? (
+                  <GoogleMap
+                    key={mapKey}
+                    mapContainerClassName="map-container"
+                    center={userLocation}
+                    zoom={zoom}
+                    onLoad={(map) => {
+                      console.log("🗺️ Google Map component loaded");
+                      mapRef.current = map;
+                      map.addListener("zoom_changed", () => {
+                        const z = map.getZoom();
+                        setZoom(z);
+                        setMapKey(Date.now());
+                      });
+                    }}
+                    onBoundsChanged={() => {
+                      if (mapRef.current) {
+                        const c = mapRef.current.getCenter();
+                        setUserLocation({ lat: c.lat(), lng: c.lng() });
+                      }
+                    }}
+                    mapContainerStyle={{
+                      width: "min(80vw, 500px)",
+                      height: "min(80vw, 500px)",
+                      aspectRatio: "1 / 1",
+                      margin: "10px auto"
+                    }}
+                  >
+                    {gridCells.map((cell, index) => (
+                      <Polygon
+                        key={`polygon-${index}`} // Explicit key prefix
+                        paths={cell.paths}
+                        options={{
+                          fillColor: "transparent",
+                          strokeColor: "#999",
+                          strokeOpacity: 0.8,
+                          strokeWeight: 1,
+                        }}
+                      />
+                    ))}
+                    {TerracreMarkers}
+                    {userLocation && (
+                      <Marker
+                        position={userLocation}
+                        icon={{
+                          path: window.google?.maps?.SymbolPath?.CIRCLE || 0,
+                          scale: 8,
+                          fillColor: "#4285F4",
+                          fillOpacity: 1,
+                          strokeWeight: 2,
+                          strokeColor: "#fff",
+                        }}
+                        title="You"
+                      />
+                    )}
+                  </GoogleMap>
+                ) : (
+                  <p>Waiting for location...</p>
+                )}
+              </LoadScript>
+            </Suspense>
 
-          <div className="greeting">Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB.</div>
-          <div className="button-container">
-            <CheckInButton
-              user={user}
-              snappedGridCenter={snappedUserGridCenter}
-              setCheckInStatus={setCheckInStatus}
-              setUser={setUser}
-            />
-            <PurchaseButton
-              user={user}
-              userLocation={userLocation}
-              setUser={setUser}
-              onPurchase={handlePurchase}
-              gridCenter={snappedUserGridCenter}
-            />
-          </div>
-          {checkInStatus && <p>{checkInStatus}</p>}
-        </>
-      )}
-    </div>
+            <div className="greeting">Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB.</div>
+            <div className="button-container">
+              <CheckInButton
+                user={user}
+                snappedGridCenter={snappedUserGridCenter}
+                setCheckInStatus={setCheckInStatus}
+                setUser={setUser}
+              />
+              <PurchaseButton
+                user={user}
+                userLocation={userLocation}
+                setUser={setUser}
+                onPurchase={handlePurchase}
+                gridCenter={snappedUserGridCenter}
+              />
+            </div>
+            {checkInStatus && <p>{checkInStatus}</p>}
+          </>
+        )}
+      </div>
+    </ErrorBoundary>
   );
 }
 
