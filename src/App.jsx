@@ -138,6 +138,7 @@ function App() {
     await updateDoc(userRef, { terrabucks: terrabucks - TERRACRE_COST });
     setPurchaseTrigger((prev) => prev + 1);
     return { message: `✅ You purchased a ${chosenType.type}!` };
+  };
 
   const calculateTotalEarnings = useCallback(() => {
     const now = new Date();
@@ -396,6 +397,5 @@ function App() {
       )}
     </div>
   );
-}
 }
 export default App;
