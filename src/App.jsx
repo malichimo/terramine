@@ -75,7 +75,10 @@ function App() {
         if (firebaseUser) {
           setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
           setLoading(true);
-          setTimeout(() => setLoading(false), 4000); // Show loading screen for 4s
+          setTimeout(() => {
+            setLoading(false);
+            console.log("⏳ Loading complete, rendering main UI");
+          }, 4000);
         } else {
           setUser(null);
         }
@@ -83,7 +86,7 @@ function App() {
       }, (error) => {
         console.error("🔥 onAuthStateChanged error:", error);
         setError("Failed to check authentication state.");
-        setUserChecked(true); // Allow rendering to proceed even on error
+        setUserChecked(true);
       });
       return () => {
         console.log("🧹 Cleaning up onAuthStateChanged");
@@ -103,7 +106,10 @@ function App() {
       setUser({ uid: "devUser", displayName: "Developer", terrabucks: 1000 });
       setUserLocation(defaultCenter);
       setLoading(true);
-      setTimeout(() => setLoading(false), 4000);
+      setTimeout(() => {
+        setLoading(false);
+        console.log("⏳ Development mode: Loading complete, rendering main UI");
+      }, 4000);
       setUserChecked(true);
     }
   }, [isDevelopment]);
@@ -113,8 +119,29 @@ function App() {
     console.log("✅ Login successful:", firebaseUser);
     setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
     setLoading(true);
-    setTimeout(() => setLoading(false), 4000);
+    setTimeout(() => {
+      setLoading(false);
+      console.log("⏳ Login: Loading complete, rendering main UI");
+    }, 4000);
   };
+
+  // Set user location with fallback
+  useEffect(() => {
+    if (!isDevelopment) {
+      console.log("📍 Requesting geolocation");
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          console.log("📍 Geolocation success:", pos.coords);
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        (err) => {
+          console.error("📍 Geolocation failed:", err);
+          setError("Failed to get location. Using default location.");
+          setUserLocation(defaultCenter); // Fallback to default center
+        }
+      );
+    }
+  }, [isDevelopment]);
 
   // Render while checking authentication
   if (!userChecked) {
@@ -128,11 +155,13 @@ function App() {
 
   // Render login screen if no user
   if (!user && !isDevelopment) {
+    console.log("🔒 Rendering Login component");
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
   // Render loading screen
   if (loading) {
+    console.log("⏳ Rendering loading screen");
     return (
       <div className="loading-screen">
         <h1>TerraMine</h1>
@@ -141,7 +170,10 @@ function App() {
     );
   }
 
-  // Rest of the App.jsx code remains unchanged
+  // Log when rendering main UI
+  console.log("🎮 Rendering main UI", { user, userLocation });
+
+  // Rest of the App.jsx code
   const TA_PROBABILITIES = [
     { type: "Rock Mine", rate: 0.05, chance: 0.5 },
     { type: "Coal Mine", rate: 0.1, chance: 0.3 },
@@ -315,15 +347,6 @@ function App() {
     />
   )), [ownedTerracres, zoom, gridCells, snapToGridCenter, user?.uid]);
 
-  useEffect(() => {
-    if (!isDevelopment) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setError("Failed to get location.")
-      );
-    }
-  }, [isDevelopment]);
-
   const handleSignOut = async () => {
     await signOut(auth);
     setUser(null);
@@ -363,17 +386,23 @@ function App() {
               googleMapsApiKey={GOOGLE_MAPS_API_KEY}
               libraries={libraries}
               onLoad={() => {
+                console.log("🗺️ Google Maps API loaded");
                 setApiLoaded(true);
                 setMapLoaded(true);
               }}
+              onError={(err) => {
+                console.error("🗺️ Google Maps API failed to load:", err);
+                setError("Failed to load Google Maps.");
+              }}
             >
-              {apiLoaded && userLocation && (
+              {apiLoaded && userLocation ? (
                 <GoogleMap
                   key={mapKey}
                   mapContainerClassName="map-container"
                   center={userLocation}
                   zoom={zoom}
                   onLoad={(map) => {
+                    console.log("🗺️ Google Map component loaded");
                     mapRef.current = map;
                     map.addListener("zoom_changed", () => {
                       const z = map.getZoom();
@@ -422,14 +451,27 @@ function App() {
                     />
                   )}
                 </GoogleMap>
+              ) : (
+                <p>Waiting for location...</p>
               )}
             </LoadScript>
           </Suspense>
 
           <div className="greeting">Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB.</div>
           <div className="button-container">
-            <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} setUser={setUser} />
-            <PurchaseButton user={user} userLocation={userLocation} setUser={setUser} onPurchase={handlePurchase} gridCenter={snappedUserGridCenter} />
+            <CheckInButton
+              user={user}
+              snappedGridCenter={snappedUserGridCenter}
+              setCheckInStatus={setCheckInStatus}
+              setUser={setUser}
+            />
+            <PurchaseButton
+              user={user}
+              userLocation={userLocation}
+              setUser={setUser}
+              onPurchase={handlePurchase}
+              gridCenter={snappedUserGridCenter}
+            />
           </div>
           {checkInStatus && <p>{checkInStatus}</p>}
         </>

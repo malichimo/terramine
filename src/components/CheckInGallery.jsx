@@ -13,7 +13,7 @@ const CheckInGallery = ({ messages, onClose }) => {
         ) : (
           <ul className="gallery-messages">
             {messages.map((msg, index) => (
-              <li key={index}><strong>{msg.visitor}</strong>: {msg.message}</li>
+              <li key={index}>{msg}</li>
             ))}
           </ul>
         )}
