@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, Suspense, useRef } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -21,16 +22,17 @@ const libraries = ["places"];
 console.log("🌍 TerraMine v1.30b - Stable full version loaded");
 
 function App() {
-  const isDevelopment = process.env.NODE_ENV === "development";
-  const [user, setUser] = useState(isDevelopment ? { uid: "devUser", displayName: "Developer", terrabucks: 1000 } : null);
   const [userChecked, setUserChecked] = useState(false);
+
+  const isDevelopment = process.env.NODE_ENV === "development";
+
+  const [user, setUser] = useState(isDevelopment ? { uid: "devUser", displayName: "Developer", terrabucks: 1000 } : null);
   const [userLocation, setUserLocation] = useState(isDevelopment ? defaultCenter : null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
   const [checkInStatus, setCheckInStatus] = useState("");
   const [checkInMessages, setCheckInMessages] = useState([]);
   const [apiLoaded, setApiLoaded] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [dynamicLoading, setDynamicLoading] = useState(true);
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
   const [mapKey, setMapKey] = useState(Date.now());
@@ -42,7 +44,6 @@ function App() {
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
 
-  // 🪓 Animated loading message
   const loadingMessages = [
     "Sharpening axes...",
     "Digging holes...",
@@ -54,6 +55,8 @@ function App() {
     "Counting TerraBucks...",
     "Loading cart full of loot..."
   ];
+
+  const [loading, setLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
 
   useEffect(() => {
@@ -65,17 +68,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (user && mapLoaded && userLocation) {
-      const timeout = setTimeout(() => setDynamicLoading(false), 1000);
-      return () => clearTimeout(timeout);
-    }
-  }, [user, mapLoaded, userLocation]);
+    setTimeout(() => setLoading(false), 4000);
+  }, []);
 
-  if (!user && !isDevelopment && userChecked) {
-    return <Login onLoginSuccess={setUser} />;
-  }
-
-  if ((dynamicLoading || !userChecked) && user) {
+  if (loading || !userChecked) {
     return (
       <div className="loading-screen">
         <h1>TerraMine</h1>
@@ -104,6 +100,7 @@ function App() {
   const handlePurchase = async (gridCenter) => {
     if (!user || !gridCenter) return { message: "User or location not available." };
     const terracreId = `${gridCenter.lat.toFixed(7)}-${gridCenter.lng.toFixed(7)}`;
+
     const terracreRef = doc(db, "terracres", terracreId);
     const terracreSnap = await getDoc(terracreRef);
     if (terracreSnap.exists()) return { message: "You cannot purchase this property. It is already owned." };
@@ -112,10 +109,11 @@ function App() {
     const userSnap = await getDoc(userRef);
     const userData = userSnap.data();
     const terrabucks = userData.terrabucks ?? 0;
-    if (terrabucks < 100) return { message: "Not enough TerraBucks to purchase." };
+    const TERRACRE_COST = 100;
+    if (terrabucks < TERRACRE_COST) return { message: "Not enough TerraBucks to purchase." };
 
     const chosenType = getRandomTaType();
-    await setDoc(terracreRef, {
+    const newTerracre = {
       id: terracreId,
       lat: gridCenter.lat,
       lng: gridCenter.lng,
@@ -124,12 +122,12 @@ function App() {
       lastCollected: new Date().toISOString(),
       earningRate: chosenType.rate,
       taType: chosenType.type,
-    });
+    };
 
-    await updateDoc(userRef, { terrabucks: terrabucks - 100 });
-    setPurchaseTrigger(prev => prev + 1);
+    await setDoc(terracreRef, newTerracre);
+    await updateDoc(userRef, { terrabucks: terrabucks - TERRACRE_COST });
+    setPurchaseTrigger((prev) => prev + 1);
     return { message: `✅ You purchased a ${chosenType.type}!` };
-  };
 
   const calculateTotalEarnings = useCallback(() => {
     const now = new Date();
@@ -143,7 +141,7 @@ function App() {
   }, [ownedTerracres, user?.uid]);
 
   useEffect(() => {
-    const interval = setInterval(calculateTotalEarnings, 30000);
+    const interval = setInterval(() => calculateTotalEarnings(), 30000);
     return () => clearInterval(interval);
   }, [calculateTotalEarnings]);
 
@@ -151,19 +149,23 @@ function App() {
     if (!user || fetchTerracresRef.current) return;
     fetchTerracresRef.current = true;
     try {
-      const all = (await getDocs(collection(db, "terracres"))).docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const querySnapshot = await getDocs(collection(db, "terracres"));
+      const all = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const owned = all.filter(t => t.lat && t.lng);
       setOwnedTerracres(owned);
-      const checkIns = (await getDocs(collection(db, "checkins"))).docs;
-      const messages = await Promise.all(checkIns.map(async docSnap => {
+
+      const checkInsSnapshot = await getDocs(collection(db, "checkins"));
+      const messages = [];
+      for (const docSnap of checkInsSnapshot.docs) {
         const data = docSnap.data();
         if (owned.some(t => t.id === data.terracreId && t.ownerId === user.uid) && data.message) {
-          const visitor = await getDoc(doc(db, "users", data.userId));
-          return `${visitor.exists() ? visitor.data().name : "Unknown visitor"}: ${data.message}`;
+          const visitorRef = doc(db, "users", data.userId);
+          const visitorSnap = await getDoc(visitorRef);
+          const visitorName = visitorSnap.exists() ? visitorSnap.data().name : "Unknown visitor";
+          messages.push(`${visitorName}: ${data.message}`);
         }
-        return null;
-      }));
-      setCheckInMessages(messages.filter(Boolean));
+      }
+      setCheckInMessages(messages);
     } catch (err) {
       console.error("🔥 Error fetching terracres or check-ins:", err);
       setOwnedTerracres([]);
@@ -173,18 +175,32 @@ function App() {
     }
   }, [user]);
 
-  useEffect(() => { if (user) fetchOwnedTerracres(); }, [user, purchaseTrigger, fetchOwnedTerracres]);
+  useEffect(() => {
+    if (user) fetchOwnedTerracres();
+  }, [user, purchaseTrigger, fetchOwnedTerracres]);
+
+  const fetchUserData = useCallback(async (uid) => {
+    const userSnap = await getDoc(doc(db, "users", uid));
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      setUser(prev => ({ ...prev, ...data }));
+    }
+  }, []);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+    if (user) fetchUserData(user.uid);
+  }, [user?.uid, fetchUserData]);
+
+  useEffect(() => {
+    setUserChecked(true);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
       } else {
         setUser(null);
       }
-      setUserChecked(true);
     });
-    return () => unsub();
+    return () => unsubscribe();
   }, []);
 
   const getGridLines = useCallback((center) => {
@@ -193,21 +209,25 @@ function App() {
     if (!bounds) return [];
     const ne = bounds.getNorthEast();
     const sw = bounds.getSouthWest();
-    const mLat = 111000, mLng = mLat * Math.cos(center.lat * Math.PI / 180);
-    const dLat = TERRACRE_SIZE_METERS / mLat, dLng = TERRACRE_SIZE_METERS / mLng;
+    const metersPerDegreeLat = 111000;
+    const metersPerDegreeLng = metersPerDegreeLat * Math.cos(center.lat * Math.PI / 180);
+    const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
+    const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
     const grid = [];
-    for (let lat = sw.lat(); lat < ne.lat(); lat += dLat) {
-      for (let lng = sw.lng(); lng < ne.lng(); lng += dLng) {
-        const baseLat = Math.floor(lat / dLat) * dLat;
-        const baseLng = Math.floor(lng / dLng) * dLng;
+    for (let lat = sw.lat(); lat < ne.lat(); lat += deltaLat) {
+      for (let lng = sw.lng(); lng < ne.lng(); lng += deltaLng) {
+        const baseLat = Math.floor(lat / deltaLat) * deltaLat;
+        const baseLng = Math.floor(lng / deltaLng) * deltaLng;
+        const centerLat = baseLat + deltaLat / 2;
+        const centerLng = baseLng + deltaLng / 2;
         grid.push({
-          center: { lat: baseLat + dLat / 2, lng: baseLng + dLng / 2 },
+          center: { lat: centerLat, lng: centerLng },
           paths: [
             { lat: baseLat, lng: baseLng },
-            { lat: baseLat + dLat, lng: baseLng },
-            { lat: baseLat + dLat, lng: baseLng + dLng },
-            { lat: baseLat, lng: baseLng + dLng },
-            { lat: baseLat, lng: baseLng },
+            { lat: baseLat + deltaLat, lng: baseLng },
+            { lat: baseLat + deltaLat, lng: baseLng + deltaLng },
+            { lat: baseLat, lng: baseLng + deltaLng },
+            { lat: baseLat, lng: baseLng }
           ]
         });
       }
@@ -229,15 +249,6 @@ function App() {
     return snapToGridCenter(userLocation.lat, userLocation.lng, gridCells);
   }, [userLocation, gridCells]);
 
-  useEffect(() => {
-    if (!isDevelopment) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setError("Failed to get location.")
-      );
-    }
-  }, [isDevelopment]);
-
   const TerracreMarkers = useMemo(() => ownedTerracres.map(t => (
     <Marker
       key={t.id}
@@ -253,12 +264,30 @@ function App() {
     />
   )), [ownedTerracres, zoom, gridCells, snapToGridCenter, user?.uid]);
 
+  useEffect(() => {
+    if (!isDevelopment) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => setError("Failed to get location.")
+      );
+    }
+  }, [isDevelopment]);
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    setUser(null);
+    window.location.reload();
+  };
+
+  if (error) return <div>Error: {error}</div>;
+  if (!user && !isDevelopment) return <Login onLoginSuccess={setUser} />;
+
   return (
     <div className="app-container">
       {user && (
         <>
           {!showUserPage && <UserButton onUser={() => setShowUserPage(true)} />}
-          <SignOutButton onSignOut={() => { signOut(auth); setUser(null); }} />
+          <SignOutButton onSignOut={handleSignOut} />
           <button onClick={() => setShowGallery(true)}>📸 View Check-In Gallery</button>
         </>
       )}
@@ -297,7 +326,8 @@ function App() {
                   onLoad={(map) => {
                     mapRef.current = map;
                     map.addListener("zoom_changed", () => {
-                      setZoom(map.getZoom());
+                      const z = map.getZoom();
+                      setZoom(z);
                       setMapKey(Date.now());
                     });
                   }}
@@ -314,21 +344,39 @@ function App() {
                     margin: "10px auto"
                   }}
                 >
-                  {gridCells.map((cell, i) => (
-                    <Polygon key={i} paths={cell.paths} options={{ fillColor: "transparent", strokeColor: "#999", strokeOpacity: 0.8, strokeWeight: 1 }} />
+                  {gridCells.map((cell, index) => (
+                    <Polygon
+                      key={index}
+                      paths={cell.paths}
+                      options={{
+                        fillColor: "transparent",
+                        strokeColor: "#999",
+                        strokeOpacity: 0.8,
+                        strokeWeight: 1,
+                      }}
+                    />
                   ))}
                   {TerracreMarkers}
-                  <Marker position={userLocation} icon={{ path: window.google?.maps?.SymbolPath?.CIRCLE || 0, scale: 8, fillColor: "#4285F4", fillOpacity: 1, strokeWeight: 2, strokeColor: "#fff" }} title="You" />
+                  {userLocation && (
+                    <Marker
+                      position={userLocation}
+                      icon={{
+                        path: window.google?.maps?.SymbolPath?.CIRCLE || 0,
+                        scale: 8,
+                        fillColor: "#4285F4",
+                        fillOpacity: 1,
+                        strokeWeight: 2,
+                        strokeColor: "#fff",
+                      }}
+                      title="You"
+                    />
+                  )}
                 </GoogleMap>
               )}
             </LoadScript>
           </Suspense>
-          {user && (
-            <div className="greeting">
-              Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB.
-            </div>
-          )}
 
+          <div className="greeting">Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB.</div>
           <div className="button-container">
             <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} setUser={setUser} />
             <PurchaseButton user={user} userLocation={userLocation} setUser={setUser} onPurchase={handlePurchase} gridCenter={snappedUserGridCenter} />
@@ -339,5 +387,5 @@ function App() {
     </div>
   );
 }
-
+}
 export default App;
