@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, Suspense, useRef } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -23,11 +22,8 @@ console.log("🌍 TerraMine v1.30b - Stable full version loaded");
 
 function App() {
   const [userChecked, setUserChecked] = useState(false);
-
-  const isDevelopment = process.env.NODE_ENV === "development";
-
-  const [user, setUser] = useState(isDevelopment ? { uid: "devUser", displayName: "Developer", terrabucks: 1000 } : null);
-  const [userLocation, setUserLocation] = useState(isDevelopment ? defaultCenter : null);
+  const [user, setUser] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
   const [checkInStatus, setCheckInStatus] = useState("");
   const [checkInMessages, setCheckInMessages] = useState([]);
@@ -40,7 +36,10 @@ function App() {
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [showUserPage, setShowUserPage] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
 
+  const isDevelopment = process.env.NODE_ENV === "development";
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
 
@@ -56,40 +55,93 @@ function App() {
     "Loading cart full of loot..."
   ];
 
-  const [loading, setLoading] = useState(true);
-  const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
-
+  // Rotate loading messages when loading
   useEffect(() => {
-    const interval = setInterval(() => {
-      const index = Math.floor(Math.random() * loadingMessages.length);
-      setLoadingMessage(loadingMessages[index]);
-    }, 1500);
-    return () => clearInterval(interval);
+    if (loading) {
+      const interval = setInterval(() => {
+        const index = Math.floor(Math.random() * loadingMessages.length);
+        setLoadingMessage(loadingMessages[index]);
+      }, 1500);
+      return () => clearInterval(interval);
+    }
+  }, [loading]);
+
+  // Check authentication state
+  useEffect(() => {
+    console.log("🔍 Setting up onAuthStateChanged");
+    try {
+      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        console.log("🔥 onAuthStateChanged fired", firebaseUser);
+        if (firebaseUser) {
+          setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
+          setLoading(true);
+          setTimeout(() => setLoading(false), 4000); // Show loading screen for 4s
+        } else {
+          setUser(null);
+        }
+        setUserChecked(true);
+      }, (error) => {
+        console.error("🔥 onAuthStateChanged error:", error);
+        setError("Failed to check authentication state.");
+        setUserChecked(true); // Allow rendering to proceed even on error
+      });
+      return () => {
+        console.log("🧹 Cleaning up onAuthStateChanged");
+        unsubscribe();
+      };
+    } catch (err) {
+      console.error("🔥 Error setting up onAuthStateChanged:", err);
+      setError("Authentication setup failed.");
+      setUserChecked(true);
+    }
   }, []);
 
+  // Development mode setup
   useEffect(() => {
+    if (isDevelopment) {
+      console.log("🛠️ Running in development mode");
+      setUser({ uid: "devUser", displayName: "Developer", terrabucks: 1000 });
+      setUserLocation(defaultCenter);
+      setLoading(true);
+      setTimeout(() => setLoading(false), 4000);
+      setUserChecked(true);
+    }
+  }, [isDevelopment]);
+
+  // Handle login success
+  const handleLoginSuccess = (firebaseUser) => {
+    console.log("✅ Login successful:", firebaseUser);
+    setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
+    setLoading(true);
     setTimeout(() => setLoading(false), 4000);
-  }, []);
+  };
 
+  // Render while checking authentication
   if (!userChecked) {
-    return null; // wait silently until auth is checked
+    return (
+      <div className="loading-screen">
+        <h1>TerraMine</h1>
+        <p>Initializing...</p>
+      </div>
+    );
   }
-  
+
+  // Render login screen if no user
   if (!user && !isDevelopment) {
-    return <Login onLoginSuccess={setUser} />;
+    return <Login onLoginSuccess={handleLoginSuccess} />;
   }
-  
-  // show loading screen only after login
+
+  // Render loading screen
   if (loading) {
     return (
       <div className="loading-screen">
         <h1>TerraMine</h1>
-        <p>{loadingMessage}</p>
+        <p>{loadingMessage || "Loading..."}</p>
       </div>
     );
   }
-  
 
+  // Rest of the App.jsx code remains unchanged
   const TA_PROBABILITIES = [
     { type: "Rock Mine", rate: 0.05, chance: 0.5 },
     { type: "Coal Mine", rate: 0.1, chance: 0.3 },
@@ -202,19 +254,6 @@ function App() {
     if (user) fetchUserData(user.uid);
   }, [user?.uid, fetchUserData]);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
-      } else {
-        setUser(null);
-      }
-      setUserChecked(true); // ✅ only run this once auth check is done
-    });
-    return () => unsubscribe();
-  }, []);
-  
-
   const getGridLines = useCallback((center) => {
     if (!center || !mapRef.current) return [];
     const bounds = mapRef.current.getBounds();
@@ -292,7 +331,6 @@ function App() {
   };
 
   if (error) return <div>Error: {error}</div>;
-
 
   return (
     <div className="app-container">
@@ -399,4 +437,5 @@ function App() {
     </div>
   );
 }
+
 export default App;
