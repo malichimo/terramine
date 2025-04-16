@@ -56,7 +56,6 @@ function App() {
     "Loading cart full of loot..."
   ];
 
-  // Rotate loading messages when loading
   useEffect(() => {
     if (loading) {
       const interval = setInterval(() => {
@@ -67,7 +66,6 @@ function App() {
     }
   }, [loading]);
 
-  // Check authentication state
   useEffect(() => {
     console.log("🔍 Setting up onAuthStateChanged");
     try {
@@ -100,7 +98,6 @@ function App() {
     }
   }, []);
 
-  // Development mode setup
   useEffect(() => {
     if (isDevelopment) {
       console.log("🛠️ Running in development mode");
@@ -115,7 +112,6 @@ function App() {
     }
   }, [isDevelopment]);
 
-  // Handle login success
   const handleLoginSuccess = (firebaseUser) => {
     console.log("✅ Login successful:", firebaseUser);
     setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
@@ -126,7 +122,6 @@ function App() {
     }, 4000);
   };
 
-  // Set user location with fallback
   useEffect(() => {
     if (!isDevelopment) {
       console.log("📍 Requesting geolocation");
@@ -144,7 +139,6 @@ function App() {
     }
   }, [isDevelopment]);
 
-  // Render while checking authentication
   if (!userChecked) {
     return (
       <div className="loading-screen">
@@ -154,32 +148,32 @@ function App() {
     );
   }
 
-  // Render login screen if no user
   if (!user && !isDevelopment) {
     console.log("🔒 Rendering Login component");
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // Render loading screen
   if (loading) {
     console.log("⏳ Rendering loading screen");
     return (
       <div className="loading-screen">
         <h1>TerraMine</h1>
         <p>{loadingMessage || "Loading..."}</p>
-        {user && <SignOutButton onSignOut={async () => {
-          await signOut(auth);
-          setUser(null);
-          window.location.reload();
-        }} />}
+        {user && (
+          <SignOutButton
+            onSignOut={async () => {
+              await signOut(auth);
+              setUser(null);
+              window.location.reload();
+            }}
+          />
+        )}
       </div>
     );
   }
 
-  // Log when rendering main UI
   console.log("🎮 Rendering main UI", { user, userLocation });
 
-  // Rest of the App.jsx code
   const TA_PROBABILITIES = [
     { type: "Rock Mine", rate: 0.05, chance: 0.5 },
     { type: "Coal Mine", rate: 0.1, chance: 0.3 },
@@ -203,7 +197,10 @@ function App() {
 
     const terracreRef = doc(db, "terracres", terracreId);
     const terracreSnap = await getDoc(terracreRef);
-    if (terracreSnap.exists()) return { message: "You cannot purchase this property. It is already owned." };
+    if (terracreSnap.exists()) {
+      console.warn("🏞️ Attempted to create duplicate terracre:", terracreId);
+      return { message: "You cannot purchase this property. It is already owned." };
+    }
 
     const userRef = doc(db, "users", user.uid);
     const userSnap = await getDoc(userRef);
@@ -233,7 +230,7 @@ function App() {
   const calculateTotalEarnings = useCallback(() => {
     const now = new Date();
     const earnings = ownedTerracres
-      .filter(t => t.ownerId === user?.uid)
+      .filter((t) => t.ownerId === user?.uid)
       .reduce((acc, t) => {
         const hours = (now - new Date(t.lastCollected)) / (1000 * 60 * 60);
         return acc + hours * (t.earningRate ?? 0);
@@ -251,18 +248,17 @@ function App() {
     fetchTerracresRef.current = true;
     try {
       const querySnapshot = await getDocs(collection(db, "terracres"));
-      const all = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // Deduplicate by id
-      const uniqueTerracres = Array.from(new Map(all.map(t => [t.id, t])).values());
+      const all = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const uniqueTerracres = Array.from(new Map(all.map((t) => [t.id, t])).values());
       console.log("🏞️ Fetched terracres:", uniqueTerracres);
-      const owned = uniqueTerracres.filter(t => t.lat && t.lng);
+      const owned = uniqueTerracres.filter((t) => t.lat && t.lng);
       setOwnedTerracres(owned);
 
       const checkInsSnapshot = await getDocs(collection(db, "checkins"));
       const messages = [];
       for (const docSnap of checkInsSnapshot.docs) {
         const data = docSnap.data();
-        if (owned.some(t => t.id === data.terracreId && t.ownerId === user.uid) && data.message) {
+        if (owned.some((t) => t.id === data.terracreId && t.ownerId === user.uid) && data.message) {
           const visitorRef = doc(db, "users", data.userId);
           const visitorSnap = await getDoc(visitorRef);
           const visitorName = visitorSnap.exists() ? visitorSnap.data().name : "Unknown visitor";
@@ -287,7 +283,7 @@ function App() {
     const userSnap = await getDoc(doc(db, "users", uid));
     if (userSnap.exists()) {
       const data = userSnap.data();
-      setUser(prev => ({ ...prev, ...data }));
+      setUser((prev) => ({ ...prev, ...data }));
     }
   }, []);
 
@@ -319,8 +315,8 @@ function App() {
             { lat: baseLat + deltaLat, lng: baseLng },
             { lat: baseLat + deltaLat, lng: baseLng + deltaLng },
             { lat: baseLat, lng: baseLng + deltaLng },
-            { lat: baseLat, lng: baseLng }
-          ]
+            { lat: baseLat, lng: baseLng },
+          ],
         });
       }
     }
@@ -330,14 +326,20 @@ function App() {
 
   const snapToGridCenter = useCallback((lat, lng, gridCells) => {
     if (!gridCells.length) return { lat, lng };
-    const snapped = gridCells.find(cell =>
-      lat >= cell.paths[0].lat && lat < cell.paths[1].lat &&
-      lng >= cell.paths[0].lng && lng < cell.paths[2].lng
+    const snapped = gridCells.find(
+      (cell) =>
+        lat >= cell.paths[0].lat &&
+        lat < cell.paths[1].lat &&
+        lng >= cell.paths[0].lng &&
+        lng < cell.paths[2].lng
     )?.center || { lat, lng };
     return snapped;
   }, []);
 
-  const gridCells = useMemo(() => (mapLoaded && userLocation ? getGridLines(userLocation) : []), [userLocation, mapLoaded]);
+  const gridCells = useMemo(
+    () => (mapLoaded && userLocation ? getGridLines(userLocation) : []),
+    [userLocation, mapLoaded]
+  );
   const snappedUserGridCenter = useMemo(() => {
     if (!userLocation || !gridCells.length) return null;
     return snapToGridCenter(userLocation.lat, userLocation.lng, gridCells);
@@ -347,7 +349,7 @@ function App() {
     console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
     return ownedTerracres.map((t, index) => (
       <Marker
-        key={`${t.id}-${index}`} // Ensure unique key
+        key={`${t.id}-${index}`}
         position={snapToGridCenter(t.lat, t.lng, gridCells)}
         icon={{
           path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
@@ -389,17 +391,19 @@ function App() {
             user={user}
             onClose={() => setShowUserPage(false)}
             earnings={totalEarnings}
-            rockMines={ownedTerracres.filter(t => t.taType === "Rock Mine" && t.ownerId === user?.uid).length}
-            coalMines={ownedTerracres.filter(t => t.taType === "Coal Mine" && t.ownerId === user?.uid).length}
-            goldMines={ownedTerracres.filter(t => t.taType === "Gold Mine" && t.ownerId === user?.uid).length}
-            diamondMines={ownedTerracres.filter(t => t.taType === "Diamond Mine" && t.ownerId === user?.uid).length}
+            rockMines={ownedTerracres.filter((t) => t.taType === "Rock Mine" && t.ownerId === user?.uid).length}
+            coalMines={ownedTerracres.filter((t) => t.taType === "Coal Mine" && t.ownerId === user?.uid).length}
+            goldMines={ownedTerracres.filter((t) => t.taType === "Gold Mine" && t.ownerId === user?.uid).length}
+            diamondMines={ownedTerracres.filter((t) => t.taType === "Diamond Mine" && t.ownerId === user?.uid).length}
             checkInMessages={checkInMessages}
           />
         ) : showGallery ? (
           <CheckInGallery messages={checkInMessages} onClose={() => setShowGallery(false)} />
         ) : (
           <>
-            <header className="app-header"><h1>TerraMine</h1></header>
+            <header className="app-header">
+              <h1>TerraMine</h1>
+            </header>
             <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
             <Suspense fallback={<p>Loading map...</p>}>
               <LoadScript
@@ -440,12 +444,12 @@ function App() {
                       width: "min(80vw, 500px)",
                       height: "min(80vw, 500px)",
                       aspectRatio: "1 / 1",
-                      margin: "10px auto"
+                      margin: "10px auto",
                     }}
                   >
                     {gridCells.map((cell, index) => (
                       <Polygon
-                        key={`polygon-${index}`} // Explicit key prefix
+                        key={`polygon-${index}`}
                         paths={cell.paths}
                         options={{
                           fillColor: "transparent",
@@ -477,7 +481,9 @@ function App() {
               </LoadScript>
             </Suspense>
 
-            <div className="greeting">Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB.</div>
+            <div className="greeting">
+              Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB.
+            </div>
             <div className="button-container">
               <CheckInButton
                 user={user}
