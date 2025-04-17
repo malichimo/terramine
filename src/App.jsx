@@ -37,56 +37,31 @@ function App() {
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [showUserPage, setShowUserPage] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState("");
 
   const isDevelopment = process.env.NODE_ENV === "development";
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
 
-  const loadingMessages = [
-    "Sharpening axes...",
-    "Digging holes...",
-    "Checking the canaries...",
-    "Hauling ore...",
-    "Polishing gems...",
-    "Firing up the furnace...",
-    "Mapping new tunnels...",
-    "Counting TerraBucks...",
-    "Loading cart full of loot..."
-  ];
-
-  useEffect(() => {
-    if (loading) {
-      const interval = setInterval(() => {
-        const index = Math.floor(Math.random() * loadingMessages.length);
-        setLoadingMessage(loadingMessages[index]);
-      }, 1500);
-      return () => clearInterval(interval);
-    }
-  }, [loading]);
-
   useEffect(() => {
     console.log("🔍 Setting up onAuthStateChanged");
     try {
-      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-        console.log("🔥 onAuthStateChanged fired", firebaseUser);
-        if (firebaseUser) {
-          setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
-          setLoading(true);
-          setTimeout(() => {
-            setLoading(false);
-            console.log("⏳ Loading complete, rendering main UI");
-          }, 4000);
-        } else {
-          setUser(null);
+      const unsubscribe = onAuthStateChanged(
+        auth,
+        (firebaseUser) => {
+          console.log("🔥 onAuthStateChanged fired", firebaseUser);
+          if (firebaseUser) {
+            setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
+          } else {
+            setUser(null);
+          }
+          setUserChecked(true);
+        },
+        (error) => {
+          console.error("🔥 onAuthStateChanged error:", error);
+          setError("Failed to check authentication state.");
+          setUserChecked(true);
         }
-        setUserChecked(true);
-      }, (error) => {
-        console.error("🔥 onAuthStateChanged error:", error);
-        setError("Failed to check authentication state.");
-        setUserChecked(true);
-      });
+      );
       return () => {
         console.log("🧹 Cleaning up onAuthStateChanged");
         unsubscribe();
@@ -103,11 +78,8 @@ function App() {
       console.log("🛠️ Running in development mode");
       setUser({ uid: "devUser", displayName: "Developer", terrabucks: 1000 });
       setUserLocation(defaultCenter);
-      setLoading(true);
-      setTimeout(() => {
-        setLoading(false);
-        console.log("⏳ Development mode: Loading complete, rendering main UI");
-      }, 4000);
+      setApiLoaded(true);
+      setMapLoaded(true);
       setUserChecked(true);
     }
   }, [isDevelopment]);
@@ -115,15 +87,10 @@ function App() {
   const handleLoginSuccess = (firebaseUser) => {
     console.log("✅ Login successful:", firebaseUser);
     setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      console.log("⏳ Login: Loading complete, rendering main UI");
-    }, 4000);
   };
 
   useEffect(() => {
-    if (!isDevelopment) {
+    if (!isDevelopment && user) {
       console.log("📍 Requesting geolocation");
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -137,9 +104,10 @@ function App() {
         }
       );
     }
-  }, [isDevelopment]);
+  }, [isDevelopment, user]);
 
   if (!userChecked) {
+    console.log("⏳ Rendering initializing screen");
     return (
       <div className="loading-screen">
         <h1>TerraMine</h1>
@@ -151,25 +119,6 @@ function App() {
   if (!user && !isDevelopment) {
     console.log("🔒 Rendering Login component");
     return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
-
-  if (loading) {
-    console.log("⏳ Rendering loading screen");
-    return (
-      <div className="loading-screen">
-        <h1>TerraMine</h1>
-        <p>{loadingMessage || "Loading..."}</p>
-        {user && (
-          <SignOutButton
-            onSignOut={async () => {
-              await signOut(auth);
-              setUser(null);
-              window.location.reload();
-            }}
-          />
-        )}
-      </div>
-    );
   }
 
   console.log("🎮 Rendering main UI", { user, userLocation });
@@ -249,22 +198,27 @@ function App() {
     try {
       const querySnapshot = await getDocs(collection(db, "terracres"));
       const all = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      const uniqueTerracres = Array.from(new Map(all.map((t) => [t.id, t])).values());
+      const uniqueTerracres = Array.from(new Map(all.map((t) => [t.id, t])).values()).filter(
+        (t) => t.id && t.lat && t.lng
+      );
       console.log("🏞️ Fetched terracres:", uniqueTerracres);
-      const owned = uniqueTerracres.filter((t) => t.lat && t.lng);
-      setOwnedTerracres(owned);
+      setOwnedTerracres(uniqueTerracres);
 
       const checkInsSnapshot = await getDocs(collection(db, "checkins"));
       const messages = [];
       for (const docSnap of checkInsSnapshot.docs) {
         const data = docSnap.data();
-        if (owned.some((t) => t.id === data.terracreId && t.ownerId === user.uid) && data.message) {
+        if (
+          uniqueTerracres.some((t) => t.id === data.terracreId && t.ownerId === user.uid) &&
+          data.message
+        ) {
           const visitorRef = doc(db, "users", data.userId);
           const visitorSnap = await getDoc(visitorRef);
           const visitorName = visitorSnap.exists() ? visitorSnap.data().name : "Unknown visitor";
           messages.push(`${visitorName}: ${data.message}`);
         }
       }
+      console.log("📬 Check-in messages:", messages);
       setCheckInMessages(messages);
     } catch (err) {
       console.error("🔥 Error fetching terracres or check-ins:", err);
@@ -280,16 +234,20 @@ function App() {
   }, [user, purchaseTrigger, fetchOwnedTerracres]);
 
   const fetchUserData = useCallback(async () => {
-  if (!user?.uid) return;
-  const userSnap = await getDoc(doc(db, "users", user.uid));
-  if (userSnap.exists()) {
-    const data = userSnap.data();
-    setUser((prev) => ({ ...prev, ...data }));
-  }
-}, [user?.uid]);
+    if (!user?.uid) return;
+    try {
+      const userSnap = await getDoc(doc(db, "users", user.uid));
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        setUser((prev) => ({ ...prev, ...data }));
+      }
+    } catch (err) {
+      console.error("🔥 Error fetching user data:", err);
+    }
+  }, [user?.uid]);
 
   useEffect(() => {
-    if (user) fetchUserData(user.uid);
+    if (user) fetchUserData();
   }, [user?.uid, fetchUserData]);
 
   const getGridLines = useCallback((center) => {
@@ -339,7 +297,7 @@ function App() {
 
   const gridCells = useMemo(
     () => (mapLoaded && userLocation ? getGridLines(userLocation) : []),
-    [userLocation, mapLoaded]
+    [userLocation, mapLoaded, getGridLines]
   );
   const snappedUserGridCenter = useMemo(() => {
     if (!userLocation || !gridCells.length) return null;
@@ -350,8 +308,8 @@ function App() {
     console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
     return ownedTerracres.map((t, index) => (
       <Marker
-        key={`${t.id}-${index}`}
-        position={snapToGridCenter(t.lat, t.lng, gridCells)}
+        key={`terracre-${index}`}
+        position={{ lat: t.lat, lng: t.lng }}
         icon={{
           path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
           scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
@@ -362,7 +320,7 @@ function App() {
         }}
       />
     ));
-  }, [ownedTerracres, zoom, gridCells, snapToGridCenter, user?.uid]);
+  }, [ownedTerracres, zoom, user?.uid]);
 
   const handleSignOut = async () => {
     try {
@@ -375,7 +333,10 @@ function App() {
     }
   };
 
-  if (error) return <div>Error: {error}</div>;
+  if (error) {
+    console.log("❌ Rendering error state");
+    return <div>Error: {error}</div>;
+  }
 
   return (
     <ErrorBoundary>
