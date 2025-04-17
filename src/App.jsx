@@ -152,8 +152,25 @@ function App() {
     console.log("🔒 Rendering Login component");
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
-// 🔧 Temporarily removed loading screen for debugging
-// if (loading) { ... }
+
+  if (loading) {
+    console.log("⏳ Rendering loading screen");
+    return (
+      <div className="loading-screen">
+        <h1>TerraMine</h1>
+        <p>{loadingMessage || "Loading..."}</p>
+        {user && (
+          <SignOutButton
+            onSignOut={async () => {
+              await signOut(auth);
+              setUser(null);
+              window.location.reload();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   console.log("🎮 Rendering main UI", { user, userLocation });
 
@@ -262,13 +279,14 @@ function App() {
     if (user) fetchOwnedTerracres();
   }, [user, purchaseTrigger, fetchOwnedTerracres]);
 
-  const fetchUserData = useCallback(async (uid) => {
-    const userSnap = await getDoc(doc(db, "users", uid));
-    if (userSnap.exists()) {
-      const data = userSnap.data();
-      setUser((prev) => ({ ...prev, ...data }));
-    }
-  }, []);
+  const fetchUserData = useCallback(async () => {
+  if (!user?.uid) return;
+  const userSnap = await getDoc(doc(db, "users", user.uid));
+  if (userSnap.exists()) {
+    const data = userSnap.data();
+    setUser((prev) => ({ ...prev, ...data }));
+  }
+}, [user?.uid]);
 
   useEffect(() => {
     if (user) fetchUserData(user.uid);
