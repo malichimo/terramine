@@ -376,16 +376,7 @@ function App() {
 
   if (error) return <div>Error: {error}</div>;
 
-  
-  if (!userLocation || !apiLoaded || !mapLoaded) {
-    return (
-      <div className="loading-screen">
-        <h1>TerraMine</h1>
-        <p>Preparing your mine...</p>
-      </div>
-    );
-  }
-return (
+  return (
     <ErrorBoundary>
       <div className="app-container">
         {user && (
