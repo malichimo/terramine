@@ -56,15 +56,15 @@ function App() {
     "Loading cart full of loot..."
   ];
 
-  useEffect(() => {
-    if (loading) {
-      const interval = setInterval(() => {
-        const index = Math.floor(Math.random() * loadingMessages.length);
-        setLoadingMessage(loadingMessages[index]);
-      }, 1500);
-      return () => clearInterval(interval);
-    }
-  }, [loading]);
+//  useEffect(() => {
+//    if (loading) {
+//      const interval = setInterval(() => {
+//        const index = Math.floor(Math.random() * loadingMessages.length);
+//        setLoadingMessage(loadingMessages[index]);
+//      }, 1500);
+//      return () => clearInterval(interval);
+//    }
+//  }, [loading]);
 
   useEffect(() => {
     console.log("🔍 Setting up onAuthStateChanged");
