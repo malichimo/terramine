@@ -68,35 +68,37 @@ function App() {
 
   useEffect(() => {
     console.log("🔍 Setting up onAuthStateChanged");
-    try {
-      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-        console.log("🔥 onAuthStateChanged fired", firebaseUser);
-        if (firebaseUser) {
-          setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
-          setLoading(true);
-          setTimeout(() => {
-            setLoading(false);
-            console.log("⏳ Loading complete, rendering main UI");
-          }, 4000);
-        } else {
-          setUser(null);
-        }
-        setUserChecked(true);
-      }, (error) => {
-        console.error("🔥 onAuthStateChanged error:", error);
-        setError("Failed to check authentication state.");
-        setUserChecked(true);
-      });
-      return () => {
-        console.log("🧹 Cleaning up onAuthStateChanged");
-        unsubscribe();
-      };
-    } catch (err) {
-      console.error("🔥 Error setting up onAuthStateChanged:", err);
-      setError("Authentication setup failed.");
+  
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      console.log("🔥 onAuthStateChanged fired", firebaseUser);
+  
+      if (firebaseUser) {
+        setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
+  
+        // Start loading screen only after user signs in
+        setLoading(true);
+        setTimeout(() => {
+          setLoading(false);
+          console.log("⏳ Loading complete, rendering main UI");
+        }, 4000);
+      } else {
+        setUser(null);
+      }
+  
+      // ✅ Only mark as checked once auth is resolved
       setUserChecked(true);
-    }
+    }, (error) => {
+      console.error("🔥 onAuthStateChanged error:", error);
+      setError("Failed to check authentication state.");
+      setUserChecked(true);
+    });
+  
+    return () => {
+      console.log("🧹 Cleaning up onAuthStateChanged");
+      unsubscribe();
+    };
   }, []);
+  
 
   useEffect(() => {
     if (isDevelopment) {
