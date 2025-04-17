@@ -35,4 +35,5 @@ try {
   throw error; // Let ErrorBoundary catch this
 }
 
-export { auth, googleProvider, db };
+// Export all initialized instances
+export { app, auth, googleProvider, db };
