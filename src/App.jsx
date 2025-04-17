@@ -152,25 +152,8 @@ function App() {
     console.log("🔒 Rendering Login component");
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
-
-  if (loading) {
-    console.log("⏳ Rendering loading screen");
-    return (
-      <div className="loading-screen">
-        <h1>TerraMine</h1>
-        <p>{loadingMessage || "Loading..."}</p>
-        {user && (
-          <SignOutButton
-            onSignOut={async () => {
-              await signOut(auth);
-              setUser(null);
-              window.location.reload();
-            }}
-          />
-        )}
-      </div>
-    );
-  }
+// 🔧 Temporarily removed loading screen for debugging
+// if (loading) { ... }
 
   console.log("🎮 Rendering main UI", { user, userLocation });
 
