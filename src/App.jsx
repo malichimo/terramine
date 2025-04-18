@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, Suspense, useRef } from "react";
-import { auth } from "./firebase";
+import { auth, db } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { db } from "./firebase";
-import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { useFirestore, useFirestoreCollectionData } from "reactfire";
 import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
@@ -25,9 +25,7 @@ function App() {
   const [userChecked, setUserChecked] = useState(false);
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
-  const [ownedTerracres, setOwnedTerracres] = useState([]);
   const [checkInStatus, setCheckInStatus] = useState("");
-  const [checkInMessages, setCheckInMessages] = useState([]);
   const [apiLoaded, setApiLoaded] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [error, setError] = useState(null);
@@ -40,7 +38,17 @@ function App() {
 
   const isDevelopment = process.env.NODE_ENV === "development";
   const mapRef = useRef(null);
-  const fetchTerracresRef = useRef(false);
+
+  // Firestore with reactfire
+  const firestore = useFirestore();
+  const terracresRef = useFirestore().collection("terracres");
+  const { status: terracresStatus, data: ownedTerracres } = useFirestoreCollectionData(terracresRef, {
+    idField: "id",
+  });
+  const checkinsRef = useFirestore().collection("checkins");
+  const { status: checkinsStatus, data: checkins } = useFirestoreCollectionData(checkinsRef, {
+    idField: "id",
+  });
 
   useEffect(() => {
     console.log("🔍 Setting up onAuthStateChanged");
@@ -105,6 +113,25 @@ function App() {
       );
     }
   }, [isDevelopment, user]);
+
+  // Fetch user data
+  const fetchUserData = useCallback(async () => {
+    if (!user?.uid) return;
+    try {
+      const userSnap = await getDoc(doc(db, "users", user.uid));
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        setUser((prev) => ({ ...prev, ...data }));
+      }
+    } catch (err) {
+      console.error("🔥 Error fetching user data:", err);
+      setError("Failed to fetch user data.");
+    }
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (user) fetchUserData();
+  }, [user, fetchUserData]);
 
   if (!userChecked) {
     console.log("⏳ Rendering initializing screen");
@@ -182,6 +209,7 @@ function App() {
   };
 
   const calculateTotalEarnings = useCallback(() => {
+    if (!ownedTerracres) return;
     const now = new Date();
     const earnings = ownedTerracres
       .filter((t) => t.ownerId === user?.uid)
@@ -197,65 +225,20 @@ function App() {
     return () => clearInterval(interval);
   }, [calculateTotalEarnings]);
 
-  const fetchOwnedTerracres = useCallback(async () => {
-    if (!user || fetchTerracresRef.current) return;
-    fetchTerracresRef.current = true;
-    try {
-      const querySnapshot = await getDocs(collection(db, "terracres"));
-      const all = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      const uniqueTerracres = Array.from(new Map(all.map((t) => [t.id, t])).values()).filter(
-        (t) => t.id && t.lat && t.lng
-      );
-      console.log("🏞️ Fetched terracres:", uniqueTerracres);
-      setOwnedTerracres(uniqueTerracres);
-
-      const checkInsSnapshot = await getDocs(collection(db, "checkins"));
-      const messages = [];
-      for (const docSnap of checkInsSnapshot.docs) {
-        const data = docSnap.data();
-        if (
-          uniqueTerracres.some((t) => t.id === data.terracreId && t.ownerId === user.uid) &&
-          data.message
-        ) {
-          const visitorRef = doc(db, "users", data.userId);
-          const visitorSnap = await getDoc(visitorRef);
-          const visitorName = visitorSnap.exists() ? visitorSnap.data().name : "Unknown visitor";
-          messages.push(`${visitorName}: ${data.message}`);
-        }
+  const checkInMessages = useMemo(() => {
+    if (!checkins || !ownedTerracres) return [];
+    const messages = [];
+    for (const checkin of checkins) {
+      if (
+        ownedTerracres.some((t) => t.id === checkin.terracreId && t.ownerId === user?.uid) &&
+        checkin.message
+      ) {
+        messages.push(`${checkin.userId}: ${checkin.message}`); // Simplified; fetch user name if needed
       }
-      console.log("📬 Check-in messages:", messages);
-      setCheckInMessages(messages);
-    } catch (err) {
-      console.error("🔥 Error fetching terracres or check-ins:", err);
-      setOwnedTerracres([]);
-      setCheckInMessages([]);
-      setError("Failed to fetch terracres.");
-    } finally {
-      fetchTerracresRef.current = false;
     }
-  }, [user]);
-
-  useEffect(() => {
-    if (user) fetchOwnedTerracres();
-  }, [user, purchaseTrigger, fetchOwnedTerracres]);
-
-  const fetchUserData = useCallback(async () => {
-    if (!user?.uid) return;
-    try {
-      const userSnap = await getDoc(doc(db, "users", user.uid));
-      if (userSnap.exists()) {
-        const data = userSnap.data();
-        setUser((prev) => ({ ...prev, ...data }));
-      }
-    } catch (err) {
-      console.error("🔥 Error fetching user data:", err);
-      setError("Failed to fetch user data.");
-    }
-  }, [user?.uid]);
-
-  useEffect(() => {
-    if (user) fetchUserData();
-  }, [user?.uid, fetchUserData]);
+    console.log("📬 Check-in messages:", messages);
+    return messages;
+  }, [checkins, ownedTerracres, user?.uid]);
 
   const getGridLines = useCallback((center) => {
     if (!center || !mapRef.current) return [];
@@ -313,10 +296,10 @@ function App() {
 
   const TerracreMarkers = useMemo(() => {
     console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
-    if (!ownedTerracres.length) return null;
+    if (terracresStatus === "loading" || !ownedTerracres) return null;
     return ownedTerracres.map((t) => (
       <Marker
-        key={`terracre-${t.id}`} // Use unique terracre ID
+        key={`terracre-${t.id}`}
         position={{ lat: t.lat, lng: t.lng }}
         icon={{
           path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
@@ -328,7 +311,7 @@ function App() {
         }}
       />
     ));
-  }, [ownedTerracres, zoom, user?.uid]);
+  }, [ownedTerracres, terracresStatus, zoom, user?.uid]);
 
   const handleSignOut = async () => {
     try {
@@ -344,6 +327,11 @@ function App() {
   if (error) {
     console.log("❌ Rendering error state");
     return <div>Error: {error}</div>;
+  }
+
+  if (terracresStatus === "loading" || checkinsStatus === "loading") {
+    console.log("⏳ Loading Firestore data");
+    return <div>Loading data...</div>;
   }
 
   return (
@@ -363,10 +351,10 @@ function App() {
                 user={user}
                 onClose={() => setShowUserPage(false)}
                 earnings={totalEarnings}
-                rockMines={ownedTerracres.filter((t) => t.taType === "Rock Mine" && t.ownerId === user?.uid).length}
-                coalMines={ownedTerracres.filter((t) => t.taType === "Coal Mine" && t.ownerId === user?.uid).length}
-                goldMines={ownedTerracres.filter((t) => t.taType === "Gold Mine" && t.ownerId === user?.uid).length}
-                diamondMines={ownedTerracres.filter((t) => t.taType === "Diamond Mine" && t.ownerId === user?.uid).length}
+                rockMines={ownedTerracres?.filter((t) => t.taType === "Rock Mine" && t.ownerId === user?.uid).length || 0}
+                coalMines={ownedTerracres?.filter((t) => t.taType === "Coal Mine" && t.ownerId === user?.uid).length || 0}
+                goldMines={ownedTerracres?.filter((t) => t.taType === "Gold Mine" && t.ownerId === user?.uid).length || 0}
+                diamondMines={ownedTerracres?.filter((t) => t.taType === "Diamond Mine" && t.ownerId === user?.uid).length || 0}
                 checkInMessages={checkInMessages}
               />
             </Suspense>
@@ -462,19 +450,21 @@ function App() {
                 Welcome, {user?.displayName || "User"}! You have {user?.terrabucks ?? 0} TB.
               </div>
               <div className="button-container">
-                <CheckInButton
-                  user={user}
-                  snappedGridCenter={snappedUserGridCenter}
-                  setCheckInStatus={setCheckInStatus}
-                  setUser={setUser}
-                />
-                <PurchaseButton
-                  user={user}
-                  userLocation={userLocation}
-                  setUser={setUser}
-                  onPurchase={handlePurchase}
-                  gridCenter={snappedUserGridCenter}
-                />
+                <Suspense fallback={<div>Loading buttons...</div>}>
+                  <CheckInButton
+                    user={user}
+                    snappedGridCenter={snappedUserGridCenter}
+                    setCheckInStatus={setCheckInStatus}
+                    setUser={setUser}
+                  />
+                  <PurchaseButton
+                    user={user}
+                    userLocation={userLocation}
+                    setUser={setUser}
+                    onPurchase={handlePurchase}
+                    gridCenter={snappedUserGridCenter}
+                  />
+                </Suspense>
               </div>
               {checkInStatus && <p>{checkInStatus}</p>}
             </Suspense>
