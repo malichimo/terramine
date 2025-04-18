@@ -102,26 +102,36 @@ function App() {
   const fetchOwnedTerracres = useCallback(async () => {
     if (!user || fetchTerracresRef.current) return;
     fetchTerracresRef.current = true;
+    let terracres = [];
+    let messages = [];
     try {
+      // Fetch terracres
       const querySnapshot = await getDocs(collection(db, "terracres"));
-      const all = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      const uniqueTerracres = Array.from(new Map(all.map((t) => [t.id, t])).values()).filter(
-        (t) => t.id && t.lat && t.lng
-      );
-      console.log("🏞️ Fetched terracres:", uniqueTerracres);
-      setOwnedTerracres(uniqueTerracres);
+      terracres = Array.from(
+        new Map(querySnapshot.docs.map((doc) => [doc.id, { id: doc.id, ...doc.data() }])).values()
+      ).filter((t) => t.id && t.lat && t.lng);
+      console.log("🏞️ Fetched terracres:", terracres);
+      setOwnedTerracres(terracres);
 
+      // Fetch check-ins
       const checkInsSnapshot = await getDocs(collection(db, "checkins"));
-      const messages = [];
       for (const docSnap of checkInsSnapshot.docs) {
         const data = docSnap.data();
         if (
-          uniqueTerracres.some((t) => t.id === data.terracreId && t.ownerId === user.uid) &&
+          terracres.some((t) => t.id === data.terracreId && t.ownerId === user.uid) &&
           data.message
         ) {
-          const visitorRef = doc(db, "users", data.userId);
-          const visitorSnap = await getDoc(visitorRef);
-          const visitorName = visitorSnap.exists() ? visitorSnap.data().name : "Unknown visitor";
+          let visitorName = "Unknown visitor";
+          try {
+            const visitorRef = doc(db, "users", data.userId);
+            const visitorSnap = await getDoc(visitorRef);
+            if (visitorSnap.exists()) {
+              visitorName = visitorSnap.data().name || "Unknown visitor";
+            }
+          } catch (visitorErr) {
+            console.warn("⚠️ Failed to fetch visitor name for userId:", data.userId, visitorErr);
+            // Continue with default name
+          }
           messages.push(`${visitorName}: ${data.message}`);
         }
       }
@@ -129,9 +139,12 @@ function App() {
       setCheckInMessages(messages);
     } catch (err) {
       console.error("🔥 Error fetching terracres or check-ins:", err);
-      setOwnedTerracres([]);
-      setCheckInMessages([]);
-      setError("Failed to fetch terracres.");
+      // Only set error for critical failures; allow partial data
+      if (!terracres.length && !messages.length) {
+        setError("Failed to fetch terracres or check-ins.");
+      }
+      setOwnedTerracres(terracres);
+      setCheckInMessages(messages);
     } finally {
       fetchTerracresRef.current = false;
     }
