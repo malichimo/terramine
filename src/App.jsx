@@ -22,7 +22,6 @@ const libraries = ["places"];
 console.log("🌍 TerraMine v1.30b - Stable full version loaded");
 
 function App() {
-  const [userChecked, setUserChecked] = useState(false);
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [ownedTerracres, setOwnedTerracres] = useState([]);
@@ -37,7 +36,6 @@ function App() {
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [showUserPage, setShowUserPage] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
-  const [isLoadingFirestore, setIsLoadingFirestore] = useState(true);
 
   const isDevelopment = process.env.NODE_ENV === "development";
   const mapRef = useRef(null);
@@ -50,17 +48,12 @@ function App() {
         auth,
         (firebaseUser) => {
           console.log("🔥 onAuthStateChanged fired", firebaseUser);
-          if (firebaseUser) {
-            setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
-          } else {
-            setUser(null);
-          }
-          setUserChecked(true);
+          setUser(firebaseUser ? { uid: firebaseUser.uid, displayName: firebaseUser.displayName } : null);
         },
         (error) => {
           console.error("🔥 onAuthStateChanged error:", error);
           setError("Failed to check authentication state.");
-          setUserChecked(true);
+          setUser(null);
         }
       );
       return () => {
@@ -70,7 +63,7 @@ function App() {
     } catch (err) {
       console.error("🔥 Error setting up onAuthStateChanged:", err);
       setError("Authentication setup failed.");
-      setUserChecked(true);
+      setUser(null);
     }
   }, []);
 
@@ -81,8 +74,6 @@ function App() {
       setUserLocation(defaultCenter);
       setApiLoaded(true);
       setMapLoaded(true);
-      setUserChecked(true);
-      setIsLoadingFirestore(false);
     }
   }, [isDevelopment]);
 
@@ -111,7 +102,6 @@ function App() {
   const fetchOwnedTerracres = useCallback(async () => {
     if (!user || fetchTerracresRef.current) return;
     fetchTerracresRef.current = true;
-    setIsLoadingFirestore(true);
     try {
       const querySnapshot = await getDocs(collection(db, "terracres"));
       const all = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -144,7 +134,6 @@ function App() {
       setError("Failed to fetch terracres.");
     } finally {
       fetchTerracresRef.current = false;
-      setIsLoadingFirestore(false);
     }
   }, [user]);
 
@@ -321,31 +310,25 @@ function App() {
     try {
       await signOut(auth);
       setUser(null);
-      window.location.reload();
+      setUserLocation(null);
+      setOwnedTerracres([]);
+      setCheckInMessages([]);
+      setTotalEarnings(0);
+      console.log("🔥 Signed out successfully");
     } catch (err) {
       console.error("🔥 Sign-out failed:", err);
       setError("Failed to sign out.");
     }
   };
 
-  if (!userChecked || isLoadingFirestore) {
-    console.log("⏳ Rendering initializing screen");
-    return (
-      <div className="loading-screen">
-        <h1>TerraMine</h1>
-        <p>Loading...</p>
-      </div>
-    );
+  if (error) {
+    console.log("❌ Rendering error state");
+    return <div>Error: {error}</div>;
   }
 
   if (!user && !isDevelopment) {
     console.log("🔒 Rendering Login component");
     return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
-
-  if (error) {
-    console.log("❌ Rendering error state");
-    return <div>Error: {error}</div>;
   }
 
   console.log("🎮 Rendering main UI", { user, userLocation });
