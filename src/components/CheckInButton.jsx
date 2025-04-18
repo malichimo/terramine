@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import "./CheckInButton.css";
@@ -12,6 +12,11 @@ const CheckInButton = ({ user, userLocation, snappedGridCenter, setCheckInStatus
   const [previewUrl, setPreviewUrl] = useState("");
   const [qrScanned, setQrScanned] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Debug: Log when component mounts and props change
+  useEffect(() => {
+    console.log("📍 CheckInButton: Component mounted/updated", { user, userLocation, snappedGridCenter });
+  }, [user, userLocation, snappedGridCenter]);
 
   const roundCoordinate = (value) => {
     const rounded = Number(value.toFixed(COORDINATE_PRECISION));
@@ -89,7 +94,6 @@ const CheckInButton = ({ user, userLocation, snappedGridCenter, setCheckInStatus
   };
 
   const handleQrScan = () => {
-    // Simulate QR scan (replace with actual QR scanning logic in production)
     console.log("📍 CheckIn: Simulating QR scan");
     setQrScanned(true);
   };
@@ -112,17 +116,14 @@ const CheckInButton = ({ user, userLocation, snappedGridCenter, setCheckInStatus
       let visitorTbEarned = 0;
       let ownerTbEarned = 0;
 
-      // Base check-in: 1 TB each
       if (message) {
         visitorTbEarned += 1;
         ownerTbEarned += 1;
       }
-      // Picture upload: 1 TB each
       if (picture) {
         visitorTbEarned += 1;
         ownerTbEarned += 1;
       }
-      // QR scan: 3 TB each
       if (qrScanned) {
         visitorTbEarned += 3;
         ownerTbEarned += 3;
@@ -250,7 +251,14 @@ const CheckInButton = ({ user, userLocation, snappedGridCenter, setCheckInStatus
 
   return (
     <div className="check-in-section">
-      <button className="check-in-button" onClick={handleInitialCheckIn}>
+      <button
+        className="check-in-button"
+        onClick={(e) => {
+          console.log("📍 CheckIn: onClick event triggered", e);
+          handleInitialCheckIn();
+        }}
+        disabled={!user || !snappedGridCenter}
+      >
         Tap to Check-In
       </button>
     </div>
