@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, Suspense, useRef } from "react";
 import { auth, db } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from "firebase/firestore";
 import { useFirestore, useFirestoreCollectionData } from "reactfire";
 import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
 import Login from "./components/Login";
@@ -41,11 +41,11 @@ function App() {
 
   // Firestore with reactfire
   const firestore = useFirestore();
-  const terracresRef = useFirestore().collection("terracres");
+  const terracresRef = collection(firestore, "terracres");
   const { status: terracresStatus, data: ownedTerracres } = useFirestoreCollectionData(terracresRef, {
     idField: "id",
   });
-  const checkinsRef = useFirestore().collection("checkins");
+  const checkinsRef = collection(firestore, "checkins");
   const { status: checkinsStatus, data: checkins } = useFirestoreCollectionData(checkinsRef, {
     idField: "id",
   });
@@ -233,7 +233,7 @@ function App() {
         ownedTerracres.some((t) => t.id === checkin.terracreId && t.ownerId === user?.uid) &&
         checkin.message
       ) {
-        messages.push(`${checkin.userId}: ${checkin.message}`); // Simplified; fetch user name if needed
+        messages.push(`${checkin.userId}: ${checkin.message}`);
       }
     }
     console.log("📬 Check-in messages:", messages);
