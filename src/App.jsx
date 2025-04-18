@@ -18,7 +18,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
-const COORDINATE_PRECISION = 7; // Decimal places for lat/lng
+const COORDINATE_PRECISION = 7;
 
 console.log("🌍 TerraMine v1.30b - Stable full version loaded");
 
@@ -42,8 +42,11 @@ function App() {
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
 
-  // Helper to round coordinates to fixed precision
-  const roundCoordinate = (value) => Number(value.toFixed(COORDINATE_PRECISION));
+  const roundCoordinate = (value) => {
+    const rounded = Number(value.toFixed(COORDINATE_PRECISION));
+    console.log(`📏 Rounding ${value} to ${rounded}`);
+    return rounded;
+  };
 
   useEffect(() => {
     console.log("🔍 Setting up onAuthStateChanged");
@@ -191,10 +194,15 @@ function App() {
 
   const handlePurchase = async (gridCenter) => {
     if (!user || !gridCenter) return { message: "User or location not available." };
-    // Standardize coordinates to grid center with fixed precision
+    console.log("🛒 Received gridCenter:", gridCenter);
+
+    // Ensure gridCenter is snapped to grid center
+    const snappedCenter = snapToGridCenter(gridCenter.lat, gridCenter.lng, gridCells);
+    console.log("🛒 Snapped to:", snappedCenter);
+
     const standardizedCenter = {
-      lat: roundCoordinate(gridCenter.lat),
-      lng: roundCoordinate(gridCenter.lng),
+      lat: roundCoordinate(snappedCenter.lat),
+      lng: roundCoordinate(snappedCenter.lng),
     };
     const terracreId = `${standardizedCenter.lat}-${standardizedCenter.lng}`;
     console.log("🛒 Attempting purchase for terracreId:", terracreId);
@@ -224,6 +232,7 @@ function App() {
       earningRate: chosenType.rate,
       taType: chosenType.type,
     };
+    console.log("🛒 Storing newTerracre:", newTerracre);
 
     try {
       await setDoc(terracreRef, newTerracre);
@@ -260,7 +269,7 @@ function App() {
     const ne = bounds.getNorthEast();
     const sw = bounds.getSouthWest();
     const metersPerDegreeLat = 111000;
-    const metersPerDegreeLng = metersPerDegreeLat * Math.cos(center.lat * Math.PI / 180);
+    const metersPerDegreeLng = metersPerDegreeLat * Math.cos((center.lat * Math.PI) / 180);
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
     const grid = [];
@@ -286,18 +295,29 @@ function App() {
     return grid;
   }, []);
 
-  const snapToGridCenter = useCallback((lat, lng, gridCells) => {
-    if (!gridCells.length) return { lat: roundCoordinate(lat), lng: roundCoordinate(lng) };
-    const deltaLat = TERRACRE_SIZE_METERS / 111000;
-    const deltaLng = TERRACRE_SIZE_METERS / (111000 * Math.cos(lat * Math.PI / 180));
-    // Find the grid cell containing the point
-    const baseLat = Math.floor(lat / deltaLat) * deltaLat;
-    const baseLng = Math.floor(lng / deltaLng) * deltaLng;
-    // Calculate the exact center with fixed precision
-    const centerLat = roundCoordinate(baseLat + deltaLat / 2);
-    const centerLng = roundCoordinate(baseLng + deltaLng / 2);
-    return { lat: centerLat, lng: centerLng };
-  }, []);
+  const snapToGridCenter = useCallback(
+    (lat, lng, gridCells) => {
+      console.log("📍 Snapping lat:", lat, "lng:", lng);
+      if (!gridCells.length) {
+        const fallback = { lat: roundCoordinate(lat), lng: roundCoordinate(lng) };
+        console.log("📍 No grid cells, using fallback:", fallback);
+        return fallback;
+      }
+      const metersPerDegreeLat = 111000;
+      const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat * Math.PI) / 180);
+      const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
+      const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
+      console.log("📍 Delta lat:", deltaLat, "lng:", deltaLng);
+      const baseLat = Math.floor(lat / deltaLat) * deltaLat;
+      const baseLng = Math.floor(lng / deltaLng) * deltaLng;
+      const centerLat = roundCoordinate(baseLat + deltaLat / 2);
+      const centerLng = roundCoordinate(baseLng + deltaLng / 2);
+      const result = { lat: centerLat, lng: centerLng };
+      console.log("📍 Snapped to center:", result);
+      return result;
+    },
+    []
+  );
 
   const gridCells = useMemo(
     () => (mapLoaded && userLocation ? getGridLines(userLocation) : []),
@@ -305,7 +325,9 @@ function App() {
   );
   const snappedUserGridCenter = useMemo(() => {
     if (!userLocation || !gridCells.length) return null;
-    return snapToGridCenter(userLocation.lat, userLocation.lng, gridCells);
+    const snapped = snapToGridCenter(userLocation.lat, userLocation.lng, gridCells);
+    console.log("📍 snappedUserGridCenter:", snapped);
+    return snapped;
   }, [userLocation, gridCells, snapToGridCenter]);
 
   const TerracreMarkers = useMemo(() => {
@@ -473,6 +495,7 @@ function App() {
                 <Suspense fallback={<div>Loading buttons...</div>}>
                   <CheckInButton
                     user={user}
+                    userLocation={userLocation}
                     snappedGridCenter={snappedUserGridCenter}
                     setCheckInStatus={setCheckInStatus}
                     setUser={setUser}
