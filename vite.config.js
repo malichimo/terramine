@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     commonjsOptions: {
-      transformMixedEsModules: true, // Handle CommonJS/ES Module mismatches
+      transformMixedEsModules: true,
     },
     target: "esnext",
     minify: "esbuild",
@@ -21,5 +21,8 @@ export default defineConfig({
     alias: {
       "@": "/src",
     },
+  },
+  preview: {
+    allowedHosts: ["terramine.onrender.com"],
   },
 });
