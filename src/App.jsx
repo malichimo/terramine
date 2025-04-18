@@ -18,6 +18,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
+const COORDINATE_PRECISION = 7; // Decimal places for lat/lng
 
 console.log("🌍 TerraMine v1.30b - Stable full version loaded");
 
@@ -40,6 +41,9 @@ function App() {
   const isDevelopment = process.env.NODE_ENV === "development";
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
+
+  // Helper to round coordinates to fixed precision
+  const roundCoordinate = (value) => Number(value.toFixed(COORDINATE_PRECISION));
 
   useEffect(() => {
     console.log("🔍 Setting up onAuthStateChanged");
@@ -105,7 +109,6 @@ function App() {
     let terracres = [];
     let messages = [];
     try {
-      // Fetch terracres
       const querySnapshot = await getDocs(collection(db, "terracres"));
       terracres = Array.from(
         new Map(querySnapshot.docs.map((doc) => [doc.id, { id: doc.id, ...doc.data() }])).values()
@@ -113,7 +116,6 @@ function App() {
       console.log("🏞️ Fetched terracres:", terracres);
       setOwnedTerracres(terracres);
 
-      // Fetch check-ins
       const checkInsSnapshot = await getDocs(collection(db, "checkins"));
       for (const docSnap of checkInsSnapshot.docs) {
         const data = docSnap.data();
@@ -130,7 +132,6 @@ function App() {
             }
           } catch (visitorErr) {
             console.warn("⚠️ Failed to fetch visitor name for userId:", data.userId, visitorErr);
-            // Continue with default name
           }
           messages.push(`${visitorName}: ${data.message}`);
         }
@@ -139,7 +140,6 @@ function App() {
       setCheckInMessages(messages);
     } catch (err) {
       console.error("🔥 Error fetching terracres or check-ins:", err);
-      // Only set error for critical failures; allow partial data
       if (!terracres.length && !messages.length) {
         setError("Failed to fetch terracres or check-ins.");
       }
@@ -191,7 +191,13 @@ function App() {
 
   const handlePurchase = async (gridCenter) => {
     if (!user || !gridCenter) return { message: "User or location not available." };
-    const terracreId = `${gridCenter.lat.toFixed(7)}-${gridCenter.lng.toFixed(7)}`;
+    // Standardize coordinates to grid center with fixed precision
+    const standardizedCenter = {
+      lat: roundCoordinate(gridCenter.lat),
+      lng: roundCoordinate(gridCenter.lng),
+    };
+    const terracreId = `${standardizedCenter.lat}-${standardizedCenter.lng}`;
+    console.log("🛒 Attempting purchase for terracreId:", terracreId);
 
     const terracreRef = doc(db, "terracres", terracreId);
     const terracreSnap = await getDoc(terracreRef);
@@ -210,8 +216,8 @@ function App() {
     const chosenType = getRandomTaType();
     const newTerracre = {
       id: terracreId,
-      lat: gridCenter.lat,
-      lng: gridCenter.lng,
+      lat: standardizedCenter.lat,
+      lng: standardizedCenter.lng,
       ownerId: user.uid,
       purchasedAt: new Date().toISOString(),
       lastCollected: new Date().toISOString(),
@@ -223,6 +229,7 @@ function App() {
       await setDoc(terracreRef, newTerracre);
       await updateDoc(userRef, { terrabucks: terrabucks - TERRACRE_COST });
       setPurchaseTrigger((prev) => prev + 1);
+      console.log("✅ Purchased terracre:", terracreId);
       return { message: `✅ You purchased a ${chosenType.type}!` };
     } catch (err) {
       console.error("🔥 Purchase failed:", err);
@@ -261,8 +268,8 @@ function App() {
       for (let lng = sw.lng(); lng < ne.lng(); lng += deltaLng) {
         const baseLat = Math.floor(lat / deltaLat) * deltaLat;
         const baseLng = Math.floor(lng / deltaLng) * deltaLng;
-        const centerLat = baseLat + deltaLat / 2;
-        const centerLng = baseLng + deltaLng / 2;
+        const centerLat = roundCoordinate(baseLat + deltaLat / 2);
+        const centerLng = roundCoordinate(baseLng + deltaLng / 2);
         grid.push({
           center: { lat: centerLat, lng: centerLng },
           paths: [
@@ -280,15 +287,16 @@ function App() {
   }, []);
 
   const snapToGridCenter = useCallback((lat, lng, gridCells) => {
-    if (!gridCells.length) return { lat, lng };
-    const snapped = gridCells.find(
-      (cell) =>
-        lat >= cell.paths[0].lat &&
-        lat < cell.paths[1].lat &&
-        lng >= cell.paths[0].lng &&
-        lng < cell.paths[2].lng
-    )?.center || { lat, lng };
-    return snapped;
+    if (!gridCells.length) return { lat: roundCoordinate(lat), lng: roundCoordinate(lng) };
+    const deltaLat = TERRACRE_SIZE_METERS / 111000;
+    const deltaLng = TERRACRE_SIZE_METERS / (111000 * Math.cos(lat * Math.PI / 180));
+    // Find the grid cell containing the point
+    const baseLat = Math.floor(lat / deltaLat) * deltaLat;
+    const baseLng = Math.floor(lng / deltaLng) * deltaLng;
+    // Calculate the exact center with fixed precision
+    const centerLat = roundCoordinate(baseLat + deltaLat / 2);
+    const centerLng = roundCoordinate(baseLng + deltaLng / 2);
+    return { lat: centerLat, lng: centerLng };
   }, []);
 
   const gridCells = useMemo(

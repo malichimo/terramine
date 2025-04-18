@@ -1,16 +1,27 @@
-
 import React from "react";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 
+const COORDINATE_PRECISION = 7;
+
 const CheckInButton = ({ user, userLocation, snappedGridCenter, setCheckInStatus, setUser }) => {
+  // Helper to round coordinates (matches App.jsx)
+  const roundCoordinate = (value) => Number(value.toFixed(COORDINATE_PRECISION));
+
   const handleCheckIn = async () => {
     if (!user || !snappedGridCenter) {
       setCheckInStatus("User or location not available.");
       return;
     }
 
-    const terracreId = `${snappedGridCenter.lat.toFixed(7)}-${snappedGridCenter.lng.toFixed(7)}`;
+    // Standardize coordinates to match purchase logic
+    const standardizedCenter = {
+      lat: roundCoordinate(snappedGridCenter.lat),
+      lng: roundCoordinate(snappedGridCenter.lng),
+    };
+    const terracreId = `${standardizedCenter.lat}-${standardizedCenter.lng}`;
+    console.log("📍 Attempting check-in for terracreId:", terracreId);
+
     const checkInRef = doc(db, "checkins", `${user.uid}-${terracreId}`);
     const terracreRef = doc(db, "terracres", terracreId);
 
@@ -60,9 +71,7 @@ const CheckInButton = ({ user, userLocation, snappedGridCenter, setCheckInStatus
     setCheckInStatus("✅ Check-in successful! You and the TA owner earned 1 TB.");
   };
 
-  return (
-    <button onClick={handleCheckIn}>Tap to Check-In</button>
-  );
+  return <button onClick={handleCheckIn}>Tap to Check-In</button>;
 };
 
 export default CheckInButton;
