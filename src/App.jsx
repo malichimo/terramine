@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, Suspense, useRef } from "react";
-import { auth, db } from "./firebase";
+import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
+import { db } from "./firebase";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from "firebase/firestore";
-import { useFirestore, useFirestoreCollectionData } from "reactfire";
 import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
@@ -25,7 +25,9 @@ function App() {
   const [userChecked, setUserChecked] = useState(false);
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
+  const [ownedTerracres, setOwnedTerracres] = useState([]);
   const [checkInStatus, setCheckInStatus] = useState("");
+  const [checkInMessages, setCheckInMessages] = useState([]);
   const [apiLoaded, setApiLoaded] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [error, setError] = useState(null);
@@ -35,20 +37,11 @@ function App() {
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [showUserPage, setShowUserPage] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
+  const [isLoadingFirestore, setIsLoadingFirestore] = useState(true);
 
   const isDevelopment = process.env.NODE_ENV === "development";
   const mapRef = useRef(null);
-
-  // Firestore with reactfire
-  const firestore = useFirestore();
-  const terracresRef = collection(firestore, "terracres");
-  const { status: terracresStatus, data: ownedTerracres } = useFirestoreCollectionData(terracresRef, {
-    idField: "id",
-  });
-  const checkinsRef = collection(firestore, "checkins");
-  const { status: checkinsStatus, data: checkins } = useFirestoreCollectionData(checkinsRef, {
-    idField: "id",
-  });
+  const fetchTerracresRef = useRef(false);
 
   useEffect(() => {
     console.log("🔍 Setting up onAuthStateChanged");
@@ -89,6 +82,7 @@ function App() {
       setApiLoaded(true);
       setMapLoaded(true);
       setUserChecked(true);
+      setIsLoadingFirestore(false);
     }
   }, [isDevelopment]);
 
@@ -114,7 +108,50 @@ function App() {
     }
   }, [isDevelopment, user]);
 
-  // Fetch user data
+  const fetchOwnedTerracres = useCallback(async () => {
+    if (!user || fetchTerracresRef.current) return;
+    fetchTerracresRef.current = true;
+    setIsLoadingFirestore(true);
+    try {
+      const querySnapshot = await getDocs(collection(db, "terracres"));
+      const all = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const uniqueTerracres = Array.from(new Map(all.map((t) => [t.id, t])).values()).filter(
+        (t) => t.id && t.lat && t.lng
+      );
+      console.log("🏞️ Fetched terracres:", uniqueTerracres);
+      setOwnedTerracres(uniqueTerracres);
+
+      const checkInsSnapshot = await getDocs(collection(db, "checkins"));
+      const messages = [];
+      for (const docSnap of checkInsSnapshot.docs) {
+        const data = docSnap.data();
+        if (
+          uniqueTerracres.some((t) => t.id === data.terracreId && t.ownerId === user.uid) &&
+          data.message
+        ) {
+          const visitorRef = doc(db, "users", data.userId);
+          const visitorSnap = await getDoc(visitorRef);
+          const visitorName = visitorSnap.exists() ? visitorSnap.data().name : "Unknown visitor";
+          messages.push(`${visitorName}: ${data.message}`);
+        }
+      }
+      console.log("📬 Check-in messages:", messages);
+      setCheckInMessages(messages);
+    } catch (err) {
+      console.error("🔥 Error fetching terracres or check-ins:", err);
+      setOwnedTerracres([]);
+      setCheckInMessages([]);
+      setError("Failed to fetch terracres.");
+    } finally {
+      fetchTerracresRef.current = false;
+      setIsLoadingFirestore(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) fetchOwnedTerracres();
+  }, [user, purchaseTrigger, fetchOwnedTerracres]);
+
   const fetchUserData = useCallback(async () => {
     if (!user?.uid) return;
     try {
@@ -131,24 +168,7 @@ function App() {
 
   useEffect(() => {
     if (user) fetchUserData();
-  }, [user, fetchUserData]);
-
-  if (!userChecked) {
-    console.log("⏳ Rendering initializing screen");
-    return (
-      <div className="loading-screen">
-        <h1>TerraMine</h1>
-        <p>Initializing...</p>
-      </div>
-    );
-  }
-
-  if (!user && !isDevelopment) {
-    console.log("🔒 Rendering Login component");
-    return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
-
-  console.log("🎮 Rendering main UI", { user, userLocation });
+  }, [user?.uid, fetchUserData]);
 
   const TA_PROBABILITIES = [
     { type: "Rock Mine", rate: 0.05, chance: 0.5 },
@@ -209,7 +229,6 @@ function App() {
   };
 
   const calculateTotalEarnings = useCallback(() => {
-    if (!ownedTerracres) return;
     const now = new Date();
     const earnings = ownedTerracres
       .filter((t) => t.ownerId === user?.uid)
@@ -224,21 +243,6 @@ function App() {
     const interval = setInterval(() => calculateTotalEarnings(), 30000);
     return () => clearInterval(interval);
   }, [calculateTotalEarnings]);
-
-  const checkInMessages = useMemo(() => {
-    if (!checkins || !ownedTerracres) return [];
-    const messages = [];
-    for (const checkin of checkins) {
-      if (
-        ownedTerracres.some((t) => t.id === checkin.terracreId && t.ownerId === user?.uid) &&
-        checkin.message
-      ) {
-        messages.push(`${checkin.userId}: ${checkin.message}`);
-      }
-    }
-    console.log("📬 Check-in messages:", messages);
-    return messages;
-  }, [checkins, ownedTerracres, user?.uid]);
 
   const getGridLines = useCallback((center) => {
     if (!center || !mapRef.current) return [];
@@ -296,7 +300,7 @@ function App() {
 
   const TerracreMarkers = useMemo(() => {
     console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
-    if (terracresStatus === "loading" || !ownedTerracres) return null;
+    if (!ownedTerracres.length) return null;
     return ownedTerracres.map((t) => (
       <Marker
         key={`terracre-${t.id}`}
@@ -311,7 +315,7 @@ function App() {
         }}
       />
     ));
-  }, [ownedTerracres, terracresStatus, zoom, user?.uid]);
+  }, [ownedTerracres, zoom, user?.uid]);
 
   const handleSignOut = async () => {
     try {
@@ -324,15 +328,27 @@ function App() {
     }
   };
 
+  if (!userChecked || isLoadingFirestore) {
+    console.log("⏳ Rendering initializing screen");
+    return (
+      <div className="loading-screen">
+        <h1>TerraMine</h1>
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!user && !isDevelopment) {
+    console.log("🔒 Rendering Login component");
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
   if (error) {
     console.log("❌ Rendering error state");
     return <div>Error: {error}</div>;
   }
 
-  if (terracresStatus === "loading" || checkinsStatus === "loading") {
-    console.log("⏳ Loading Firestore data");
-    return <div>Loading data...</div>;
-  }
+  console.log("🎮 Rendering main UI", { user, userLocation });
 
   return (
     <ErrorBoundary>
@@ -351,10 +367,10 @@ function App() {
                 user={user}
                 onClose={() => setShowUserPage(false)}
                 earnings={totalEarnings}
-                rockMines={ownedTerracres?.filter((t) => t.taType === "Rock Mine" && t.ownerId === user?.uid).length || 0}
-                coalMines={ownedTerracres?.filter((t) => t.taType === "Coal Mine" && t.ownerId === user?.uid).length || 0}
-                goldMines={ownedTerracres?.filter((t) => t.taType === "Gold Mine" && t.ownerId === user?.uid).length || 0}
-                diamondMines={ownedTerracres?.filter((t) => t.taType === "Diamond Mine" && t.ownerId === user?.uid).length || 0}
+                rockMines={ownedTerracres.filter((t) => t.taType === "Rock Mine" && t.ownerId === user?.uid).length}
+                coalMines={ownedTerracres.filter((t) => t.taType === "Coal Mine" && t.ownerId === user?.uid).length}
+                goldMines={ownedTerracres.filter((t) => t.taType === "Gold Mine" && t.ownerId === user?.uid).length}
+                diamondMines={ownedTerracres.filter((t) => t.taType === "Diamond Mine" && t.ownerId === user?.uid).length}
                 checkInMessages={checkInMessages}
               />
             </Suspense>
