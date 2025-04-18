@@ -1,6 +1,7 @@
 {
   "name": "terramine",
   "version": "0.0.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -14,6 +15,7 @@
   },
   "devDependencies": {
     "vite": "^6.2.2",
-    "@vitejs/plugin-react": "^4.3.2"
+    "@vitejs/plugin-react": "^4.3.2",
+    "rollup": "^4.24.0"
   }
 }

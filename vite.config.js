@@ -6,18 +6,19 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   build: {
-    // Ensure CommonJS compatibility
     commonjsOptions: {
-      transformMixedEsModules: true,
+      transformMixedEsModules: true, // Handle CommonJS/ES Module mismatches
     },
-    // Target modern browsers
     target: "esnext",
-    // Minify output
     minify: "esbuild",
+    rollupOptions: {
+      onwarn(warning, warn) {
+        console.warn(`Rollup warning: ${warning.message}`);
+      },
+    },
   },
   resolve: {
     alias: {
-      // Ensure consistent module resolution
       "@": "/src",
     },
   },

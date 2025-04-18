@@ -12,28 +12,26 @@ const firebaseConfig = {
   appId: "1:746868896165:web:7c1e0e67ff9054e229784c",
 };
 
+// Initialize Firebase with error handling
+let app, auth, googleProvider, db;
+
 try {
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
+  app = initializeApp(firebaseConfig);
   console.log("🔥 Firebase initialized successfully");
 
-  // Initialize Firebase Auth
-  const auth = getAuth(app);
+  auth = getAuth(app);
   console.log("🔥 Firebase Auth initialized");
 
-  // Initialize Google Auth Provider
-  const googleProvider = new GoogleAuthProvider();
+  googleProvider = new GoogleAuthProvider();
   googleProvider.setCustomParameters({ prompt: "select_account" });
   console.log("🔥 Google Auth Provider initialized");
 
-  // Initialize Firestore
-  const db = getFirestore(app);
+  db = getFirestore(app);
   console.log("🔥 Firestore initialized");
-
 } catch (error) {
   console.error("🔥 Firebase initialization failed:", error);
   throw error; // Let ErrorBoundary catch this
 }
 
-// Export all initialized instances
+// Export initialized instances at top level
 export { app, auth, googleProvider, db };
