@@ -95,6 +95,14 @@ const TAProfile = ({ user, setUser, setCheckInStatus }) => {
       await setDoc(terracreRef, newTerracre);
       await updateDoc(userRef, { terrabucks: terrabucks - TERRACRE_COST });
       setTerracreData(newTerracre);
+
+      // Fetch new owner data
+      const ownerRef = doc(db, "users", user.uid);
+      const ownerSnap = await getDoc(ownerRef);
+      if (ownerSnap.exists()) {
+        setOwnerData(ownerSnap.data());
+      }
+
       setCheckInStatus("✅ TA purchased successfully!");
     } catch (err) {
       console.error("🔥 TAProfile: Purchase failed:", err);
@@ -217,9 +225,15 @@ const TAProfile = ({ user, setUser, setCheckInStatus }) => {
           {terracreData?.ownerId ? (
             ownerData?.displayName || "Unknown Owner"
           ) : (
-            <button className="purchase-ta-button" onClick={handlePurchase}>
-              Purchase this TA (100 TB)
-            </button>
+            "No owner"
+          )}
+          {!terracreData?.ownerId && (
+            <>
+              {" "}
+              <button className="purchase-ta-button" onClick={handlePurchase}>
+                Purchase this TA (100 TB)
+              </button>
+            </>
           )}
         </p>
         <p><strong>Number of Check-Ins:</strong> {checkIns.length}</p>
