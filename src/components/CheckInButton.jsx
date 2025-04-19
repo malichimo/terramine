@@ -13,7 +13,6 @@ const CheckInButton = ({ user, userLocation, snappedGridCenter, setCheckInStatus
   const [qrScanned, setQrScanned] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Debug: Log when component mounts and props change
   useEffect(() => {
     console.log("📍 CheckInButton: Component mounted/updated", { user, userLocation, snappedGridCenter });
   }, [user, userLocation, snappedGridCenter]);
@@ -259,7 +258,7 @@ const CheckInButton = ({ user, userLocation, snappedGridCenter, setCheckInStatus
         }}
         disabled={!user || !snappedGridCenter}
       >
-        Tap to Check-In
+        Visit this TA
       </button>
     </div>
   );
