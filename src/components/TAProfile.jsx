@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import "./TAProfile.css";
 
 const TAProfile = ({ user, setUser, setCheckInStatus }) => {
   const { terracreId } = useParams();
-  const { state } = useLocation();
   const navigate = useNavigate();
-  const [terracreData, setTerracreData] = useState(state?.terracreData || null);
+  const [terracreData, setTerracreData] = useState(null);
   const [checkIns, setCheckIns] = useState([]);
   const [ownerData, setOwnerData] = useState(null);
   const [message, setMessage] = useState("");
@@ -21,29 +20,44 @@ const TAProfile = ({ user, setUser, setCheckInStatus }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch terracre data if not passed via state
-        if (!state?.terracreExists && !terracreData) {
-          const terracreRef = doc(db, "terracres", terracreId);
-          const terracreSnap = await getDoc(terracreRef);
-          if (terracreSnap.exists()) {
-            setTerracreData(terracreSnap.data());
-          }
+        // Fetch terracre data directly
+        console.log("📍 TAProfile: Fetching terracre data for ID:", terracreId);
+        const terracreRef = doc(db, "terracres", terracreId);
+        const terracreSnap = await getDoc(terracreRef);
+        if (terracreSnap.exists()) {
+          const data = terracreSnap.data();
+          console.log("📍 TAProfile: Terracre found:", data);
+          setTerracreData(data);
+        } else {
+          console.log("📍 TAProfile: Terracre does not exist for ID:", terracreId);
+          setTerracreData(null);
         }
 
-        // Fetch owner data if terracre exists
+        // Fetch owner data if terracre exists and has an owner
         if (terracreData?.ownerId) {
+          console.log("📍 TAProfile: Fetching owner data for ownerId:", terracreData.ownerId);
           const ownerRef = doc(db, "users", terracreData.ownerId);
           const ownerSnap = await getDoc(ownerRef);
           if (ownerSnap.exists()) {
-            setOwnerData(ownerSnap.data());
+            const owner = ownerSnap.data();
+            console.log("📍 TAProfile: Owner data:", owner);
+            setOwnerData(owner);
+          } else {
+            console.log("📍 TAProfile: Owner not found for ownerId:", terracreData.ownerId);
+            setOwnerData(null);
           }
+        } else {
+          console.log("📍 TAProfile: No owner for this terracre");
+          setOwnerData(null);
         }
 
         // Fetch check-ins for this terracre
+        console.log("📍 TAProfile: Fetching check-ins for terracreId:", terracreId);
         const checkInsSnapshot = await getDocs(collection(db, "checkins"));
         const terracreCheckIns = checkInsSnapshot.docs
           .filter((doc) => doc.data().terracreId === terracreId)
           .map((doc) => doc.data());
+        console.log("📍 TAProfile: Check-ins:", terracreCheckIns);
         setCheckIns(terracreCheckIns);
 
         // Check if user has already checked in today
@@ -51,6 +65,7 @@ const TAProfile = ({ user, setUser, setCheckInStatus }) => {
         const userCheckIn = terracreCheckIns.find(
           (checkIn) => checkIn.userId === user?.uid && checkIn.date === today
         );
+        console.log("📍 TAProfile: Has user checked in today?", !!userCheckIn);
         setHasCheckedIn(!!userCheckIn);
       } catch (err) {
         console.error("🔥 TAProfile: Error fetching data:", err);
@@ -59,7 +74,7 @@ const TAProfile = ({ user, setUser, setCheckInStatus }) => {
     };
 
     if (user) fetchData();
-  }, [user, terracreId, state, setCheckInStatus, terracreData]);
+  }, [user, terracreId, setCheckInStatus, terracreData?.ownerId]);
 
   const handlePurchase = async () => {
     if (!user) {
@@ -223,7 +238,7 @@ const TAProfile = ({ user, setUser, setCheckInStatus }) => {
         <p>
           <strong>Owner:</strong>{" "}
           {terracreData?.ownerId ? (
-            ownerData?.displayName || "Unknown Owner"
+            ownerData?.nickname || ownerData?.displayName || "Unknown Owner"
           ) : (
             "No owner"
           )}
