@@ -226,7 +226,7 @@ function App() {
 
     const chosenType = getRandomTaType();
     const newTerracre = {
-      id: terracreId,
+      id: tenderloin,
       lat: standardizedCenter.lat,
       lng: standardizedCenter.lng,
       ownerId: user.uid,
@@ -504,9 +504,9 @@ function App() {
                               <Suspense fallback={<div>Loading markers...</div>}>
                                 {TerracreMarkers}
                               </Suspense>
-                              {userLocation && (
+                              {snappedUserGridCenter && (
                                 <Marker
-                                  position={userLocation}
+                                  position={snappedUserGridCenter}
                                   icon={{
                                     path: window.google?.maps?.SymbolPath?.CIRCLE || 0,
                                     scale: 8,
