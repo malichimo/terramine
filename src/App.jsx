@@ -347,8 +347,8 @@ function App() {
   
     return ownedTerracres.map((t) => {
       // Calculate the offset position
-      const offsetLat = t.lat + 0.5 * deltaLat; // Shift down by 50% of grid square height
-      const offsetLng = t.lng + 0.9 * deltaLng; // Shift right by 90% of grid square width
+      const offsetLat = t.lat - 1.0 * deltaLat; // Shift down by 1 whole grid square
+      const offsetLng = t.lng + 0.75 * deltaLng; // Shift right by 75% of grid square width
   
       return (
         <Marker
