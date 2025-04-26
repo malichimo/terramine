@@ -347,7 +347,7 @@ function App() {
   
     return ownedTerracres.map((t) => {
       // Calculate the offset position
-      const offsetLat = t.lat - 0.5 * deltaLat; // Shift down by 1/2 grid square
+      const offsetLat = t.lat - 0.5 * deltaLat; // Shift down by 50% of grid square height
       const offsetLng = t.lng + 0.85 * deltaLng; // Shift right by 85% of grid square width
   
       return (
@@ -363,6 +363,7 @@ function App() {
             strokeColor: "#fff",
             anchor: new window.google.maps.Point(34, 34), // Keep the square centered on the offset position
           }}
+          zIndex={50} // Lower zIndex to render behind the "You" marker
         />
       );
     });
