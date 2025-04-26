@@ -544,7 +544,7 @@ function App() {
                       </Suspense>
 
                       <div className="greeting">
-                        Welcome, {user?.displayName || "User"}! You have {user?.terrabucks ?? 0} TB.
+                        <p>Welcome, {userData?.nickname || user?.displayName || "Guest"}! You have {terraBucks} TB.</p>
                       </div>
                       <div className="button-container">
                         <Suspense fallback={<div>Loading buttons...</div>}>
