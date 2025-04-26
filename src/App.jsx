@@ -336,22 +336,37 @@ function App() {
   const TerracreMarkers = useMemo(() => {
     console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
     if (!ownedTerracres.length) return null;
-    return ownedTerracres.map((t) => (
-      <Marker
-        key={`terracre-${t.id}`}
-        position={{ lat: t.lat, lng: t.lng }}
-        icon={{
-          path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
-          scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
-          fillColor: t.ownerId === user?.uid ? "blue" : "green",
-          fillOpacity: 1,
-          strokeWeight: 2,
-          strokeColor: "#fff",
-          anchor: new window.google.maps.Point(34, 34), // Center the square
-        }}
-      />
-    ));
-  }, [ownedTerracres, zoom, user?.uid]);
+  
+    // Calculate grid square dimensions in degrees
+    const metersPerDegreeLat = 111000;
+    const metersPerDegreeLng = userLocation
+      ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
+      : metersPerDegreeLat; // Fallback if userLocation is unavailable
+    const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
+    const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
+  
+    return ownedTerracres.map((t) => {
+      // Calculate the offset position
+      const offsetLat = t.lat + 0.5 * deltaLat; // Shift down by 50% of grid square height
+      const offsetLng = t.lng + 0.9 * deltaLng; // Shift right by 90% of grid square width
+  
+      return (
+        <Marker
+          key={`terracre-${t.id}`}
+          position={{ lat: offsetLat, lng: offsetLng }}
+          icon={{
+            path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
+            scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
+            fillColor: t.ownerId === user?.uid ? "blue" : "green",
+            fillOpacity: 1,
+            strokeWeight: 2,
+            strokeColor: "#fff",
+            anchor: new window.google.maps.Point(34, 34), // Keep the square centered on the offset position
+          }}
+        />
+      );
+    });
+  }, [ownedTerracres, zoom, user?.uid, userLocation]);
 
   const handleSignOut = async () => {
     try {
