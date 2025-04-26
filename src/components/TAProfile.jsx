@@ -19,31 +19,35 @@ const TAProfile = ({ user, setUser, setCheckInStatus }) => {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!user) return; // Exit if no user is logged in
+
       try {
-        // Fetch terracre data directly
+        // Fetch terracre data
         console.log("📍 TAProfile: Fetching terracre data for ID:", terracreId);
         const terracreRef = doc(db, "terracres", terracreId);
         const terracreSnap = await getDoc(terracreRef);
+        let terracreInfo = null;
+
         if (terracreSnap.exists()) {
-          const data = terracreSnap.data();
-          console.log("📍 TAProfile: Terracre found:", data);
-          setTerracreData(data);
+          terracreInfo = terracreSnap.data();
+          console.log("📍 TAProfile: Terracre found:", terracreInfo);
+          setTerracreData(terracreInfo);
         } else {
           console.log("📍 TAProfile: Terracre does not exist for ID:", terracreId);
           setTerracreData(null);
         }
 
         // Fetch owner data if terracre exists and has an owner
-        if (terracreData?.ownerId) {
-          console.log("📍 TAProfile: Fetching owner data for ownerId:", terracreData.ownerId);
-          const ownerRef = doc(db, "users", terracreData.ownerId);
+        if (terracreInfo?.ownerId) {
+          console.log("📍 TAProfile: Fetching owner data for ownerId:", terracreInfo.ownerId);
+          const ownerRef = doc(db, "users", terracreInfo.ownerId);
           const ownerSnap = await getDoc(ownerRef);
           if (ownerSnap.exists()) {
             const owner = ownerSnap.data();
             console.log("📍 TAProfile: Owner data:", owner);
             setOwnerData(owner);
           } else {
-            console.log("📍 TAProfile: Owner not found for ownerId:", terracreData.ownerId);
+            console.log("📍 TAProfile: Owner not found for ownerId:", terracreInfo.ownerId);
             setOwnerData(null);
           }
         } else {
@@ -73,8 +77,8 @@ const TAProfile = ({ user, setUser, setCheckInStatus }) => {
       }
     };
 
-    if (user) fetchData();
-  }, [user, terracreId, setCheckInStatus, terracreData?.ownerId]);
+    fetchData();
+  }, [user, terracreId, setCheckInStatus]); // Removed terracreData?.ownerId from dependencies
 
   const handlePurchase = async () => {
     if (!user) {
@@ -237,8 +241,8 @@ const TAProfile = ({ user, setUser, setCheckInStatus }) => {
         <p><strong>TA ID:</strong> {terracreId}</p>
         <p>
           <strong>Owner:</strong>{" "}
-          {terracreData?.ownerId ? (
-            ownerData?.nickname || ownerData?.displayName || "Unknown Owner"
+          {ownerData ? (
+            ownerData.nickname || ownerData.displayName || "Unknown Owner"
           ) : (
             "No owner"
           )}
