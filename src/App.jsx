@@ -347,6 +347,7 @@ function App() {
           fillOpacity: 1,
           strokeWeight: 2,
           strokeColor: "#fff",
+          anchor: new window.google.maps.Point(34, 34), // Center the square
         }}
       />
     ));
@@ -504,9 +505,9 @@ function App() {
                               <Suspense fallback={<div>Loading markers...</div>}>
                                 {TerracreMarkers}
                               </Suspense>
-                              {snappedUserGridCenter && (
+                              {userLocation && (
                                 <Marker
-                                  position={snappedUserGridCenter}
+                                  position={userLocation}
                                   icon={{
                                     path: window.google?.maps?.SymbolPath?.CIRCLE || 0,
                                     scale: 8,
