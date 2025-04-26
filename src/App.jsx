@@ -533,6 +533,7 @@ function App() {
                                     strokeColor: "#fff",
                                   }}
                                   title="You"
+                                  zIndex={100} // Higher zIndex to render in front
                                 />
                               )}
                             </GoogleMap>
