@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.40b - Manually load Google Maps API script to fix Hn initialization error");
+console.log("🌍 TerraMine v1.41b - Enhanced Google Maps API script loading with timeout and better error handling");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -49,7 +49,7 @@ function App() {
   const fetchTerracresRef = useRef(false);
   const geolocationRequestedRef = useRef(false);
 
-  // Manually load the Google Maps API script
+  // Manually load the Google Maps API script with timeout
   useEffect(() => {
     const loadGoogleMapsScript = () => {
       if (window.google && window.google.maps) {
@@ -65,7 +65,7 @@ function App() {
       script.defer = true;
       script.onerror = (err) => {
         console.error("🗺️ Failed to load Google Maps API script:", err);
-        setMapLoadError("Failed to load Google Maps API script. Please check your API key and network connection.");
+        setMapLoadError("Failed to load Google Maps API script. Please check your API key, network connection, or Content Security Policy settings.");
       };
       document.head.appendChild(script);
 
@@ -73,15 +73,33 @@ function App() {
         console.log("🗺️ Google Maps API script loaded and initialized");
         setIsGoogleMapsLoaded(true);
       };
+
+      // Timeout mechanism to detect if the script fails to load
+      const timeout = setTimeout(() => {
+        if (!isGoogleMapsLoaded) {
+          console.error("🗺️ Google Maps API script loading timed out after 10 seconds");
+          setMapLoadError("Google Maps API script failed to load within 10 seconds. Please check your API key or network connection.");
+          if (isDevelopment) {
+            console.warn("🛠️ Development mode: Skipping map rendering due to script loading failure");
+            setIsGoogleMapsLoaded(true); // Allow app to continue in development mode
+          }
+        }
+      }, 10000);
+
+      return () => {
+        clearTimeout(timeout);
+      };
     };
 
     loadGoogleMapsScript();
 
     return () => {
-      // Clean up the callback to prevent memory leaks
+      console.log("🧹 Cleaning up Google Maps API script and callback");
       delete window.initGoogleMaps;
+      const scripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
+      scripts.forEach((script) => script.remove());
     };
-  }, []);
+  }, [isDevelopment, isGoogleMapsLoaded]);
 
   const roundCoordinate = (value) => {
     const rounded = Number(value.toFixed(COORDINATE_PRECISION));
@@ -607,7 +625,39 @@ function App() {
     }, [isMainPage, isGoogleMapsLoaded, isDomReady, userLocation]);
 
     if (mapLoadError) {
-      return <div>Error: {mapLoadError}</div>;
+      return (
+        <div>
+          <p>Error: {mapLoadError}</p>
+          {isDevelopment && (
+            <div>
+              <p>Development mode: Map rendering skipped. You can still interact with the app.</p>
+              <div className="greeting">
+                Welcome, {user?.nickname || user?.displayName || "User"}! You have {user?.terrabucks ?? 0} TB.
+              </div>
+              <div className="button-container">
+                {snappedUserGridCenter ? (
+                  <CheckInButton
+                    user={user}
+                    userLocation={userLocation}
+                    snappedGridCenter={snappedUserGridCenter}
+                    setCheckInStatus={setCheckInStatus}
+                  />
+                ) : (
+                  <p>Loading grid center...</p>
+                )}
+                <PurchaseButton
+                  user={user}
+                  userLocation={userLocation}
+                  setUser={setUser}
+                  onPurchase={handlePurchase}
+                  gridCenter={snappedUserGridCenter}
+                />
+              </div>
+              {checkInStatus && <p>{checkInStatus}</p>}
+            </div>
+          )}
+        </div>
+      );
     }
 
     return (
