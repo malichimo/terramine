@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.41b - Enhanced Google Maps API script loading with timeout and better error handling");
+console.log("🌍 TerraMine v1.42b - Added robust error handling for script loading and MainContent");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -49,46 +49,53 @@ function App() {
   const fetchTerracresRef = useRef(false);
   const geolocationRequestedRef = useRef(false);
 
-  // Manually load the Google Maps API script with timeout
+  // Manually load the Google Maps API script with robust error handling
   useEffect(() => {
+    console.log("🗺️ Executing useEffect for Google Maps API script loading");
     const loadGoogleMapsScript = () => {
-      if (window.google && window.google.maps) {
-        console.log("🗺️ Google Maps API already loaded");
-        setIsGoogleMapsLoaded(true);
-        return;
-      }
-
-      console.log("🗺️ Loading Google Maps API script...");
-      const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=${libraries.join(",")}&callback=initGoogleMaps`;
-      script.async = true;
-      script.defer = true;
-      script.onerror = (err) => {
-        console.error("🗺️ Failed to load Google Maps API script:", err);
-        setMapLoadError("Failed to load Google Maps API script. Please check your API key, network connection, or Content Security Policy settings.");
-      };
-      document.head.appendChild(script);
-
-      window.initGoogleMaps = () => {
-        console.log("🗺️ Google Maps API script loaded and initialized");
-        setIsGoogleMapsLoaded(true);
-      };
-
-      // Timeout mechanism to detect if the script fails to load
-      const timeout = setTimeout(() => {
-        if (!isGoogleMapsLoaded) {
-          console.error("🗺️ Google Maps API script loading timed out after 10 seconds");
-          setMapLoadError("Google Maps API script failed to load within 10 seconds. Please check your API key or network connection.");
-          if (isDevelopment) {
-            console.warn("🛠️ Development mode: Skipping map rendering due to script loading failure");
-            setIsGoogleMapsLoaded(true); // Allow app to continue in development mode
-          }
+      try {
+        if (window.google && window.google.maps) {
+          console.log("🗺️ Google Maps API already loaded");
+          setIsGoogleMapsLoaded(true);
+          return;
         }
-      }, 10000);
 
-      return () => {
-        clearTimeout(timeout);
-      };
+        console.log("🗺️ Loading Google Maps API script...");
+        const script = document.createElement("script");
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=${libraries.join(",")}&callback=initGoogleMaps`;
+        script.async = true;
+        script.defer = true;
+        script.onerror = (err) => {
+          console.error("🗺️ Failed to load Google Maps API script:", err);
+          setMapLoadError("Failed to load Google Maps API script. Please check your API key, network connection, or Content Security Policy settings.");
+        };
+        document.head.appendChild(script);
+        console.log("🗺️ Google Maps API script appended to DOM");
+
+        window.initGoogleMaps = () => {
+          console.log("🗺️ Google Maps API script loaded and initialized");
+          setIsGoogleMapsLoaded(true);
+        };
+
+        // Timeout mechanism to detect if the script fails to load
+        const timeout = setTimeout(() => {
+          if (!isGoogleMapsLoaded) {
+            console.error("🗺️ Google Maps API script loading timed out after 10 seconds");
+            setMapLoadError("Google Maps API script failed to load within 10 seconds. Please check your API key or network connection.");
+            if (isDevelopment) {
+              console.warn("🛠️ Development mode: Skipping map rendering due to script loading failure");
+              setIsGoogleMapsLoaded(true); // Allow app to continue in development mode
+            }
+          }
+        }, 10000);
+
+        return () => {
+          clearTimeout(timeout);
+        };
+      } catch (err) {
+        console.error("🗺️ Error in loadGoogleMapsScript:", err);
+        setMapLoadError("Failed to initialize Google Maps API script loading: " + err.message);
+      }
     };
 
     loadGoogleMapsScript();
@@ -99,7 +106,7 @@ function App() {
       const scripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
       scripts.forEach((script) => script.remove());
     };
-  }, [isDevelopment, isGoogleMapsLoaded]);
+  }, [isDevelopment]); // Removed isGoogleMapsLoaded from dependencies
 
   const roundCoordinate = (value) => {
     const rounded = Number(value.toFixed(COORDINATE_PRECISION));
@@ -408,17 +415,29 @@ function App() {
     []
   );
 
-  const gridCells = useMemo(
-    () => (mapLoaded && userLocation ? getGridLines(userLocation) : []),
-    [userLocation, mapLoaded, getGridLines]
-  );
+  let gridCells = [];
+  try {
+    gridCells = useMemo(
+      () => (mapLoaded && userLocation ? getGridLines(userLocation) : []),
+      [userLocation, mapLoaded, getGridLines]
+    );
+  } catch (err) {
+    console.error("🔥 Error computing gridCells:", err);
+    setError("Failed to compute grid cells: " + err.message);
+  }
 
-  const snappedUserGridCenter = useMemo(() => {
-    if (!userLocation || !gridCells.length) return null;
-    const snapped = snapToGridCenter(userLocation.lat, userLocation.lng, gridCells);
-    console.log("📍 snappedUserGridCenter:", snapped);
-    return snapped;
-  }, [userLocation, gridCells, snapToGridCenter]);
+  let snappedUserGridCenter = null;
+  try {
+    snappedUserGridCenter = useMemo(() => {
+      if (!userLocation || !gridCells.length) return null;
+      const snapped = snapToGridCenter(userLocation.lat, userLocation.lng, gridCells);
+      console.log("📍 snappedUserGridCenter:", snapped);
+      return snapped;
+    }, [userLocation, gridCells, snapToGridCenter]);
+  } catch (err) {
+    console.error("🔥 Error computing snappedUserGridCenter:", err);
+    setError("Failed to compute snapped user grid center: " + err.message);
+  }
 
   const handleSignOut = async () => {
     try {
