@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.38b - Fixed gn initialization error by delaying Marker rendering");
+console.log("🌍 TerraMine v1.39b - Added error handling for useJsApiLoader to fix gn initialization error");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -41,22 +41,28 @@ function App() {
   const [showGallery, setShowGallery] = useState(false);
   const [isDomReady, setIsDomReady] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
+  const [mapLoadError, setMapLoadError] = useState(null);
 
   const isDevelopment = process.env.NODE_ENV === "development";
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
   const geolocationRequestedRef = useRef(false);
 
-  const { isLoaded } = useJsApiLoader({
+  const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
     libraries,
   });
 
   useEffect(() => {
+    console.log("🗺️ useJsApiLoader state:", { isLoaded, loadError });
     if (isLoaded) {
       console.log("🗺️ Google Maps API loaded via useJsApiLoader");
     }
-  }, [isLoaded]);
+    if (loadError) {
+      console.error("🗺️ Failed to load Google Maps API:", loadError);
+      setMapLoadError("Failed to load Google Maps API. Please check your API key and network connection.");
+    }
+  }, [isLoaded, loadError]);
 
   const roundCoordinate = (value) => {
     const rounded = Number(value.toFixed(COORDINATE_PRECISION));
@@ -576,6 +582,14 @@ function App() {
   function MainContent() {
     const location = useLocation();
     const isMainPage = location.pathname === "/";
+
+    useEffect(() => {
+      console.log("🗺️ Map rendering conditions:", { isMainPage, isLoaded, isDomReady, userLocation });
+    }, [isMainPage, isLoaded, isDomReady, userLocation]);
+
+    if (mapLoadError) {
+      return <div>Error: {mapLoadError}</div>;
+    }
 
     return (
       <div className="app-container">
