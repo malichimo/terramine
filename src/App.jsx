@@ -4,7 +4,7 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot } from "firebase/firestore";
-import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
+import { GoogleMap, Marker, Polygon, useJsApiLoader } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.34b - Fixed zn initialization error by moving Google Maps access");
+console.log("🌍 TerraMine v1.35b - Fixed Bn initialization error using useJsApiLoader");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -31,8 +31,6 @@ function App() {
   const [ownedTerracres, setOwnedTerracres] = useState([]);
   const [checkInStatus, setCheckInStatus] = useState("");
   const [checkInMessages, setCheckInMessages] = useState([]);
-  const [apiLoaded, setApiLoaded] = useState(false);
-  const [mapsApiReady, setMapsApiReady] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
@@ -48,6 +46,17 @@ function App() {
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
   const geolocationRequestedRef = useRef(false);
+
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries,
+  });
+
+  useEffect(() => {
+    if (isLoaded) {
+      console.log("🗺️ Google Maps API loaded via useJsApiLoader");
+    }
+  }, [isLoaded]);
 
   const roundCoordinate = (value) => {
     const rounded = Number(value.toFixed(COORDINATE_PRECISION));
@@ -86,8 +95,6 @@ function App() {
       console.log("🛠️ Running in development mode");
       setUser({ uid: "devUser", displayName: "Developer", terrabucks: 1000 });
       setUserLocation(defaultCenter);
-      setApiLoaded(true);
-      setMapsApiReady(true);
       setMapLoaded(true);
       setAuthLoading(false);
     }
@@ -310,6 +317,7 @@ function App() {
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = metersPerDegreeLat * Math.cos((center.lat * Math.PI) / 180);
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
+   
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
     const grid = [];
     for (let lat = sw.lat(); lat < ne.lat(); lat += deltaLat) {
@@ -414,53 +422,27 @@ function App() {
   console.log("🎮 Rendering main UI", { user, userLocation });
 
   return (
-    <LoadScript
-      googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-      libraries={libraries}
-      onLoad={() => {
-        console.log("🗺️ Google Maps API loaded");
-        setApiLoaded(true);
-        const checkMapsReady = setInterval(() => {
-          if (window.google && window.google.maps) {
-            console.log("🗺️ window.google.maps is ready");
-            setMapsApiReady(true);
-            setMapLoaded(true);
-            clearInterval(checkMapsReady);
-          }
-        }, 100);
-      }}
-      onError={(err) => {
-        console.error("🗺️ Google Maps API failed to load:", err);
-        setError("Failed to load Google Maps API.");
-      }}
-    >
-      <Router>
-        <ErrorBoundary>
-          <Suspense fallback={<div>Loading app...</div>}>
-            <Routes>
-              <Route
-                path="/ta/:terracreId"
-                element={
-                  <TAProfile user={user} setUser={setUser} setCheckInStatus={setCheckInStatus} />
-                }
-              />
-              <Route
-                path="*"
-                element={<MainContent />}
-              />
-            </Routes>
-          </Suspense>
-        </ErrorBoundary>
-      </Router>
-    </LoadScript>
+    <Router>
+      <ErrorBoundary>
+        <Suspense fallback={<div>Loading app...</div>}>
+          <Routes>
+            <Route
+              path="/ta/:terracreId"
+              element={
+                <TAProfile user={user} setUser={setUser} setCheckInStatus={setCheckInStatus} />
+              }
+            />
+            <Route
+              path="*"
+              element={<MainContent />}
+            />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
+    </Router>
   );
 
   function MapComponent({ userLocation, gridCells, ownedTerracres, zoom, user, setUserLocation, setZoom }) {
-    if (!window.google || !window.google.maps) {
-      console.log("🗺️ MapComponent: window.google.maps not ready, skipping render");
-      return <p>Loading map...</p>;
-    }
-
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = userLocation
       ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
@@ -595,7 +577,7 @@ function App() {
               <h1>TerraMine</h1>
             </header>
             <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
-            {isMainPage && mapsApiReady && isDomReady && userLocation ? (
+            {isMainPage && isLoaded && isDomReady && userLocation ? (
               <MemoizedMapComponent
                 userLocation={userLocation}
                 gridCells={gridCells}
