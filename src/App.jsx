@@ -40,7 +40,8 @@ function App() {
   const [showUserPage, setShowUserPage] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
-  const [isDomReady, setIsDomReady] = useState(false); // New state to track DOM readiness
+  const [isDomReady, setIsDomReady] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true); // New state to track auth loading
 
   const isDevelopment = process.env.NODE_ENV === "development";
   const mapRef = useRef(null);
@@ -57,32 +58,30 @@ function App() {
     setIsDomReady(true);
   }, []);
 
+  // Handle authentication state
   useEffect(() => {
     console.log("🔍 Setting up onAuthStateChanged");
-    try {
-      const unsubscribe = onAuthStateChanged(
-        auth,
-        (firebaseUser) => {
-          console.log("🔥 onAuthStateChanged fired", firebaseUser);
-          setUser(firebaseUser ? { uid: firebaseUser.uid, displayName: firebaseUser.displayName } : null);
-        },
-        (error) => {
-          console.error("🔥 onAuthStateChanged error:", error);
-          setError("Failed to check authentication state.");
-          setUser(null);
-        }
-      );
-      return () => {
-        console.log("🧹 Cleaning up onAuthStateChanged");
-        unsubscribe();
-      };
-    } catch (err) {
-      console.error("🔥 Error setting up onAuthStateChanged:", err);
-      setError("Authentication setup failed.");
-      setUser(null);
-    }
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (firebaseUser) => {
+        console.log("🔥 onAuthStateChanged fired", firebaseUser);
+        setUser(firebaseUser ? { uid: firebaseUser.uid, displayName: firebaseUser.displayName } : null);
+        setAuthLoading(false); // Auth state resolved
+      },
+      (error) => {
+        console.error("🔥 onAuthStateChanged error:", error);
+        setError("Failed to check authentication state.");
+        setUser(null);
+        setAuthLoading(false);
+      }
+    );
+    return () => {
+      console.log("🧹 Cleaning up onAuthStateChanged");
+      unsubscribe();
+    };
   }, []);
 
+  // Development mode setup
   useEffect(() => {
     if (isDevelopment) {
       console.log("🛠️ Running in development mode");
@@ -90,6 +89,7 @@ function App() {
       setUserLocation(defaultCenter);
       setApiLoaded(true);
       setMapLoaded(true);
+      setAuthLoading(false); // Skip auth loading in dev mode
     }
   }, [isDevelopment]);
 
@@ -98,8 +98,9 @@ function App() {
     setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
   };
 
+  // Fetch geolocation after user is confirmed authenticated
   useEffect(() => {
-    if (!isDevelopment && user) {
+    if (!isDevelopment && user && !authLoading) {
       console.log("📍 Requesting geolocation");
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -113,7 +114,7 @@ function App() {
         }
       );
     }
-  }, [isDevelopment, user]);
+  }, [isDevelopment, user, authLoading]);
 
   const fetchOwnedTerracres = useCallback(async () => {
     if (!user || fetchTerracresRef.current) return;
@@ -163,8 +164,10 @@ function App() {
   }, [user]);
 
   useEffect(() => {
-    if (user) fetchOwnedTerracres();
-  }, [user, purchaseTrigger, fetchOwnedTerracres]);
+    if (user && !authLoading) {
+      fetchOwnedTerracres();
+    }
+  }, [user, purchaseTrigger, fetchOwnedTerracres, authLoading]);
 
   const fetchUserData = useCallback(() => {
     if (!user?.uid) {
@@ -203,13 +206,13 @@ function App() {
   }, [user?.uid]);
 
   useEffect(() => {
-    if (user) {
+    if (user && !authLoading) {
       const unsubscribe = fetchUserData();
       return () => {
         if (unsubscribe) unsubscribe();
       };
     }
-  }, [user, fetchUserData]);
+  }, [user, fetchUserData, authLoading]);
 
   const TA_PROBABILITIES = [
     { type: "Rock Mine", rate: 0.05, chance: 0.5 },
@@ -367,9 +370,12 @@ function App() {
   }, [userLocation, gridCells, snapToGridCenter]);
 
   const TerracreMarkers = useMemo(() => {
-    console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
-    if (!ownedTerracres.length || !window.google?.maps || !window.google.maps.Point) return null;
+    if (!user || !ownedTerracres.length || !window.google?.maps || !window.google.maps.Point) {
+      console.log("🏞️ Rendering TerracreMarkers: [] (skipped due to missing user or dependencies)");
+      return null;
+    }
 
+    console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = userLocation
       ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
@@ -398,7 +404,7 @@ function App() {
         />
       );
     });
-  }, [ownedTerracres, zoom, user?.uid, userLocation]);
+  }, [ownedTerracres, zoom, user, userLocation]);
 
   const handleSignOut = async () => {
     try {
@@ -408,6 +414,10 @@ function App() {
       setOwnedTerracres([]);
       setCheckInMessages([]);
       setTotalEarnings(0);
+      setCheckInStatus("");
+      setShowUserPage(false);
+      setShowProfile(false);
+      setShowGallery(false);
       console.log("🔥 Signed out successfully");
     } catch (err) {
       console.error("🔥 Sign-out failed:", err);
@@ -421,6 +431,12 @@ function App() {
       setShowGallery(true);
     }
   };
+
+  // Show loading state while auth is resolving
+  if (authLoading) {
+    console.log("⏳ Rendering auth loading state");
+    return <div>Loading authentication...</div>;
+  }
 
   if (error) {
     console.log("❌ Rendering error state");
