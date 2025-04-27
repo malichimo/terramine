@@ -271,7 +271,7 @@ function App() {
       console.log("✅ Purchased terracre:", terracreId);
       return { message: `✅ You purchased a ${chosenType.type}!` };
     } catch (err) {
-      console.error("�fire Purchase failed:", err);
+      console.error("🔥 Purchase failed:", err);
       return { message: "Failed to purchase terracre." };
     }
   };
@@ -363,7 +363,7 @@ function App() {
 
   const TerracreMarkers = useMemo(() => {
     console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
-    if (!ownedTerracres.length || !window.google?.maps) return null; // Add check for google.maps
+    if (!ownedTerracres.length || !window.google?.maps || !window.google.maps.Point) return null; // Improved safety check
 
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = userLocation
@@ -430,24 +430,38 @@ function App() {
   console.log("🎮 Rendering main UI", { user, userLocation });
 
   return (
-    <Router>
-      <ErrorBoundary>
-        <Suspense fallback={<div>Loading app...</div>}>
-          <Routes>
-            <Route
-              path="/ta/:terracreId"
-              element={
-                <TAProfile user={user} setUser={setUser} setCheckInStatus={setCheckInStatus} />
-              }
-            />
-            <Route
-              path="*"
-              element={<MainContent />}
-            />
-          </Routes>
-        </Suspense>
-      </ErrorBoundary>
-    </Router>
+    <LoadScript
+      googleMapsApiKey={GOOGLE_MAPS_API_KEY}
+      libraries={libraries}
+      onLoad={() => {
+        console.log("🗺️ Google Maps API loaded");
+        setApiLoaded(true);
+        setMapLoaded(true);
+      }}
+      onError={(err) => {
+        console.error("🗺️ Google Maps API failed to load:", err);
+        setError("Failed to load Google Maps.");
+      }}
+    >
+      <Router>
+        <ErrorBoundary>
+          <Suspense fallback={<div>Loading app...</div>}>
+            <Routes>
+              <Route
+                path="/ta/:terracreId"
+                element={
+                  <TAProfile user={user} setUser={setUser} setCheckInStatus={setCheckInStatus} />
+                }
+              />
+              <Route
+                path="*"
+                element={<MainContent />}
+              />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
+      </Router>
+    </LoadScript>
   );
 
   function MainContent() {
@@ -502,85 +516,69 @@ function App() {
               <h1>TerraMine</h1>
             </header>
             <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
-            {isMainPage && (
+            {isMainPage && apiLoaded ? (
               <Suspense fallback={<p>Loading map...</p>}>
-                <LoadScript
-                  googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-                  libraries={libraries}
-                  onLoad={() => {
-                    console.log("🗺️ Google Maps API loaded");
-                    setApiLoaded(true);
-                    setMapLoaded(true);
+                <GoogleMap
+                  key={mapKey}
+                  mapContainerClassName="map-container"
+                  center={userLocation}
+                  zoom={zoom}
+                  onLoad={(map) => {
+                    console.log("🗺️ Google Map component loaded");
+                    mapRef.current = map;
+                    map.addListener("zoom_changed", () => {
+                      const z = map.getZoom();
+                      setZoom(z);
+                      setMapKey(Date.now());
+                    });
                   }}
-                  onError={(err) => {
-                    console.error("🗺️ Google Maps API failed to load:", err);
-                    setError("Failed to load Google Maps.");
+                  onBoundsChanged={() => {
+                    if (mapRef.current) {
+                      const c = mapRef.current.getCenter();
+                      setUserLocation({ lat: c.lat(), lng: c.lng() });
+                    }
+                  }}
+                  mapContainerStyle={{
+                    width: "min(80vw, 500px)",
+                    height: "min(80vw, 500px)",
+                    aspectRatio: "1 / 1",
+                    margin: "10px auto",
                   }}
                 >
-                  {apiLoaded && userLocation ? (
-                    <GoogleMap
-                      key={mapKey}
-                      mapContainerClassName="map-container"
-                      center={userLocation}
-                      zoom={zoom}
-                      onLoad={(map) => {
-                        console.log("🗺️ Google Map component loaded");
-                        mapRef.current = map;
-                        map.addListener("zoom_changed", () => {
-                          const z = map.getZoom();
-                          setZoom(z);
-                          setMapKey(Date.now());
-                        });
+                  {gridCells.map((cell, index) => (
+                    <Polygon
+                      key={`polygon-${index}`}
+                      paths={cell.paths}
+                      options={{
+                        fillColor: "transparent",
+                        strokeColor: "#999",
+                        strokeOpacity: 0.8,
+                        strokeWeight: 1,
                       }}
-                      onBoundsChanged={() => {
-                        if (mapRef.current) {
-                          const c = mapRef.current.getCenter();
-                          setUserLocation({ lat: c.lat(), lng: c.lng() });
-                        }
+                    />
+                  ))}
+                  <Suspense fallback={<div>Loading markers...</div>}>
+                    {TerracreMarkers}
+                  </Suspense>
+                  {userLocation && window.google?.maps?.SymbolPath && (
+                    <Marker
+                      position={userLocation}
+                      icon={{
+                        path: window.google.maps.SymbolPath.CIRCLE || 0,
+                        scale: 8,
+                        fillColor: "#4285F4",
+                        fillOpacity: 1,
+                        strokeWeight: 2,
+                        strokeColor: "#fff",
                       }}
-                      mapContainerStyle={{
-                        width: "min(80vw, 500px)",
-                        height: "min(80vw, 500px)",
-                        aspectRatio: "1 / 1",
-                        margin: "10px auto",
-                      }}
-                    >
-                      {gridCells.map((cell, index) => (
-                        <Polygon
-                          key={`polygon-${index}`}
-                          paths={cell.paths}
-                          options={{
-                            fillColor: "transparent",
-                            strokeColor: "#999",
-                            strokeOpacity: 0.8,
-                            strokeWeight: 1,
-                          }}
-                        />
-                      ))}
-                      <Suspense fallback={<div>Loading markers...</div>}>
-                        {TerracreMarkers}
-                      </Suspense>
-                      {userLocation && window.google?.maps && (
-                        <Marker
-                          position={userLocation}
-                          icon={{
-                            path: window.google.maps.SymbolPath.CIRCLE || 0,
-                            scale: 8,
-                            fillColor: "#4285F4",
-                            fillOpacity: 1,
-                            strokeWeight: 2,
-                            strokeColor: "#fff",
-                          }}
-                          title="You"
-                          zIndex={100}
-                        />
-                      )}
-                    </GoogleMap>
-                  ) : (
-                    <p>Waiting for location...</p>
+                      title="You"
+                      zIndex={100}
+                    />
                   )}
-                </LoadScript>
+                </GoogleMap>
               </Suspense>
+            ) : (
+              isMainPage && <p>Waiting for location...</p>
             )}
 
             <div className="greeting">
