@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, Suspense, useRef } from "react";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, useLocation } from "react-router-dom";
 import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
@@ -21,7 +21,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
-const COORDINATE_PRECISION = 4; // Changed to 4 decimal places to match Firestore
+const COORDINATE_PRECISION = 4;
 
 console.log("🌍 TerraMine v1.30b - Stable full version loaded");
 
@@ -271,7 +271,7 @@ function App() {
       console.log("✅ Purchased terracre:", terracreId);
       return { message: `✅ You purchased a ${chosenType.type}!` };
     } catch (err) {
-      console.error("🔥 Purchase failed:", err);
+      console.error("�fire Purchase failed:", err);
       return { message: "Failed to purchase terracre." };
     }
   };
@@ -353,6 +353,7 @@ function App() {
     () => (mapLoaded && userLocation ? getGridLines(userLocation) : []),
     [userLocation, mapLoaded, getGridLines]
   );
+
   const snappedUserGridCenter = useMemo(() => {
     if (!userLocation || !gridCells.length) return null;
     const snapped = snapToGridCenter(userLocation.lat, userLocation.lng, gridCells);
@@ -362,7 +363,7 @@ function App() {
 
   const TerracreMarkers = useMemo(() => {
     console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
-    if (!ownedTerracres.length) return null;
+    if (!ownedTerracres.length || !window.google?.maps) return null; // Add check for google.maps
 
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = userLocation
@@ -441,164 +442,173 @@ function App() {
             />
             <Route
               path="*"
-              element={
-                <div className="app-container">
-                  {user && (
-                    <>
-                      {!showUserPage && !showProfile && (
-                        <>
-                          <UserButton onUser={() => setShowUserPage(true)} />
-                          <button onClick={() => setShowProfile(true)}>Edit Profile</button>
-                        </>
-                      )}
-                      <SignOutButton onSignOut={handleSignOut} />
-                      {!showProfile && (
-                        <button onClick={() => setShowGallery(true)}>📸 View Check-In Gallery</button>
-                      )}
-                    </>
-                  )}
-                  {showProfile ? (
-                    <Suspense fallback={<div>Loading profile...</div>}>
-                      <UserProfile
-                        user={user}
-                        onClose={handleProfileClose}
-                        ownedTerracres={ownedTerracres}
-                        checkInMessages={checkInMessages}
-                      />
-                    </Suspense>
-                  ) : showUserPage ? (
-                    <Suspense fallback={<div>Loading user page...</div>}>
-                      <UserPage
-                        user={user}
-                        onClose={() => setShowUserPage(false)}
-                        earnings={totalEarnings}
-                        rockMines={ownedTerracres.filter((t) => t.taType === "Rock Mine" && t.ownerId === user?.uid).length}
-                        coalMines={ownedTerracres.filter((t) => t.taType === "Coal Mine" && t.ownerId === user?.uid).length}
-                        goldMines={ownedTerracres.filter((t) => t.taType === "Gold Mine" && t.ownerId === user?.uid).length}
-                        diamondMines={ownedTerracres.filter((t) => t.taType === "Diamond Mine" && t.ownerId === user?.uid).length}
-                        checkInMessages={checkInMessages}
-                      />
-                    </Suspense>
-                  ) : showGallery ? (
-                    <Suspense fallback={<div>Loading gallery...</div>}>
-                      <CheckInGallery messages={checkInMessages} onClose={() => setShowGallery(false)} />
-                    </Suspense>
-                  ) : (
-                    <Suspense fallback={<div>Loading main UI...</div>}>
-                      <header className="app-header">
-                        <h1>TerraMine</h1>
-                      </header>
-                      <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
-                      <Suspense fallback={<p>Loading map...</p>}>
-                        <LoadScript
-                          googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-                          libraries={libraries}
-                          onLoad={() => {
-                            console.log("🗺️ Google Maps API loaded");
-                            setApiLoaded(true);
-                            setMapLoaded(true);
-                          }}
-                          onError={(err) => {
-                            console.error("🗺️ Google Maps API failed to load:", err);
-                            setError("Failed to load Google Maps.");
-                          }}
-                        >
-                          {apiLoaded && userLocation ? (
-                            <GoogleMap
-                              key={mapKey}
-                              mapContainerClassName="map-container"
-                              center={userLocation}
-                              zoom={zoom}
-                              onLoad={(map) => {
-                                console.log("🗺️ Google Map component loaded");
-                                mapRef.current = map;
-                                map.addListener("zoom_changed", () => {
-                                  const z = map.getZoom();
-                                  setZoom(z);
-                                  setMapKey(Date.now());
-                                });
-                              }}
-                              onBoundsChanged={() => {
-                                if (mapRef.current) {
-                                  const c = mapRef.current.getCenter();
-                                  setUserLocation({ lat: c.lat(), lng: c.lng() });
-                                }
-                              }}
-                              mapContainerStyle={{
-                                width: "min(80vw, 500px)",
-                                height: "min(80vw, 500px)",
-                                aspectRatio: "1 / 1",
-                                margin: "10px auto",
-                              }}
-                            >
-                              {gridCells.map((cell, index) => (
-                                <Polygon
-                                  key={`polygon-${index}`}
-                                  paths={cell.paths}
-                                  options={{
-                                    fillColor: "transparent",
-                                    strokeColor: "#999",
-                                    strokeOpacity: 0.8,
-                                    strokeWeight: 1,
-                                  }}
-                                />
-                              ))}
-                              <Suspense fallback={<div>Loading markers...</div>}>
-                                {TerracreMarkers}
-                              </Suspense>
-                              {userLocation && (
-                                <Marker
-                                  position={userLocation}
-                                  icon={{
-                                    path: window.google?.maps?.SymbolPath?.CIRCLE || 0,
-                                    scale: 8,
-                                    fillColor: "#4285F4",
-                                    fillOpacity: 1,
-                                    strokeWeight: 2,
-                                    strokeColor: "#fff",
-                                  }}
-                                  title="You"
-                                  zIndex={100}
-                                />
-                              )}
-                            </GoogleMap>
-                          ) : (
-                            <p>Waiting for location...</p>
-                          )}
-                        </LoadScript>
-                      </Suspense>
-
-                      <div className="greeting">
-                        Welcome, {user?.nickname || user?.displayName || "User"}! You have {user?.terrabucks ?? 0} TB.
-                      </div>
-                      <div className="button-container">
-                        <Suspense fallback={<div>Loading buttons...</div>}>
-                          <CheckInButton
-                            user={user}
-                            userLocation={userLocation}
-                            snappedGridCenter={snappedUserGridCenter}
-                            setCheckInStatus={setCheckInStatus}
-                          />
-                          <PurchaseButton
-                            user={user}
-                            userLocation={userLocation}
-                            setUser={setUser}
-                            onPurchase={handlePurchase}
-                            gridCenter={snappedUserGridCenter}
-                          />
-                        </Suspense>
-                      </div>
-                      {checkInStatus && <p>{checkInStatus}</p>}
-                    </Suspense>
-                  )}
-                </div>
-              }
+              element={<MainContent />}
             />
           </Routes>
         </Suspense>
       </ErrorBoundary>
     </Router>
   );
+
+  function MainContent() {
+    const location = useLocation();
+    const isMainPage = location.pathname === "/";
+
+    return (
+      <div className="app-container">
+        {user && (
+          <>
+            {!showUserPage && !showProfile && (
+              <>
+                <UserButton onUser={() => setShowUserPage(true)} />
+                <button onClick={() => setShowProfile(true)}>Edit Profile</button>
+              </>
+            )}
+            <SignOutButton onSignOut={handleSignOut} />
+            {!showProfile && (
+              <button onClick={() => setShowGallery(true)}>📸 View Check-In Gallery</button>
+            )}
+          </>
+        )}
+        {showProfile ? (
+          <Suspense fallback={<div>Loading profile...</div>}>
+            <UserProfile
+              user={user}
+              onClose={handleProfileClose}
+              ownedTerracres={ownedTerracres}
+              checkInMessages={checkInMessages}
+            />
+          </Suspense>
+        ) : showUserPage ? (
+          <Suspense fallback={<div>Loading user page...</div>}>
+            <UserPage
+              user={user}
+              onClose={() => setShowUserPage(false)}
+              earnings={totalEarnings}
+              rockMines={ownedTerracres.filter((t) => t.taType === "Rock Mine" && t.ownerId === user?.uid).length}
+              coalMines={ownedTerracres.filter((t) => t.taType === "Coal Mine" && t.ownerId === user?.uid).length}
+              goldMines={ownedTerracres.filter((t) => t.taType === "Gold Mine" && t.ownerId === user?.uid).length}
+              diamondMines={ownedTerracres.filter((t) => t.taType === "Diamond Mine" && t.ownerId === user?.uid).length}
+              checkInMessages={checkInMessages}
+            />
+          </Suspense>
+        ) : showGallery ? (
+          <Suspense fallback={<div>Loading gallery...</div>}>
+            <CheckInGallery messages={checkInMessages} onClose={() => setShowGallery(false)} />
+          </Suspense>
+        ) : (
+          <Suspense fallback={<div>Loading main UI...</div>}>
+            <header className="app-header">
+              <h1>TerraMine</h1>
+            </header>
+            <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
+            {isMainPage && (
+              <Suspense fallback={<p>Loading map...</p>}>
+                <LoadScript
+                  googleMapsApiKey={GOOGLE_MAPS_API_KEY}
+                  libraries={libraries}
+                  onLoad={() => {
+                    console.log("🗺️ Google Maps API loaded");
+                    setApiLoaded(true);
+                    setMapLoaded(true);
+                  }}
+                  onError={(err) => {
+                    console.error("🗺️ Google Maps API failed to load:", err);
+                    setError("Failed to load Google Maps.");
+                  }}
+                >
+                  {apiLoaded && userLocation ? (
+                    <GoogleMap
+                      key={mapKey}
+                      mapContainerClassName="map-container"
+                      center={userLocation}
+                      zoom={zoom}
+                      onLoad={(map) => {
+                        console.log("🗺️ Google Map component loaded");
+                        mapRef.current = map;
+                        map.addListener("zoom_changed", () => {
+                          const z = map.getZoom();
+                          setZoom(z);
+                          setMapKey(Date.now());
+                        });
+                      }}
+                      onBoundsChanged={() => {
+                        if (mapRef.current) {
+                          const c = mapRef.current.getCenter();
+                          setUserLocation({ lat: c.lat(), lng: c.lng() });
+                        }
+                      }}
+                      mapContainerStyle={{
+                        width: "min(80vw, 500px)",
+                        height: "min(80vw, 500px)",
+                        aspectRatio: "1 / 1",
+                        margin: "10px auto",
+                      }}
+                    >
+                      {gridCells.map((cell, index) => (
+                        <Polygon
+                          key={`polygon-${index}`}
+                          paths={cell.paths}
+                          options={{
+                            fillColor: "transparent",
+                            strokeColor: "#999",
+                            strokeOpacity: 0.8,
+                            strokeWeight: 1,
+                          }}
+                        />
+                      ))}
+                      <Suspense fallback={<div>Loading markers...</div>}>
+                        {TerracreMarkers}
+                      </Suspense>
+                      {userLocation && window.google?.maps && (
+                        <Marker
+                          position={userLocation}
+                          icon={{
+                            path: window.google.maps.SymbolPath.CIRCLE || 0,
+                            scale: 8,
+                            fillColor: "#4285F4",
+                            fillOpacity: 1,
+                            strokeWeight: 2,
+                            strokeColor: "#fff",
+                          }}
+                          title="You"
+                          zIndex={100}
+                        />
+                      )}
+                    </GoogleMap>
+                  ) : (
+                    <p>Waiting for location...</p>
+                  )}
+                </LoadScript>
+              </Suspense>
+            )}
+
+            <div className="greeting">
+              Welcome, {user?.nickname || user?.displayName || "User"}! You have {user?.terrabucks ?? 0} TB.
+            </div>
+            <div className="button-container">
+              <Suspense fallback={<div>Loading buttons...</div>}>
+                <CheckInButton
+                  user={user}
+                  userLocation={userLocation}
+                  snappedGridCenter={snappedUserGridCenter}
+                  setCheckInStatus={setCheckInStatus}
+                />
+                <PurchaseButton
+                  user={user}
+                  userLocation={userLocation}
+                  setUser={setUser}
+                  onPurchase={handlePurchase}
+                  gridCenter={snappedUserGridCenter}
+                />
+              </Suspense>
+            </div>
+            {checkInStatus && <p>{checkInStatus}</p>}
+          </Suspense>
+        )}
+      </div>
+    );
+  }
 }
 
 export default App;
