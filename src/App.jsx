@@ -35,12 +35,12 @@ function App() {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
-  const [mapKey, setMapKey] = useState(Date.now());
   const [zoom, setZoom] = useState(18);
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [showUserPage, setShowUserPage] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
+  const [isDomReady, setIsDomReady] = useState(false); // New state to track DOM readiness
 
   const isDevelopment = process.env.NODE_ENV === "development";
   const mapRef = useRef(null);
@@ -51,6 +51,11 @@ function App() {
     console.log(`📏 Rounding ${value} to ${rounded}`);
     return rounded;
   };
+
+  // Ensure DOM is ready before rendering map
+  useEffect(() => {
+    setIsDomReady(true);
+  }, []);
 
   useEffect(() => {
     console.log("🔍 Setting up onAuthStateChanged");
@@ -363,7 +368,7 @@ function App() {
 
   const TerracreMarkers = useMemo(() => {
     console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
-    if (!ownedTerracres.length || !window.google?.maps || !window.google.maps.Point) return null; // Improved safety check
+    if (!ownedTerracres.length || !window.google?.maps || !window.google.maps.Point) return null;
 
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = userLocation
@@ -485,41 +490,34 @@ function App() {
           </>
         )}
         {showProfile ? (
-          <Suspense fallback={<div>Loading profile...</div>}>
-            <UserProfile
-              user={user}
-              onClose={handleProfileClose}
-              ownedTerracres={ownedTerracres}
-              checkInMessages={checkInMessages}
-            />
-          </Suspense>
+          <UserProfile
+            user={user}
+            onClose={handleProfileClose}
+            ownedTerracres={ownedTerracres}
+            checkInMessages={checkInMessages}
+          />
         ) : showUserPage ? (
-          <Suspense fallback={<div>Loading user page...</div>}>
-            <UserPage
-              user={user}
-              onClose={() => setShowUserPage(false)}
-              earnings={totalEarnings}
-              rockMines={ownedTerracres.filter((t) => t.taType === "Rock Mine" && t.ownerId === user?.uid).length}
-              coalMines={ownedTerracres.filter((t) => t.taType === "Coal Mine" && t.ownerId === user?.uid).length}
-              goldMines={ownedTerracres.filter((t) => t.taType === "Gold Mine" && t.ownerId === user?.uid).length}
-              diamondMines={ownedTerracres.filter((t) => t.taType === "Diamond Mine" && t.ownerId === user?.uid).length}
-              checkInMessages={checkInMessages}
-            />
-          </Suspense>
+          <UserPage
+            user={user}
+            onClose={() => setShowUserPage(false)}
+            earnings={totalEarnings}
+            rockMines={ownedTerracres.filter((t) => t.taType === "Rock Mine" && t.ownerId === user?.uid).length}
+            coalMines={ownedTerracres.filter((t) => t.taType === "Coal Mine" && t.ownerId === user?.uid).length}
+            goldMines={ownedTerracres.filter((t) => t.taType === "Gold Mine" && t.ownerId === user?.uid).length}
+            diamondMines={ownedTerracres.filter((t) => t.taType === "Diamond Mine" && t.ownerId === user?.uid).length}
+            checkInMessages={checkInMessages}
+          />
         ) : showGallery ? (
-          <Suspense fallback={<div>Loading gallery...</div>}>
-            <CheckInGallery messages={checkInMessages} onClose={() => setShowGallery(false)} />
-          </Suspense>
+          <CheckInGallery messages={checkInMessages} onClose={() => setShowGallery(false)} />
         ) : (
-          <Suspense fallback={<div>Loading main UI...</div>}>
+          <div>
             <header className="app-header">
               <h1>TerraMine</h1>
             </header>
             <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
-            {isMainPage && apiLoaded ? (
-              <Suspense fallback={<p>Loading map...</p>}>
+            {isMainPage && apiLoaded && isDomReady && userLocation ? (
+              <div>
                 <GoogleMap
-                  key={mapKey}
                   mapContainerClassName="map-container"
                   center={userLocation}
                   zoom={zoom}
@@ -529,7 +527,6 @@ function App() {
                     map.addListener("zoom_changed", () => {
                       const z = map.getZoom();
                       setZoom(z);
-                      setMapKey(Date.now());
                     });
                   }}
                   onBoundsChanged={() => {
@@ -557,9 +554,7 @@ function App() {
                       }}
                     />
                   ))}
-                  <Suspense fallback={<div>Loading markers...</div>}>
-                    {TerracreMarkers}
-                  </Suspense>
+                  {TerracreMarkers}
                   {userLocation && window.google?.maps?.SymbolPath && (
                     <Marker
                       position={userLocation}
@@ -576,7 +571,7 @@ function App() {
                     />
                   )}
                 </GoogleMap>
-              </Suspense>
+              </div>
             ) : (
               isMainPage && <p>Waiting for location...</p>
             )}
@@ -585,24 +580,22 @@ function App() {
               Welcome, {user?.nickname || user?.displayName || "User"}! You have {user?.terrabucks ?? 0} TB.
             </div>
             <div className="button-container">
-              <Suspense fallback={<div>Loading buttons...</div>}>
-                <CheckInButton
-                  user={user}
-                  userLocation={userLocation}
-                  snappedGridCenter={snappedUserGridCenter}
-                  setCheckInStatus={setCheckInStatus}
-                />
-                <PurchaseButton
-                  user={user}
-                  userLocation={userLocation}
-                  setUser={setUser}
-                  onPurchase={handlePurchase}
-                  gridCenter={snappedUserGridCenter}
-                />
-              </Suspense>
+              <CheckInButton
+                user={user}
+                userLocation={userLocation}
+                snappedGridCenter={snappedUserGridCenter}
+                setCheckInStatus={setCheckInStatus}
+              />
+              <PurchaseButton
+                user={user}
+                userLocation={userLocation}
+                setUser={setUser}
+                onPurchase={handlePurchase}
+                gridCenter={snappedUserGridCenter}
+              />
             </div>
             {checkInStatus && <p>{checkInStatus}</p>}
-          </Suspense>
+          </div>
         )}
       </div>
     );
