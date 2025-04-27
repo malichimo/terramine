@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.30b - Stable full version loaded");
+console.log("🌍 TerraMine v1.31b - Optimized rendering version");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -41,11 +41,12 @@ function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
   const [isDomReady, setIsDomReady] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true); // New state to track auth loading
+  const [authLoading, setAuthLoading] = useState(true);
 
   const isDevelopment = process.env.NODE_ENV === "development";
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
+  const geolocationRequestedRef = useRef(false); // Track geolocation requests
 
   const roundCoordinate = (value) => {
     const rounded = Number(value.toFixed(COORDINATE_PRECISION));
@@ -53,12 +54,10 @@ function App() {
     return rounded;
   };
 
-  // Ensure DOM is ready before rendering map
   useEffect(() => {
     setIsDomReady(true);
   }, []);
 
-  // Handle authentication state
   useEffect(() => {
     console.log("🔍 Setting up onAuthStateChanged");
     const unsubscribe = onAuthStateChanged(
@@ -66,7 +65,7 @@ function App() {
       (firebaseUser) => {
         console.log("🔥 onAuthStateChanged fired", firebaseUser);
         setUser(firebaseUser ? { uid: firebaseUser.uid, displayName: firebaseUser.displayName } : null);
-        setAuthLoading(false); // Auth state resolved
+        setAuthLoading(false);
       },
       (error) => {
         console.error("🔥 onAuthStateChanged error:", error);
@@ -81,7 +80,6 @@ function App() {
     };
   }, []);
 
-  // Development mode setup
   useEffect(() => {
     if (isDevelopment) {
       console.log("🛠️ Running in development mode");
@@ -89,7 +87,7 @@ function App() {
       setUserLocation(defaultCenter);
       setApiLoaded(true);
       setMapLoaded(true);
-      setAuthLoading(false); // Skip auth loading in dev mode
+      setAuthLoading(false);
     }
   }, [isDevelopment]);
 
@@ -98,10 +96,11 @@ function App() {
     setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
   };
 
-  // Fetch geolocation after user is confirmed authenticated
+  // Fetch geolocation only once after user is authenticated
   useEffect(() => {
-    if (!isDevelopment && user && !authLoading) {
+    if (!isDevelopment && user && !authLoading && !geolocationRequestedRef.current) {
       console.log("📍 Requesting geolocation");
+      geolocationRequestedRef.current = true;
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           console.log("📍 Geolocation success:", pos.coords);
@@ -111,6 +110,7 @@ function App() {
           console.error("📍 Geolocation failed:", err);
           setError("Failed to get location. Using default location.");
           setUserLocation(defaultCenter);
+          geolocationRequestedRef.current = false; // Allow retry on failure
         }
       );
     }
@@ -369,43 +369,6 @@ function App() {
     return snapped;
   }, [userLocation, gridCells, snapToGridCenter]);
 
-  const TerracreMarkers = useMemo(() => {
-    if (!user || !ownedTerracres.length || !window.google?.maps || !window.google.maps.Point) {
-      console.log("🏞️ Rendering TerracreMarkers: [] (skipped due to missing user or dependencies)");
-      return null;
-    }
-
-    console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
-    const metersPerDegreeLat = 111000;
-    const metersPerDegreeLng = userLocation
-      ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
-      : metersPerDegreeLat;
-    const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
-    const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
-
-    return ownedTerracres.map((t) => {
-      const offsetLat = t.lat - 0.5 * deltaLat;
-      const offsetLng = t.lng + 0.85 * deltaLng;
-
-      return (
-        <Marker
-          key={`terracre-${t.id}`}
-          position={{ lat: offsetLat, lng: offsetLng }}
-          icon={{
-            path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
-            scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
-            fillColor: t.ownerId === user?.uid ? "blue" : "green",
-            fillOpacity: 1,
-            strokeWeight: 2,
-            strokeColor: "#fff",
-            anchor: new window.google.maps.Point(34, 34),
-          }}
-          zIndex={50}
-        />
-      );
-    });
-  }, [ownedTerracres, zoom, user, userLocation]);
-
   const handleSignOut = async () => {
     try {
       await signOut(auth);
@@ -432,7 +395,6 @@ function App() {
     }
   };
 
-  // Show loading state while auth is resolving
   if (authLoading) {
     console.log("⏳ Rendering auth loading state");
     return <div>Loading authentication...</div>;
@@ -485,6 +447,104 @@ function App() {
     </LoadScript>
   );
 
+  function MapComponent({ userLocation, gridCells, ownedTerracres, zoom, user, setUserLocation, setZoom }) {
+    const metersPerDegreeLat = 111000;
+    const metersPerDegreeLng = userLocation
+      ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
+      : metersPerDegreeLat;
+    const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
+    const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
+
+    const TerracreMarkers = useMemo(() => {
+      if (!user || !ownedTerracres.length || !window.google?.maps || !window.google.maps.Point) {
+        console.log("🏞️ Rendering TerracreMarkers: [] (skipped due to missing user or dependencies)");
+        return null;
+      }
+
+      console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
+      return ownedTerracres.map((t) => {
+        const offsetLat = t.lat - 0.5 * deltaLat;
+        const offsetLng = t.lng + 0.85 * deltaLng;
+
+        return (
+          <Marker
+            key={`terracre-${t.id}`}
+            position={{ lat: offsetLat, lng: offsetLng }}
+            icon={{
+              path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
+              scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
+              fillColor: t.ownerId === user?.uid ? "blue" : "green",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#fff",
+              anchor: new window.google.maps.Point(34, 34),
+            }}
+            zIndex={50}
+          />
+        );
+      });
+    }, [ownedTerracres, zoom, user, deltaLat, deltaLng]);
+
+    return (
+      <GoogleMap
+        mapContainerClassName="map-container"
+        center={userLocation}
+        zoom={zoom}
+        onLoad={(map) => {
+          console.log("🗺️ Google Map component loaded");
+          mapRef.current = map;
+          map.addListener("zoom_changed", () => {
+            const z = map.getZoom();
+            setZoom(z);
+          });
+        }}
+        onBoundsChanged={() => {
+          if (mapRef.current) {
+            const c = mapRef.current.getCenter();
+            setUserLocation({ lat: c.lat(), lng: c.lng() });
+          }
+        }}
+        mapContainerStyle={{
+          width: "min(80vw, 500px)",
+          height: "min(80vw, 500px)",
+          aspectRatio: "1 / 1",
+          margin: "10px auto",
+        }}
+      >
+        {gridCells.map((cell, index) => (
+          <Polygon
+            key={`polygon-${index}`}
+            paths={cell.paths}
+            options={{
+              fillColor: "transparent",
+              strokeColor: "#999",
+              strokeOpacity: 0.8,
+              strokeWeight: 1,
+            }}
+          />
+        ))}
+        {TerracreMarkers}
+        {userLocation && window.google?.maps?.SymbolPath && (
+          <Marker
+            position={userLocation}
+            icon={{
+              path: window.google.maps.SymbolPath.CIRCLE || 0,
+              scale: 8,
+              fillColor: "#4285F4",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#fff",
+            }}
+            title="You"
+            zIndex={100}
+          />
+        )}
+      </GoogleMap>
+    );
+  }
+
+  const MemoizedMapComponent = React.memo(MapComponent);
+
   function MainContent() {
     const location = useLocation();
     const isMainPage = location.pathname === "/";
@@ -532,62 +592,15 @@ function App() {
             </header>
             <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
             {isMainPage && apiLoaded && isDomReady && userLocation ? (
-              <div>
-                <GoogleMap
-                  mapContainerClassName="map-container"
-                  center={userLocation}
-                  zoom={zoom}
-                  onLoad={(map) => {
-                    console.log("🗺️ Google Map component loaded");
-                    mapRef.current = map;
-                    map.addListener("zoom_changed", () => {
-                      const z = map.getZoom();
-                      setZoom(z);
-                    });
-                  }}
-                  onBoundsChanged={() => {
-                    if (mapRef.current) {
-                      const c = mapRef.current.getCenter();
-                      setUserLocation({ lat: c.lat(), lng: c.lng() });
-                    }
-                  }}
-                  mapContainerStyle={{
-                    width: "min(80vw, 500px)",
-                    height: "min(80vw, 500px)",
-                    aspectRatio: "1 / 1",
-                    margin: "10px auto",
-                  }}
-                >
-                  {gridCells.map((cell, index) => (
-                    <Polygon
-                      key={`polygon-${index}`}
-                      paths={cell.paths}
-                      options={{
-                        fillColor: "transparent",
-                        strokeColor: "#999",
-                        strokeOpacity: 0.8,
-                        strokeWeight: 1,
-                      }}
-                    />
-                  ))}
-                  {TerracreMarkers}
-                  {userLocation && window.google?.maps?.SymbolPath && (
-                    <Marker
-                      position={userLocation}
-                      icon={{
-                        path: window.google.maps.SymbolPath.CIRCLE || 0,
-                        scale: 8,
-                        fillColor: "#4285F4",
-                        fillOpacity: 1,
-                        strokeWeight: 2,
-                        strokeColor: "#fff",
-                      }}
-                      title="You"
-                      zIndex={100}
-                    />
-                  )}
-                </GoogleMap>
-              </div>
+              <MemoizedMapComponent
+                userLocation={userLocation}
+                gridCells={gridCells}
+                ownedTerracres={ownedTerracres}
+                zoom={zoom}
+                user={user}
+                setUserLocation={setUserLocation}
+                setZoom={setZoom}
+              />
             ) : (
               isMainPage && <p>Waiting for location...</p>
             )}
@@ -596,12 +609,16 @@ function App() {
               Welcome, {user?.nickname || user?.displayName || "User"}! You have {user?.terrabucks ?? 0} TB.
             </div>
             <div className="button-container">
-              <CheckInButton
-                user={user}
-                userLocation={userLocation}
-                snappedGridCenter={snappedUserGridCenter}
-                setCheckInStatus={setCheckInStatus}
-              />
+              {snappedUserGridCenter ? (
+                <CheckInButton
+                  user={user}
+                  userLocation={userLocation}
+                  snappedGridCenter={snappedUserGridCenter}
+                  setCheckInStatus={setCheckInStatus}
+                />
+              ) : (
+                <p>Loading grid center...</p>
+              )}
               <PurchaseButton
                 user={user}
                 userLocation={userLocation}
