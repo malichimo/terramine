@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.35b - Fixed Bn initialization error using useJsApiLoader");
+console.log("🌍 TerraMine v1.36b - Fixed fn initialization error by delaying event listener setup");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -317,7 +317,6 @@ function App() {
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = metersPerDegreeLat * Math.cos((center.lat * Math.PI) / 180);
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
-   
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
     const grid = [];
     for (let lat = sw.lat(); lat < ne.lat(); lat += deltaLat) {
@@ -458,10 +457,28 @@ function App() {
         onLoad={(map) => {
           console.log("🗺️ Google Map component loaded");
           mapRef.current = map;
-          map.addListener("zoom_changed", () => {
-            const z = map.getZoom();
-            setZoom(z);
-          });
+          setMapLoaded(true);
+
+          const setupEventListeners = () => {
+            if (window.google && window.google.maps && window.google.maps.event) {
+              console.log("🗺️ Setting up zoom_changed event listener");
+              try {
+                map.addListener("zoom_changed", () => {
+                  const z = map.getZoom();
+                  setZoom(z);
+                  console.log("🔎 Zoom changed to:", z);
+                });
+              } catch (err) {
+                console.error("🗺️ Failed to set up zoom_changed listener:", err);
+                setError("Failed to set up map event listeners.");
+              }
+            } else {
+              console.log("🗺️ window.google.maps.event not ready, polling...");
+              setTimeout(setupEventListeners, 100);
+            }
+          };
+
+          setupEventListeners();
         }}
         onBoundsChanged={() => {
           if (mapRef.current) {
