@@ -4,7 +4,7 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot } from "firebase/firestore";
-import { GoogleMap, Marker, Polygon, useJsApiLoader } from "@react-google-maps/api";
+import { GoogleMap, Marker, Polygon } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.39b - Added error handling for useJsApiLoader to fix gn initialization error");
+console.log("🌍 TerraMine v1.40b - Manually load Google Maps API script to fix Hn initialization error");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -42,27 +42,46 @@ function App() {
   const [isDomReady, setIsDomReady] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [mapLoadError, setMapLoadError] = useState(null);
+  const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
 
   const isDevelopment = process.env.NODE_ENV === "development";
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
   const geolocationRequestedRef = useRef(false);
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    libraries,
-  });
-
+  // Manually load the Google Maps API script
   useEffect(() => {
-    console.log("🗺️ useJsApiLoader state:", { isLoaded, loadError });
-    if (isLoaded) {
-      console.log("🗺️ Google Maps API loaded via useJsApiLoader");
-    }
-    if (loadError) {
-      console.error("🗺️ Failed to load Google Maps API:", loadError);
-      setMapLoadError("Failed to load Google Maps API. Please check your API key and network connection.");
-    }
-  }, [isLoaded, loadError]);
+    const loadGoogleMapsScript = () => {
+      if (window.google && window.google.maps) {
+        console.log("🗺️ Google Maps API already loaded");
+        setIsGoogleMapsLoaded(true);
+        return;
+      }
+
+      console.log("🗺️ Loading Google Maps API script...");
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=${libraries.join(",")}&callback=initGoogleMaps`;
+      script.async = true;
+      script.defer = true;
+      script.onerror = (err) => {
+        console.error("🗺️ Failed to load Google Maps API script:", err);
+        setMapLoadError("Failed to load Google Maps API script. Please check your API key and network connection.");
+      };
+      document.head.appendChild(script);
+
+      window.initGoogleMaps = () => {
+        console.log("🗺️ Google Maps API script loaded and initialized");
+        setIsGoogleMapsLoaded(true);
+      };
+    };
+
+    loadGoogleMapsScript();
+
+    return () => {
+      // Clean up the callback to prevent memory leaks
+      delete window.initGoogleMaps;
+    };
+  }, []);
 
   const roundCoordinate = (value) => {
     const rounded = Number(value.toFixed(COORDINATE_PRECISION));
@@ -473,10 +492,10 @@ function App() {
         }
       };
 
-      if (isLoaded) {
+      if (isGoogleMapsLoaded) {
         checkGoogleMapsReady();
       }
-    }, [isLoaded]);
+    }, [isGoogleMapsLoaded]);
 
     useEffect(() => {
       if (mapReady && window.google && window.google.maps && window.google.maps.event) {
@@ -584,8 +603,8 @@ function App() {
     const isMainPage = location.pathname === "/";
 
     useEffect(() => {
-      console.log("🗺️ Map rendering conditions:", { isMainPage, isLoaded, isDomReady, userLocation });
-    }, [isMainPage, isLoaded, isDomReady, userLocation]);
+      console.log("🗺️ Map rendering conditions:", { isMainPage, isGoogleMapsLoaded, isDomReady, userLocation });
+    }, [isMainPage, isGoogleMapsLoaded, isDomReady, userLocation]);
 
     if (mapLoadError) {
       return <div>Error: {mapLoadError}</div>;
@@ -633,7 +652,7 @@ function App() {
               <h1>TerraMine</h1>
             </header>
             <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
-            {isMainPage && isLoaded && isDomReady && userLocation ? (
+            {isMainPage && isGoogleMapsLoaded && isDomReady && userLocation ? (
               <MemoizedMapComponent
                 userLocation={userLocation}
                 gridCells={gridCells}
