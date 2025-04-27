@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.37b - Fixed fn initialization error by moving event listener setup to useEffect");
+console.log("🌍 TerraMine v1.38b - Fixed gn initialization error by delaying Marker rendering");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -443,12 +443,34 @@ function App() {
 
   function MapComponent({ userLocation, gridCells, ownedTerracres, zoom, user, setUserLocation, setZoom }) {
     const [mapReady, setMapReady] = useState(false);
+    const [googleMapsReady, setGoogleMapsReady] = useState(false);
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = userLocation
       ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
       : metersPerDegreeLat;
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
+
+    useEffect(() => {
+      const checkGoogleMapsReady = () => {
+        if (
+          window.google &&
+          window.google.maps &&
+          window.google.maps.Point &&
+          window.google.maps.SymbolPath
+        ) {
+          console.log("🗺️ Google Maps API fully ready for Marker rendering");
+          setGoogleMapsReady(true);
+        } else {
+          console.log("🗺️ Google Maps API not fully ready, polling...");
+          setTimeout(checkGoogleMapsReady, 100);
+        }
+      };
+
+      if (isLoaded) {
+        checkGoogleMapsReady();
+      }
+    }, [isLoaded]);
 
     useEffect(() => {
       if (mapReady && window.google && window.google.maps && window.google.maps.event) {
@@ -508,7 +530,7 @@ function App() {
             }}
           />
         ))}
-        {user && ownedTerracres.length > 0 && ownedTerracres.map((t) => {
+        {googleMapsReady && user && ownedTerracres.length > 0 && ownedTerracres.map((t) => {
           const offsetLat = t.lat - 0.5 * deltaLat;
           const offsetLng = t.lng + 0.85 * deltaLng;
 
@@ -530,7 +552,7 @@ function App() {
             />
           );
         })}
-        {userLocation && (
+        {googleMapsReady && userLocation && (
           <Marker
             position={userLocation}
             icon={{
