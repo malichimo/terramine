@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.33b - Fixed zn initialization error");
+console.log("🌍 TerraMine v1.34b - Fixed zn initialization error by moving Google Maps access");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -468,45 +468,6 @@ function App() {
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
 
-    const TerracreMarkers = useMemo(() => {
-      if (!user || !ownedTerracres.length) {
-        console.log("🏞️ Rendering TerracreMarkers: [] (skipped due to missing user or terracres)");
-        return null;
-      }
-
-      console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
-      return ownedTerracres.map((t) => {
-        const offsetLat = t.lat - 0.5 * deltaLat;
-        const offsetLng = t.lng + 0.85 * deltaLng;
-
-        return (
-          <Marker
-            key={`terracre-${t.id}`}
-            position={{ lat: offsetLat, lng: offsetLng }}
-            icon={{
-              path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
-              scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
-              fillColor: t.ownerId === user?.uid ? "blue" : "green",
-              fillOpacity: 1,
-              strokeWeight: 2,
-              strokeColor: "#fff",
-              anchor: new window.google.maps.Point(34, 34),
-            }}
-            zIndex={50}
-          />
-        );
-      });
-    }, [ownedTerracres, zoom, user, deltaLat, deltaLng]);
-
-    const userMarkerIcon = {
-      path: window.google.maps.SymbolPath.CIRCLE,
-      scale: 8,
-      fillColor: "#4285F4",
-      fillOpacity: 1,
-      strokeWeight: 2,
-      strokeColor: "#fff",
-    };
-
     return (
       <GoogleMap
         mapContainerClassName="map-container"
@@ -545,11 +506,39 @@ function App() {
             }}
           />
         ))}
-        {TerracreMarkers}
+        {user && ownedTerracres.length > 0 && ownedTerracres.map((t) => {
+          const offsetLat = t.lat - 0.5 * deltaLat;
+          const offsetLng = t.lng + 0.85 * deltaLng;
+
+          console.log("🏞️ Rendering TerracreMarker for:", t.id);
+          return (
+            <Marker
+              key={`terracre-${t.id}`}
+              position={{ lat: offsetLat, lng: offsetLng }}
+              icon={{
+                path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
+                scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
+                fillColor: t.ownerId === user?.uid ? "blue" : "green",
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: "#fff",
+                anchor: new window.google.maps.Point(34, 34),
+              }}
+              zIndex={50}
+            />
+          );
+        })}
         {userLocation && (
           <Marker
             position={userLocation}
-            icon={userMarkerIcon}
+            icon={{
+              path: window.google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#4285F4",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#fff",
+            }}
             title="You"
             zIndex={100}
           />
