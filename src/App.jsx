@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
-import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot } from "firebase/firestore";
 import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
@@ -21,7 +21,7 @@ const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
-const COORDINATE_PRECISION = 7;
+const COORDINATE_PRECISION = 4; // Changed to 4 decimal places to match Firestore
 
 console.log("🌍 TerraMine v1.30b - Stable full version loaded");
 
@@ -161,23 +161,50 @@ function App() {
     if (user) fetchOwnedTerracres();
   }, [user, purchaseTrigger, fetchOwnedTerracres]);
 
-  const fetchUserData = useCallback(async () => {
-    if (!user?.uid) return;
-    try {
-      const userSnap = await getDoc(doc(db, "users", user.uid));
-      if (userSnap.exists()) {
-        const data = userSnap.data();
-        setUser((prev) => ({ ...prev, ...data }));
-      }
-    } catch (err) {
-      console.error("🔥 Error fetching user data:", err);
-      setError("Failed to fetch user data.");
+  const fetchUserData = useCallback(() => {
+    if (!user?.uid) {
+      setUser((prev) => ({ ...prev, terrabucks: 0, nickname: null }));
+      return;
     }
+
+    const userRef = doc(db, "users", user.uid);
+    const unsubscribe = onSnapshot(
+      userRef,
+      (userSnap) => {
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          console.log("🔥 Fetched user data:", data);
+          setUser((prev) => ({ ...prev, ...data }));
+        } else {
+          const initialData = {
+            uid: user.uid,
+            name: user.displayName,
+            terrabucks: 1000,
+            nickname: user.displayName || "User",
+            createdAt: new Date().toISOString(),
+          };
+          setDoc(userRef, initialData).then(() => {
+            setUser((prev) => ({ ...prev, ...initialData }));
+          });
+        }
+      },
+      (err) => {
+        console.error("🔥 Error listening to user data:", err);
+        setError("Failed to fetch user data.");
+      }
+    );
+
+    return unsubscribe;
   }, [user?.uid]);
 
   useEffect(() => {
-    if (user) fetchUserData();
-  }, [user?.uid, fetchUserData]);
+    if (user) {
+      const unsubscribe = fetchUserData();
+      return () => {
+        if (unsubscribe) unsubscribe();
+      };
+    }
+  }, [user, fetchUserData]);
 
   const TA_PROBABILITIES = [
     { type: "Rock Mine", rate: 0.05, chance: 0.5 },
@@ -226,7 +253,7 @@ function App() {
 
     const chosenType = getRandomTaType();
     const newTerracre = {
-      id: tenderloin,
+      id: terracreId,
       lat: standardizedCenter.lat,
       lng: standardizedCenter.lng,
       ownerId: user.uid,
@@ -336,20 +363,18 @@ function App() {
   const TerracreMarkers = useMemo(() => {
     console.log("🏞️ Rendering TerracreMarkers:", ownedTerracres);
     if (!ownedTerracres.length) return null;
-  
-    // Calculate grid square dimensions in degrees
+
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = userLocation
       ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
-      : metersPerDegreeLat; // Fallback if userLocation is unavailable
+      : metersPerDegreeLat;
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
-  
+
     return ownedTerracres.map((t) => {
-      // Calculate the offset position
-      const offsetLat = t.lat - 0.5 * deltaLat; // Shift down by 50% of grid square height
-      const offsetLng = t.lng + 0.85 * deltaLng; // Shift right by 85% of grid square width
-  
+      const offsetLat = t.lat - 0.5 * deltaLat;
+      const offsetLng = t.lng + 0.85 * deltaLng;
+
       return (
         <Marker
           key={`terracre-${t.id}`}
@@ -361,9 +386,9 @@ function App() {
             fillOpacity: 1,
             strokeWeight: 2,
             strokeColor: "#fff",
-            anchor: new window.google.maps.Point(34, 34), // Keep the square centered on the offset position
+            anchor: new window.google.maps.Point(34, 34),
           }}
-          zIndex={50} // Lower zIndex to render behind the "You" marker
+          zIndex={50}
         />
       );
     });
@@ -533,7 +558,7 @@ function App() {
                                     strokeColor: "#fff",
                                   }}
                                   title="You"
-                                  zIndex={100} // Higher zIndex to render in front
+                                  zIndex={100}
                                 />
                               )}
                             </GoogleMap>

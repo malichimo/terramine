@@ -4,7 +4,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import "./CheckInButton.css";
 
-const COORDINATE_PRECISION = 7;
+const COORDINATE_PRECISION = 4; // Changed to 4 decimal places to match Firestore
 
 const CheckInButton = ({ user, userLocation, snappedGridCenter, setCheckInStatus }) => {
   const navigate = useNavigate();

@@ -78,7 +78,7 @@ const TAProfile = ({ user, setUser, setCheckInStatus }) => {
     };
 
     fetchData();
-  }, [user, terracreId, setCheckInStatus]); // Removed terracreData?.ownerId from dependencies
+  }, [user, terracreId, setCheckInStatus]);
 
   const handlePurchase = async () => {
     if (!user) {
