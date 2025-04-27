@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.32b - Fixed Google Maps API loading issue");
+console.log("🌍 TerraMine v1.33b - Fixed zn initialization error");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -32,7 +32,7 @@ function App() {
   const [checkInStatus, setCheckInStatus] = useState("");
   const [checkInMessages, setCheckInMessages] = useState([]);
   const [apiLoaded, setApiLoaded] = useState(false);
-  const [mapsApiReady, setMapsApiReady] = useState(false); // New state to track window.google.maps readiness
+  const [mapsApiReady, setMapsApiReady] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
@@ -87,7 +87,7 @@ function App() {
       setUser({ uid: "devUser", displayName: "Developer", terrabucks: 1000 });
       setUserLocation(defaultCenter);
       setApiLoaded(true);
-      setMapsApiReady(true); // Set mapsApiReady for development mode
+      setMapsApiReady(true);
       setMapLoaded(true);
       setAuthLoading(false);
     }
@@ -420,7 +420,6 @@ function App() {
       onLoad={() => {
         console.log("🗺️ Google Maps API loaded");
         setApiLoaded(true);
-        // Wait for window.google.maps to be fully available
         const checkMapsReady = setInterval(() => {
           if (window.google && window.google.maps) {
             console.log("🗺️ window.google.maps is ready");
@@ -457,7 +456,6 @@ function App() {
   );
 
   function MapComponent({ userLocation, gridCells, ownedTerracres, zoom, user, setUserLocation, setZoom }) {
-    // Ensure window.google.maps is available before rendering
     if (!window.google || !window.google.maps) {
       console.log("🗺️ MapComponent: window.google.maps not ready, skipping render");
       return <p>Loading map...</p>;
@@ -471,8 +469,8 @@ function App() {
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
 
     const TerracreMarkers = useMemo(() => {
-      if (!user || !ownedTerracres.length || !window.google.maps || !window.google.maps.Point) {
-        console.log("🏞️ Rendering TerracreMarkers: [] (skipped due to missing user or dependencies)");
+      if (!user || !ownedTerracres.length) {
+        console.log("🏞️ Rendering TerracreMarkers: [] (skipped due to missing user or terracres)");
         return null;
       }
 
@@ -499,6 +497,15 @@ function App() {
         );
       });
     }, [ownedTerracres, zoom, user, deltaLat, deltaLng]);
+
+    const userMarkerIcon = {
+      path: window.google.maps.SymbolPath.CIRCLE,
+      scale: 8,
+      fillColor: "#4285F4",
+      fillOpacity: 1,
+      strokeWeight: 2,
+      strokeColor: "#fff",
+    };
 
     return (
       <GoogleMap
@@ -539,17 +546,10 @@ function App() {
           />
         ))}
         {TerracreMarkers}
-        {userLocation && window.google.maps.SymbolPath && (
+        {userLocation && (
           <Marker
             position={userLocation}
-            icon={{
-              path: window.google.maps.SymbolPath.CIRCLE || 0,
-              scale: 8,
-              fillColor: "#4285F4",
-              fillOpacity: 1,
-              strokeWeight: 2,
-              strokeColor: "#fff",
-            }}
+            icon={userMarkerIcon}
             title="You"
             zIndex={100}
           />
