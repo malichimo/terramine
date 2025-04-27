@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.31b - Optimized rendering version");
+console.log("🌍 TerraMine v1.32b - Fixed Google Maps API loading issue");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -32,6 +32,7 @@ function App() {
   const [checkInStatus, setCheckInStatus] = useState("");
   const [checkInMessages, setCheckInMessages] = useState([]);
   const [apiLoaded, setApiLoaded] = useState(false);
+  const [mapsApiReady, setMapsApiReady] = useState(false); // New state to track window.google.maps readiness
   const [mapLoaded, setMapLoaded] = useState(false);
   const [error, setError] = useState(null);
   const [purchaseTrigger, setPurchaseTrigger] = useState(0);
@@ -46,7 +47,7 @@ function App() {
   const isDevelopment = process.env.NODE_ENV === "development";
   const mapRef = useRef(null);
   const fetchTerracresRef = useRef(false);
-  const geolocationRequestedRef = useRef(false); // Track geolocation requests
+  const geolocationRequestedRef = useRef(false);
 
   const roundCoordinate = (value) => {
     const rounded = Number(value.toFixed(COORDINATE_PRECISION));
@@ -86,6 +87,7 @@ function App() {
       setUser({ uid: "devUser", displayName: "Developer", terrabucks: 1000 });
       setUserLocation(defaultCenter);
       setApiLoaded(true);
+      setMapsApiReady(true); // Set mapsApiReady for development mode
       setMapLoaded(true);
       setAuthLoading(false);
     }
@@ -96,7 +98,6 @@ function App() {
     setUser({ uid: firebaseUser.uid, displayName: firebaseUser.displayName });
   };
 
-  // Fetch geolocation only once after user is authenticated
   useEffect(() => {
     if (!isDevelopment && user && !authLoading && !geolocationRequestedRef.current) {
       console.log("📍 Requesting geolocation");
@@ -110,7 +111,7 @@ function App() {
           console.error("📍 Geolocation failed:", err);
           setError("Failed to get location. Using default location.");
           setUserLocation(defaultCenter);
-          geolocationRequestedRef.current = false; // Allow retry on failure
+          geolocationRequestedRef.current = false;
         }
       );
     }
@@ -419,11 +420,19 @@ function App() {
       onLoad={() => {
         console.log("🗺️ Google Maps API loaded");
         setApiLoaded(true);
-        setMapLoaded(true);
+        // Wait for window.google.maps to be fully available
+        const checkMapsReady = setInterval(() => {
+          if (window.google && window.google.maps) {
+            console.log("🗺️ window.google.maps is ready");
+            setMapsApiReady(true);
+            setMapLoaded(true);
+            clearInterval(checkMapsReady);
+          }
+        }, 100);
       }}
       onError={(err) => {
         console.error("🗺️ Google Maps API failed to load:", err);
-        setError("Failed to load Google Maps.");
+        setError("Failed to load Google Maps API.");
       }}
     >
       <Router>
@@ -448,6 +457,12 @@ function App() {
   );
 
   function MapComponent({ userLocation, gridCells, ownedTerracres, zoom, user, setUserLocation, setZoom }) {
+    // Ensure window.google.maps is available before rendering
+    if (!window.google || !window.google.maps) {
+      console.log("🗺️ MapComponent: window.google.maps not ready, skipping render");
+      return <p>Loading map...</p>;
+    }
+
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = userLocation
       ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
@@ -456,7 +471,7 @@ function App() {
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
 
     const TerracreMarkers = useMemo(() => {
-      if (!user || !ownedTerracres.length || !window.google?.maps || !window.google.maps.Point) {
+      if (!user || !ownedTerracres.length || !window.google.maps || !window.google.maps.Point) {
         console.log("🏞️ Rendering TerracreMarkers: [] (skipped due to missing user or dependencies)");
         return null;
       }
@@ -524,7 +539,7 @@ function App() {
           />
         ))}
         {TerracreMarkers}
-        {userLocation && window.google?.maps?.SymbolPath && (
+        {userLocation && window.google.maps.SymbolPath && (
           <Marker
             position={userLocation}
             icon={{
@@ -591,7 +606,7 @@ function App() {
               <h1>TerraMine</h1>
             </header>
             <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
-            {isMainPage && apiLoaded && isDomReady && userLocation ? (
+            {isMainPage && mapsApiReady && isDomReady && userLocation ? (
               <MemoizedMapComponent
                 userLocation={userLocation}
                 gridCells={gridCells}
@@ -602,7 +617,7 @@ function App() {
                 setZoom={setZoom}
               />
             ) : (
-              isMainPage && <p>Waiting for location...</p>
+              isMainPage && <p>Waiting for map to load...</p>
             )}
 
             <div className="greeting">
