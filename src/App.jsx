@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.36b - Fixed fn initialization error by delaying event listener setup");
+console.log("🌍 TerraMine v1.37b - Fixed fn initialization error by moving event listener setup to useEffect");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -442,12 +442,35 @@ function App() {
   );
 
   function MapComponent({ userLocation, gridCells, ownedTerracres, zoom, user, setUserLocation, setZoom }) {
+    const [mapReady, setMapReady] = useState(false);
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = userLocation
       ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
       : metersPerDegreeLat;
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
+
+    useEffect(() => {
+      if (mapReady && window.google && window.google.maps && window.google.maps.event) {
+        console.log("🗺️ Setting up zoom_changed event listener");
+        try {
+          const map = mapRef.current;
+          const listener = window.google.maps.event.addListener(map, "zoom_changed", () => {
+            const z = map.getZoom();
+            setZoom(z);
+            console.log("🔎 Zoom changed to:", z);
+          });
+
+          return () => {
+            console.log("🧹 Cleaning up zoom_changed event listener");
+            window.google.maps.event.removeListener(listener);
+          };
+        } catch (err) {
+          console.error("🗺️ Failed to set up zoom_changed listener:", err);
+          setError("Failed to set up map event listeners.");
+        }
+      }
+    }, [mapReady, setZoom]);
 
     return (
       <GoogleMap
@@ -458,27 +481,7 @@ function App() {
           console.log("🗺️ Google Map component loaded");
           mapRef.current = map;
           setMapLoaded(true);
-
-          const setupEventListeners = () => {
-            if (window.google && window.google.maps && window.google.maps.event) {
-              console.log("🗺️ Setting up zoom_changed event listener");
-              try {
-                map.addListener("zoom_changed", () => {
-                  const z = map.getZoom();
-                  setZoom(z);
-                  console.log("🔎 Zoom changed to:", z);
-                });
-              } catch (err) {
-                console.error("🗺️ Failed to set up zoom_changed listener:", err);
-                setError("Failed to set up map event listeners.");
-              }
-            } else {
-              console.log("🗺️ window.google.maps.event not ready, polling...");
-              setTimeout(setupEventListeners, 100);
-            }
-          };
-
-          setupEventListeners();
+          setMapReady(true);
         }}
         onBoundsChanged={() => {
           if (mapRef.current) {
