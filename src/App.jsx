@@ -4,7 +4,6 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot } from "firebase/firestore";
-import { GoogleMap, Marker, Polygon } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
@@ -17,13 +16,18 @@ import TAProfile from "./components/TAProfile";
 import ErrorBoundary from "./components/ErrorBoundary";
 import "./App.css";
 
+// Dynamically import Google Maps components
+const GoogleMap = React.lazy(() => import("@react-google-maps/api").then((module) => ({ default: module.GoogleMap })));
+const Marker = React.lazy(() => import("@react-google-maps/api").then((module) => ({ default: module.Marker })));
+const Polygon = React.lazy(() => import("@react-google-maps/api").then((module) => ({ default: module.Polygon })));
+
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.42b - Added robust error handling for script loading and MainContent");
+console.log("🌍 TerraMine v1.43b - Updated @react-google-maps/api and added dynamic import for GoogleMap");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -106,7 +110,7 @@ function App() {
       const scripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
       scripts.forEach((script) => script.remove());
     };
-  }, [isDevelopment]); // Removed isGoogleMapsLoaded from dependencies
+  }, [isDevelopment]);
 
   const roundCoordinate = (value) => {
     const rounded = Number(value.toFixed(COORDINATE_PRECISION));
@@ -514,6 +518,10 @@ function App() {
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
 
     useEffect(() => {
+      console.log("🗺️ MapComponent mounted with props:", { userLocation, gridCells, ownedTerracres, zoom, user });
+    }, []);
+
+    useEffect(() => {
       const checkGoogleMapsReady = () => {
         if (
           window.google &&
@@ -557,79 +565,81 @@ function App() {
     }, [mapReady, setZoom]);
 
     return (
-      <GoogleMap
-        mapContainerClassName="map-container"
-        center={userLocation}
-        zoom={zoom}
-        onLoad={(map) => {
-          console.log("🗺️ Google Map component loaded");
-          mapRef.current = map;
-          setMapLoaded(true);
-          setMapReady(true);
-        }}
-        onBoundsChanged={() => {
-          if (mapRef.current) {
-            const c = mapRef.current.getCenter();
-            setUserLocation({ lat: c.lat(), lng: c.lng() });
-          }
-        }}
-        mapContainerStyle={{
-          width: "min(80vw, 500px)",
-          height: "min(80vw, 500px)",
-          aspectRatio: "1 / 1",
-          margin: "10px auto",
-        }}
-      >
-        {gridCells.map((cell, index) => (
-          <Polygon
-            key={`polygon-${index}`}
-            paths={cell.paths}
-            options={{
-              fillColor: "transparent",
-              strokeColor: "#999",
-              strokeOpacity: 0.8,
-              strokeWeight: 1,
-            }}
-          />
-        ))}
-        {googleMapsReady && user && ownedTerracres.length > 0 && ownedTerracres.map((t) => {
-          const offsetLat = t.lat - 0.5 * deltaLat;
-          const offsetLng = t.lng + 0.85 * deltaLng;
+      <Suspense fallback={<div>Loading map...</div>}>
+        <GoogleMap
+          mapContainerClassName="map-container"
+          center={userLocation}
+          zoom={zoom}
+          onLoad={(map) => {
+            console.log("🗺️ Google Map component loaded");
+            mapRef.current = map;
+            setMapLoaded(true);
+            setMapReady(true);
+          }}
+          onBoundsChanged={() => {
+            if (mapRef.current) {
+              const c = mapRef.current.getCenter();
+              setUserLocation({ lat: c.lat(), lng: c.lng() });
+            }
+          }}
+          mapContainerStyle={{
+            width: "min(80vw, 500px)",
+            height: "min(80vw, 500px)",
+            aspectRatio: "1 / 1",
+            margin: "10px auto",
+          }}
+        >
+          {gridCells.map((cell, index) => (
+            <Polygon
+              key={`polygon-${index}`}
+              paths={cell.paths}
+              options={{
+                fillColor: "transparent",
+                strokeColor: "#999",
+                strokeOpacity: 0.8,
+                strokeWeight: 1,
+              }}
+            />
+          ))}
+          {googleMapsReady && user && ownedTerracres.length > 0 && ownedTerracres.map((t) => {
+            const offsetLat = t.lat - 0.5 * deltaLat;
+            const offsetLng = t.lng + 0.85 * deltaLng;
 
-          console.log("🏞️ Rendering TerracreMarker for:", t.id);
-          return (
+            console.log("🏞️ Rendering TerracreMarker for:", t.id);
+            return (
+              <Marker
+                key={`terracre-${t.id}`}
+                position={{ lat: offsetLat, lng: offsetLng }}
+                icon={{
+                  path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
+                  scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
+                  fillColor: t.ownerId === user?.uid ? "blue" : "green",
+                  fillOpacity: 1,
+                  strokeWeight: 2,
+                  strokeColor: "#fff",
+                  anchor: new window.google.maps.Point(34, 34),
+                }}
+                zIndex={50}
+              />
+            );
+          })}
+          {googleMapsReady && userLocation && (
             <Marker
-              key={`terracre-${t.id}`}
-              position={{ lat: offsetLat, lng: offsetLng }}
+              position={userLocation}
               icon={{
-                path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
-                scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
-                fillColor: t.ownerId === user?.uid ? "blue" : "green",
+                path: window.google.maps.SymbolPath.CIRCLE,
+                scale: 8,
+                fillColor: "#4285F4",
                 fillOpacity: 1,
                 strokeWeight: 2,
                 strokeColor: "#fff",
-                anchor: new window.google.maps.Point(34, 34),
               }}
-              zIndex={50}
+              title="You"
+              zIndex={100}
             />
-          );
-        })}
-        {googleMapsReady && userLocation && (
-          <Marker
-            position={userLocation}
-            icon={{
-              path: window.google.maps.SymbolPath.CIRCLE,
-              scale: 8,
-              fillColor: "#4285F4",
-              fillOpacity: 1,
-              strokeWeight: 2,
-              strokeColor: "#fff",
-            }}
-            title="You"
-            zIndex={100}
-          />
-        )}
-      </GoogleMap>
+          )}
+        </GoogleMap>
+      </Suspense>
     );
   }
 
@@ -722,15 +732,17 @@ function App() {
             </header>
             <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
             {isMainPage && isGoogleMapsLoaded && isDomReady && userLocation ? (
-              <MemoizedMapComponent
-                userLocation={userLocation}
-                gridCells={gridCells}
-                ownedTerracres={ownedTerracres}
-                zoom={zoom}
-                user={user}
-                setUserLocation={setUserLocation}
-                setZoom={setZoom}
-              />
+              <Suspense fallback={<p>Loading map...</p>}>
+                <MemoizedMapComponent
+                  userLocation={userLocation}
+                  gridCells={gridCells}
+                  ownedTerracres={ownedTerracres}
+                  zoom={zoom}
+                  user={user}
+                  setUserLocation={setUserLocation}
+                  setZoom={setZoom}
+                />
+              </Suspense>
             ) : (
               isMainPage && <p>Waiting for map to load...</p>
             )}
