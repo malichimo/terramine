@@ -23,10 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-// Log dependency versions for debugging
-console.log("🌍 TerraMine v1.47b - Isolated GoogleMap usage for debugging");
-console.log("🔍 React version:", React.version);
-console.log("🔍 @react-google-maps/api version:", require("@react-google-maps/api/package.json").version);
+console.log("🌍 TerraMine v1.48b - Adjusted GoogleMap integration");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -52,12 +49,10 @@ function App() {
   const fetchTerracresRef = useRef(false);
   const geolocationRequestedRef = useRef(false);
 
-  // Load Google Maps API script at the app level with enhanced readiness check
   useEffect(() => {
     console.log("🗺️ Executing useEffect for Google Maps API script loading");
     const loadGoogleMapsScript = () => {
       try {
-        // Initial check for immediate availability
         if (
           window.google &&
           window.google.maps &&
@@ -86,7 +81,6 @@ function App() {
 
         window.initGoogleMaps = () => {
           console.log("🗺️ Google Maps API script loaded, starting readiness polling...");
-          // Start polling to ensure all required components are available
           const checkGoogleMapsReady = () => {
             if (
               window.google &&
@@ -107,14 +101,13 @@ function App() {
           checkGoogleMapsReady();
         };
 
-        // Timeout mechanism to detect if the script fails to load
         const timeout = setTimeout(() => {
           if (!isGoogleMapsLoaded) {
             console.error("🗺️ Google Maps API script loading timed out after 10 seconds");
             setMapLoadError("Google Maps API script failed to load within 10 seconds. Please check your API key or network connection.");
             if (isDevelopment) {
               console.warn("🛠️ Development mode: Skipping map rendering due to script loading failure");
-              setIsGoogleMapsLoaded(true); // Allow app to continue in development mode
+              setIsGoogleMapsLoaded(true);
             }
           }
         }, 10000);
@@ -531,8 +524,20 @@ function App() {
     </Router>
   );
 
-  // Minimal test component to isolate GoogleMap rendering
   function TestMapComponent({ userLocation }) {
+    useEffect(() => {
+      console.log("🗺️ TestMapComponent checking Google Maps API readiness:", {
+        google: !!window.google,
+        maps: !!window.google?.maps,
+        Map: !!window.google?.maps?.Map,
+      });
+    }, []);
+
+    if (!isGoogleMapsLoaded || !window.google || !window.google.maps || !window.google.maps.Map) {
+      console.log("🗺️ TestMapComponent: Google Maps API not ready, skipping render");
+      return <div>Waiting for map to load...</div>;
+    }
+
     return (
       <GoogleMap
         mapContainerClassName="map-container"
@@ -755,17 +760,15 @@ function App() {
             </header>
             <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
             {isMainPage && isGoogleMapsLoaded && isDomReady && userLocation ? (
-              <MemoizedTestMapComponent userLocation={userLocation} />
-              // Temporarily comment out the original MapComponent to isolate the issue
-              // <MemoizedMapComponent
-              //   userLocation={userLocation}
-              //   gridCells={gridCells}
-              //   ownedTerracres={ownedTerracres}
-              //   zoom={zoom}
-              //   user={user}
-              //   setUserLocation={setUserLocation}
-              //   setZoom={setZoom}
-              // />
+              <MemoizedMapComponent
+                userLocation={userLocation}
+                gridCells={gridCells}
+                ownedTerracres={ownedTerracres}
+                zoom={zoom}
+                user={user}
+                setUserLocation={setUserLocation}
+                setZoom={setZoom}
+              />
             ) : (
               isMainPage && <p>Waiting for map to load...</p>
             )}
