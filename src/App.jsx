@@ -7,12 +7,12 @@ import { doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot } from 
 import { GoogleMap, Marker, Polygon } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
+import CheckInGallery from "./components/CheckInGallery";
 import PurchaseButton from "./components/PurchaseButton";
 import SignOutButton from "./components/SignOutButton";
 import UserButton from "./components/UserButton";
 import UserPage from "./components/UserPage";
 import UserProfile from "./components/UserProfile";
-import CheckInGallery from "./components/CheckInGallery";
 import TAProfile from "./components/TAProfile";
 import ErrorBoundary from "./components/ErrorBoundary";
 import "./App.css";
@@ -23,7 +23,10 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.46b - Enhanced Google Maps API readiness check");
+// Log dependency versions for debugging
+console.log("🌍 TerraMine v1.47b - Isolated GoogleMap usage for debugging");
+console.log("🔍 React version:", React.version);
+console.log("🔍 @react-google-maps/api version:", require("@react-google-maps/api/package.json").version);
 
 function App() {
   const [user, setUser] = useState(null);
@@ -528,6 +531,30 @@ function App() {
     </Router>
   );
 
+  // Minimal test component to isolate GoogleMap rendering
+  function TestMapComponent({ userLocation }) {
+    return (
+      <GoogleMap
+        mapContainerClassName="map-container"
+        center={userLocation}
+        zoom={18}
+        onLoad={(map) => {
+          console.log("🗺️ TestMapComponent: Google Map loaded");
+          mapRef.current = map;
+          setMapLoaded(true);
+        }}
+        mapContainerStyle={{
+          width: "min(80vw, 500px)",
+          height: "min(80vw, 500px)",
+          aspectRatio: "1 / 1",
+          margin: "10px auto",
+        }}
+      />
+    );
+  }
+
+  const MemoizedTestMapComponent = React.memo(TestMapComponent);
+
   function MapComponent({ userLocation, gridCells, ownedTerracres, zoom, user, setUserLocation, setZoom }) {
     const [mapReady, setMapReady] = useState(false);
     const metersPerDegreeLat = 111000;
@@ -728,15 +755,17 @@ function App() {
             </header>
             <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
             {isMainPage && isGoogleMapsLoaded && isDomReady && userLocation ? (
-              <MemoizedMapComponent
-                userLocation={userLocation}
-                gridCells={gridCells}
-                ownedTerracres={ownedTerracres}
-                zoom={zoom}
-                user={user}
-                setUserLocation={setUserLocation}
-                setZoom={setZoom}
-              />
+              <MemoizedTestMapComponent userLocation={userLocation} />
+              // Temporarily comment out the original MapComponent to isolate the issue
+              // <MemoizedMapComponent
+              //   userLocation={userLocation}
+              //   gridCells={gridCells}
+              //   ownedTerracres={ownedTerracres}
+              //   zoom={zoom}
+              //   user={user}
+              //   setUserLocation={setUserLocation}
+              //   setZoom={setZoom}
+              // />
             ) : (
               isMainPage && <p>Waiting for map to load...</p>
             )}
