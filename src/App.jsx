@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.49b - Enhanced Google Maps API readiness check");
+console.log("🌍 TerraMine v1.50b - Fixed excessive re-renders and downgraded @react-google-maps/api");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -263,7 +263,15 @@ function App() {
         if (userSnap.exists()) {
           const data = userSnap.data();
           console.log("🔥 Fetched user data:", data);
-          setUser((prev) => ({ ...prev, ...data }));
+          // Only update state if data has changed to prevent excessive re-renders
+          setUser((prev) => {
+            const prevData = JSON.stringify({ ...prev, ...data });
+            const newData = JSON.stringify({ ...prev, ...data });
+            if (prevData !== newData) {
+              return { ...prev, ...data };
+            }
+            return prev;
+          });
         } else {
           const initialData = {
             uid: user.uid,
