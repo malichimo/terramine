@@ -4,7 +4,7 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot } from "firebase/firestore";
-import { GoogleMap, Marker, Polygon } from "@react-google-maps/api"; // Static import
+import { GoogleMap, Marker, Polygon } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import PurchaseButton from "./components/PurchaseButton";
@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.45b - Removed React.lazy for Google Maps components");
+console.log("🌍 TerraMine v1.46b - Enhanced Google Maps API readiness check");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -49,13 +49,22 @@ function App() {
   const fetchTerracresRef = useRef(false);
   const geolocationRequestedRef = useRef(false);
 
-  // Load Google Maps API script at the app level
+  // Load Google Maps API script at the app level with enhanced readiness check
   useEffect(() => {
     console.log("🗺️ Executing useEffect for Google Maps API script loading");
     const loadGoogleMapsScript = () => {
       try {
-        if (window.google && window.google.maps && window.google.maps.Point && window.google.maps.SymbolPath) {
-          console.log("🗺️ Google Maps API already loaded");
+        // Initial check for immediate availability
+        if (
+          window.google &&
+          window.google.maps &&
+          window.google.maps.Map &&
+          window.google.maps.Marker &&
+          window.google.maps.Polygon &&
+          window.google.maps.Point &&
+          window.google.maps.SymbolPath
+        ) {
+          console.log("🗺️ Google Maps API already fully loaded");
           setIsGoogleMapsLoaded(true);
           return;
         }
@@ -73,12 +82,26 @@ function App() {
         console.log("🗺️ Google Maps API script appended to DOM");
 
         window.initGoogleMaps = () => {
-          console.log("🗺️ Google Maps API script loaded and initialized");
-          if (window.google && window.google.maps && window.google.maps.Point && window.google.maps.SymbolPath) {
-            setIsGoogleMapsLoaded(true);
-          } else {
-            setMapLoadError("Google Maps API loaded but required components are missing.");
-          }
+          console.log("🗺️ Google Maps API script loaded, starting readiness polling...");
+          // Start polling to ensure all required components are available
+          const checkGoogleMapsReady = () => {
+            if (
+              window.google &&
+              window.google.maps &&
+              window.google.maps.Map &&
+              window.google.maps.Marker &&
+              window.google.maps.Polygon &&
+              window.google.maps.Point &&
+              window.google.maps.SymbolPath
+            ) {
+              console.log("🗺️ Google Maps API fully ready for rendering");
+              setIsGoogleMapsLoaded(true);
+            } else {
+              console.log("🗺️ Google Maps API not fully ready, polling...");
+              setTimeout(checkGoogleMapsReady, 100);
+            }
+          };
+          checkGoogleMapsReady();
         };
 
         // Timeout mechanism to detect if the script fails to load
