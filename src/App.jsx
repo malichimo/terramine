@@ -564,6 +564,10 @@ function App() {
       }
     }, [mapReady, setZoom]);
 
+    if (!isGoogleMapsLoaded || !googleMapsReady) {
+      return <div>Loading map dependencies...</div>;
+    }
+
     return (
       <Suspense fallback={<div>Loading map...</div>}>
         <GoogleMap
@@ -589,7 +593,7 @@ function App() {
             margin: "10px auto",
           }}
         >
-          {googleMapsReady && gridCells.map((cell, index) => (
+          {gridCells.map((cell, index) => (
             <Polygon
               key={`polygon-${index}`}
               paths={cell.paths}
@@ -601,9 +605,9 @@ function App() {
               }}
             />
           ))}
-          {googleMapsReady && user && ownedTerracres.length > 0 && ownedTerracres.map((t) => {
-            const offsetLat = t.lat + 0.5 * deltaLat; // Adjusted to center within grid
-            const offsetLng = t.lng - 0.5 * deltaLng; // Adjusted to center within grid
+          {user && ownedTerracres.length > 0 && ownedTerracres.map((t) => {
+            const offsetLat = t.lat + 0.5 * deltaLat;
+            const offsetLng = t.lng - 0.5 * deltaLng;
             console.log("🏞️ Rendering TerracreMarker for:", t.id, { offsetLat, offsetLng });
             return (
               <Marker
@@ -616,13 +620,13 @@ function App() {
                   fillOpacity: 1,
                   strokeWeight: 2,
                   strokeColor: "#fff",
-                  anchor: new window.google.maps.Point(0, 0), // Adjusted anchor to center
+                  anchor: new window.google.maps.Point(0, 0),
                 }}
                 zIndex={50}
               />
             );
           })}
-          {googleMapsReady && userLocation && snappedUserGridCenter && (
+          {userLocation && snappedUserGridCenter && (
             <Marker
               position={snappedUserGridCenter}
               icon={{
