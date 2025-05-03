@@ -27,7 +27,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.43b - Updated @react-google-maps/api and added dynamic import for GoogleMap");
+console.log("🌍 TerraMine v1.44b - Enhanced Google Maps API loading");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -53,12 +53,12 @@ function App() {
   const fetchTerracresRef = useRef(false);
   const geolocationRequestedRef = useRef(false);
 
-  // Manually load the Google Maps API script with robust error handling
+  // Load Google Maps API script at the app level
   useEffect(() => {
     console.log("🗺️ Executing useEffect for Google Maps API script loading");
     const loadGoogleMapsScript = () => {
       try {
-        if (window.google && window.google.maps) {
+        if (window.google && window.google.maps && window.google.maps.Point && window.google.maps.SymbolPath) {
           console.log("🗺️ Google Maps API already loaded");
           setIsGoogleMapsLoaded(true);
           return;
@@ -78,7 +78,11 @@ function App() {
 
         window.initGoogleMaps = () => {
           console.log("🗺️ Google Maps API script loaded and initialized");
-          setIsGoogleMapsLoaded(true);
+          if (window.google && window.google.maps && window.google.maps.Point && window.google.maps.SymbolPath) {
+            setIsGoogleMapsLoaded(true);
+          } else {
+            setMapLoadError("Google Maps API loaded but required components are missing.");
+          }
         };
 
         // Timeout mechanism to detect if the script fails to load
@@ -509,7 +513,6 @@ function App() {
 
   function MapComponent({ userLocation, gridCells, ownedTerracres, zoom, user, setUserLocation, setZoom }) {
     const [mapReady, setMapReady] = useState(false);
-    const [googleMapsReady, setGoogleMapsReady] = useState(false);
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = userLocation
       ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
@@ -520,27 +523,6 @@ function App() {
     useEffect(() => {
       console.log("🗺️ MapComponent mounted with props:", { userLocation, gridCells, ownedTerracres, zoom, user });
     }, []);
-
-    useEffect(() => {
-      const checkGoogleMapsReady = () => {
-        if (
-          window.google &&
-          window.google.maps &&
-          window.google.maps.Point &&
-          window.google.maps.SymbolPath
-        ) {
-          console.log("🗺️ Google Maps API fully ready for Marker rendering");
-          setGoogleMapsReady(true);
-        } else {
-          console.log("🗺️ Google Maps API not fully ready, polling...");
-          setTimeout(checkGoogleMapsReady, 100);
-        }
-      };
-
-      if (isGoogleMapsLoaded) {
-        checkGoogleMapsReady();
-      }
-    }, [isGoogleMapsLoaded]);
 
     useEffect(() => {
       if (mapReady && window.google && window.google.maps && window.google.maps.event) {
@@ -563,10 +545,6 @@ function App() {
         }
       }
     }, [mapReady, setZoom]);
-
-    if (!isGoogleMapsLoaded || !googleMapsReady) {
-      return <div>Loading map dependencies...</div>;
-    }
 
     return (
       <Suspense fallback={<div>Loading map...</div>}>
