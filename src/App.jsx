@@ -589,7 +589,7 @@ function App() {
             margin: "10px auto",
           }}
         >
-          {gridCells.map((cell, index) => (
+          {googleMapsReady && gridCells.map((cell, index) => (
             <Polygon
               key={`polygon-${index}`}
               paths={cell.paths}
@@ -602,10 +602,9 @@ function App() {
             />
           ))}
           {googleMapsReady && user && ownedTerracres.length > 0 && ownedTerracres.map((t) => {
-            const offsetLat = t.lat - 0.5 * deltaLat;
-            const offsetLng = t.lng + 0.85 * deltaLng;
-
-            console.log("🏞️ Rendering TerracreMarker for:", t.id);
+            const offsetLat = t.lat + 0.5 * deltaLat; // Adjusted to center within grid
+            const offsetLng = t.lng - 0.5 * deltaLng; // Adjusted to center within grid
+            console.log("🏞️ Rendering TerracreMarker for:", t.id, { offsetLat, offsetLng });
             return (
               <Marker
                 key={`terracre-${t.id}`}
@@ -617,15 +616,15 @@ function App() {
                   fillOpacity: 1,
                   strokeWeight: 2,
                   strokeColor: "#fff",
-                  anchor: new window.google.maps.Point(34, 34),
+                  anchor: new window.google.maps.Point(0, 0), // Adjusted anchor to center
                 }}
                 zIndex={50}
               />
             );
           })}
-          {googleMapsReady && userLocation && (
+          {googleMapsReady && userLocation && snappedUserGridCenter && (
             <Marker
-              position={userLocation}
+              position={snappedUserGridCenter}
               icon={{
                 path: window.google.maps.SymbolPath.CIRCLE,
                 scale: 8,
