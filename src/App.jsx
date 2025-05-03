@@ -23,7 +23,7 @@ const TERRACRE_SIZE_METERS = 30;
 const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.48b - Adjusted GoogleMap integration");
+console.log("🌍 TerraMine v1.49b - Enhanced Google Maps API readiness check");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -524,42 +524,6 @@ function App() {
     </Router>
   );
 
-  function TestMapComponent({ userLocation }) {
-    useEffect(() => {
-      console.log("🗺️ TestMapComponent checking Google Maps API readiness:", {
-        google: !!window.google,
-        maps: !!window.google?.maps,
-        Map: !!window.google?.maps?.Map,
-      });
-    }, []);
-
-    if (!isGoogleMapsLoaded || !window.google || !window.google.maps || !window.google.maps.Map) {
-      console.log("🗺️ TestMapComponent: Google Maps API not ready, skipping render");
-      return <div>Waiting for map to load...</div>;
-    }
-
-    return (
-      <GoogleMap
-        mapContainerClassName="map-container"
-        center={userLocation}
-        zoom={18}
-        onLoad={(map) => {
-          console.log("🗺️ TestMapComponent: Google Map loaded");
-          mapRef.current = map;
-          setMapLoaded(true);
-        }}
-        mapContainerStyle={{
-          width: "min(80vw, 500px)",
-          height: "min(80vw, 500px)",
-          aspectRatio: "1 / 1",
-          margin: "10px auto",
-        }}
-      />
-    );
-  }
-
-  const MemoizedTestMapComponent = React.memo(TestMapComponent);
-
   function MapComponent({ userLocation, gridCells, ownedTerracres, zoom, user, setUserLocation, setZoom }) {
     const [mapReady, setMapReady] = useState(false);
     const metersPerDegreeLat = 111000;
@@ -571,6 +535,15 @@ function App() {
 
     useEffect(() => {
       console.log("🗺️ MapComponent mounted with props:", { userLocation, gridCells, ownedTerracres, zoom, user });
+      console.log("🗺️ Checking Google Maps API readiness:", {
+        google: !!window.google,
+        maps: !!window.google?.maps,
+        Map: !!window.google?.maps?.Map,
+        Marker: !!window.google?.maps?.Marker,
+        Polygon: !!window.google?.maps?.Polygon,
+        Point: !!window.google?.maps?.Point,
+        SymbolPath: !!window.google?.maps?.SymbolPath,
+      });
     }, []);
 
     useEffect(() => {
@@ -594,6 +567,19 @@ function App() {
         }
       }
     }, [mapReady, setZoom]);
+
+    if (
+      !window.google ||
+      !window.google.maps ||
+      !window.google.maps.Map ||
+      !window.google.maps.Marker ||
+      !window.google.maps.Polygon ||
+      !window.google.maps.Point ||
+      !window.google.maps.SymbolPath
+    ) {
+      console.log("🗺️ MapComponent: Google Maps API not fully ready, skipping render");
+      return <div>Waiting for map to load...</div>;
+    }
 
     return (
       <GoogleMap
@@ -682,6 +668,7 @@ function App() {
     }, [isMainPage, isGoogleMapsLoaded, isDomReady, userLocation]);
 
     if (mapLoadError) {
+      console.log("❌ Rendering map load error state");
       return (
         <div>
           <p>Error: {mapLoadError}</p>
@@ -717,6 +704,7 @@ function App() {
       );
     }
 
+    console.log("🎨 Rendering MainContent UI components");
     return (
       <div className="app-container">
         {user && (
@@ -760,15 +748,18 @@ function App() {
             </header>
             <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
             {isMainPage && isGoogleMapsLoaded && isDomReady && userLocation ? (
-              <MemoizedMapComponent
-                userLocation={userLocation}
-                gridCells={gridCells}
-                ownedTerracres={ownedTerracres}
-                zoom={zoom}
-                user={user}
-                setUserLocation={setUserLocation}
-                setZoom={setZoom}
-              />
+              <>
+                <p>Attempting to render map...</p>
+                <MemoizedMapComponent
+                  userLocation={userLocation}
+                  gridCells={gridCells}
+                  ownedTerracres={ownedTerracres}
+                  zoom={zoom}
+                  user={user}
+                  setUserLocation={setUserLocation}
+                  setZoom={setZoom}
+                />
+              </>
             ) : (
               isMainPage && <p>Waiting for map to load...</p>
             )}
