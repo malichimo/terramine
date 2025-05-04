@@ -2,10 +2,10 @@
   "name": "terramine",
   "version": "0.0.0",
 "scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "preview": "vite preview"
-},
+  "start": "serve -s dist",
+  "build": "vite build"
+}
+,
 
   "dependencies": {
     "@react-google-maps/api": "^2.19.2",
