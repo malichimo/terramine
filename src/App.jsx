@@ -4,6 +4,7 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot } from "firebase/firestore";
+import { GoogleMap, LoadScript, Marker, Polyline } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import CheckInGallery from "./components/CheckInGallery";
@@ -21,7 +22,14 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.52b - Switched to raw Google Maps API with CSP and increased timeout");
+console.log("🌍 TerraMine v1.52b - Using @react-google-maps/api");
+
+const mapContainerStyle = {
+  width: "min(80vw, 500px)",
+  height: "min(80vw, 500px)",
+  aspectRatio: "1 / 1",
+  margin: "10px auto",
+};
 
 function App() {
   const [user, setUser] = useState(null);
@@ -39,87 +47,11 @@ function App() {
   const [showGallery, setShowGallery] = useState(false);
   const [isDomReady, setIsDomReady] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
-  const [mapLoadError, setMapLoadError] = useState(null);
-  const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
 
   const isDevelopment = process.env.NODE_ENV === "development";
   const mapRef = useRef(null);
-  const googleMapInstance = useRef(null);
   const fetchTerracresRef = useRef(false);
   const geolocationRequestedRef = useRef(false);
-
-  useEffect(() => {
-    console.log("🗺️ Executing useEffect for Google Maps API script loading");
-    const loadGoogleMapsScript = () => {
-      try {
-        if (
-          window.google &&
-          window.google.maps &&
-          window.google.maps.Map &&
-          window.google.maps.Marker &&
-          window.google.maps.Polygon
-        ) {
-          console.log("🗺️ Google Maps API already fully loaded");
-          setIsGoogleMapsLoaded(true);
-          return;
-        }
-
-        console.log("🗺️ Loading Google Maps API script...");
-        const script = document.createElement("script");
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initGoogleMaps`;
-        script.async = true;
-        script.defer = true;
-        script.onload = () => {
-          console.log("🗺️ Google Maps API script loaded successfully");
-          setIsGoogleMapsLoaded(true);
-        };
-        script.onerror = (err) => {
-          console.error("🗺️ Failed to load Google Maps API script:", err);
-          setMapLoadError("Failed to load Google Maps API script. Please check your API key, network connection, or CSP settings.");
-        };
-        document.head.appendChild(script);
-
-        window.initGoogleMaps = () => {
-          console.log("🗺️ Google Maps API initialized via callback");
-          if (
-            window.google &&
-            window.google.maps &&
-            window.google.maps.Map &&
-            window.google.maps.Marker &&
-            window.google.maps.Polygon
-          ) {
-            setIsGoogleMapsLoaded(true);
-          } else {
-            console.error("🗺️ Google Maps API callback fired, but API objects are not fully available");
-            setMapLoadError("Google Maps API loaded but is not fully initialized. Please refresh the page.");
-          }
-        };
-
-        const timeout = setTimeout(() => {
-          if (!isGoogleMapsLoaded) {
-            console.error("🗺️ Google Maps API script loading timed out after 20 seconds");
-            setMapLoadError("Google Maps API script failed to load within 20 seconds. Please check your network connection or CSP settings.");
-            if (isDevelopment) {
-              console.warn("🛠️ Development mode: Skipping map rendering due to script loading failure");
-              setIsGoogleMapsLoaded(true);
-            }
-          }
-        }, 20000); // Increased to 20 seconds
-
-        return () => {
-          clearTimeout(timeout);
-          delete window.initGoogleMaps;
-          const scripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
-          scripts.forEach((script) => script.remove());
-        };
-      } catch (err) {
-        console.error("🗺️ Error in loadGoogleMapsScript:", err);
-        setMapLoadError("Failed to initialize Google Maps API script loading: " + err.message);
-      }
-    };
-
-    loadGoogleMapsScript();
-  }, [isDevelopment]);
 
   const roundCoordinate = (value) => {
     const rounded = Number(value.toFixed(COORDINATE_PRECISION));
@@ -488,107 +420,98 @@ function App() {
   };
 
   function MapComponent({ userLocation, gridCells, ownedTerracres, zoom, user, setUserLocation, setZoom }) {
-    const mapContainerRef = useRef(null);
+    const onMapLoad = (map) => {
+      mapRef.current = map;
+      setMapLoaded(true);
+      console.log("🗺️ Google Map loaded successfully");
+    };
 
-    useEffect(() => {
-      if (!isGoogleMapsLoaded || !userLocation || !mapContainerRef.current) {
-        console.log("🗺️ MapComponent: Not ready to render", { isGoogleMapsLoaded, userLocation });
-        return;
-      }
-
-      console.log("🗺️ Initializing Google Map with raw API");
-      const map = new window.google.maps.Map(mapContainerRef.current, {
-        center: userLocation,
-        zoom: zoom,
-        mapTypeId: "roadmap",
-      });
-      googleMapInstance.current = map;
-
-      map.addListener("zoom_changed", () => {
-        const z = map.getZoom();
+    const onZoomChanged = () => {
+      if (mapRef.current) {
+        const z = mapRef.current.getZoom();
         setZoom(z);
         console.log("🔎 Zoom changed to:", z);
-      });
-
-      map.addListener("center_changed", () => {
-        const center = map.getCenter();
-        setUserLocation({ lat: center.lat(), lng: center.lng() });
-      });
-
-      gridCells.forEach((cell, index) => {
-        new window.google.maps.Polyline({
-          path: cell.paths,
-          geodesic: true,
-          strokeColor: "#999",
-          strokeOpacity: 0.8,
-          strokeWeight: 1,
-          map: map,
-        });
-      });
-
-      const metersPerDegreeLat = 111000;
-      const metersPerDegreeLng = userLocation
-        ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
-        : metersPerDegreeLat;
-      const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
-      const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
-
-      ownedTerracres.forEach((t) => {
-        const offsetLat = t.lat + 0.5 * deltaLat;
-        const offsetLng = t.lng - 0.5 * deltaLng;
-        console.log("🏞️ Rendering TerracreMarker for:", t.id, { offsetLat, offsetLng });
-        new window.google.maps.Marker({
-          position: { lat: offsetLat, lng: offsetLng },
-          map: map,
-          icon: {
-            path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
-            scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
-            fillColor: t.ownerId === user?.uid ? "blue" : "green",
-            fillOpacity: 1,
-            strokeWeight: 2,
-            strokeColor: "#fff",
-            anchor: new window.google.maps.Point(0, 0),
-          },
-          zIndex: 50,
-        });
-      });
-
-      if (userLocation && snappedUserGridCenter) {
-        new window.google.maps.Marker({
-          position: snappedUserGridCenter,
-          map: map,
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: "#4285F4",
-            fillOpacity: 1,
-            strokeWeight: 2,
-            strokeColor: "#fff",
-          },
-          title: "You",
-          zIndex: 100,
-        });
       }
+    };
 
-      setMapLoaded(true);
-      console.log("🗺️ Google Map initialized successfully");
+    const onCenterChanged = () => {
+      if (mapRef.current) {
+        const center = mapRef.current.getCenter();
+        setUserLocation({ lat: center.lat(), lng: center.lng() });
+      }
+    };
 
-      return () => {
-        console.log("🧹 Cleaning up Google Map instance");
-        googleMapInstance.current = null;
-      };
-    }, [isGoogleMapsLoaded, userLocation, gridCells, ownedTerracres, zoom, user, setUserLocation, setZoom]);
+    const metersPerDegreeLat = 111000;
+    const metersPerDegreeLng = userLocation
+      ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
+      : metersPerDegreeLat;
+    const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
+    const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
 
     return (
-      <div
-        ref={mapContainerRef}
-        style={{
-          width: "min(80vw, 500px)",
-          height: "min(80vw, 500px)",
-          aspectRatio: "1 / 1",
-          margin: "10px auto",
+      <GoogleMap
+        mapContainerStyle={mapContainerStyle}
+        center={userLocation}
+        zoom={zoom}
+        onLoad={onMapLoad}
+        onZoomChanged={onZoomChanged}
+        onCenterChanged={onCenterChanged}
+        options={{
+          disableDefaultUI: true,
+          zoomControl: true,
+          mapTypeControl: true,
         }}
-      />
+      >
+        {gridCells.map((cell, index) => (
+          <Polyline
+            key={index}
+            path={cell.paths}
+            options={{
+              geodesic: true,
+              strokeColor: "#999",
+              strokeOpacity: 0.8,
+              strokeWeight: 1,
+            }}
+          />
+        ))}
+
+        {ownedTerracres.map((t) => {
+          const offsetLat = t.lat + 0.5 * deltaLat;
+          const offsetLng = t.lng - 0.5 * deltaLng;
+          return (
+            <Marker
+              key={t.id}
+              position={{ lat: offsetLat, lng: offsetLng }}
+              icon={{
+                path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
+                scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
+                fillColor: t.ownerId === user?.uid ? "blue" : "green",
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: "#fff",
+                anchor: new window.google.maps.Point(0, 0),
+              }}
+              zIndex={50}
+            />
+          );
+        })}
+
+        {userLocation && snappedUserGridCenter && (
+          <Marker
+            position={snappedUserGridCenter}
+            icon={{
+              path: "M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 Z",
+              fillColor: "#4285F4",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#fff",
+              scale: 1,
+            }}
+            title="You"
+            zIndex={100}
+          />
+        )}
+      </GoogleMap>
     );
   }
 
@@ -599,45 +522,8 @@ function App() {
     const isMainPage = location.pathname === "/";
 
     useEffect(() => {
-      console.log("🗺️ Map rendering conditions:", { isMainPage, isGoogleMapsLoaded, isDomReady, userLocation });
-    }, [isMainPage, isGoogleMapsLoaded, isDomReady, userLocation]);
-
-    if (mapLoadError) {
-      console.log("❌ Rendering map load error state");
-      return (
-        <div>
-          <p>Error: {mapLoadError}</p>
-          {isDevelopment && (
-            <div>
-              <p>Development mode: Map rendering skipped. You can still interact with the app.</p>
-              <div className="greeting">
-                Welcome, {user?.nickname || user?.displayName || "User"}! You have {user?.terrabucks ?? 0} TB.
-              </div>
-              <div className="button-container">
-                {snappedUserGridCenter ? (
-                  <CheckInButton
-                    user={user}
-                    userLocation={userLocation}
-                    snappedGridCenter={snappedUserGridCenter}
-                    setCheckInStatus={setCheckInStatus}
-                  />
-                ) : (
-                  <p>Loading grid center...</p>
-                )}
-                <PurchaseButton
-                  user={user}
-                  userLocation={userLocation}
-                  setUser={setUser}
-                  onPurchase={handlePurchase}
-                  gridCenter={snappedUserGridCenter}
-                />
-              </div>
-              {checkInStatus && <p>{checkInStatus}</p>}
-            </div>
-          )}
-        </div>
-      );
-    }
+      console.log("🗺️ Map rendering conditions:", { isMainPage, isDomReady, userLocation });
+    }, [isMainPage, isDomReady, userLocation]);
 
     if (authLoading) {
       console.log("⏳ Rendering auth loading state");
@@ -697,18 +583,20 @@ function App() {
               <h1>TerraMine</h1>
             </header>
             <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
-            {isMainPage && isGoogleMapsLoaded && isDomReady && userLocation ? (
+            {isMainPage && isDomReady && userLocation ? (
               <>
                 <p>Rendering map...</p>
-                <MemoizedMapComponent
-                  userLocation={userLocation}
-                  gridCells={gridCells}
-                  ownedTerracres={ownedTerracres}
-                  zoom={zoom}
-                  user={user}
-                  setUserLocation={setUserLocation}
-                  setZoom={setZoom}
-                />
+                <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+                  <MemoizedMapComponent
+                    userLocation={userLocation}
+                    gridCells={gridCells}
+                    ownedTerracres={ownedTerracres}
+                    zoom={zoom}
+                    user={user}
+                    setUserLocation={setUserLocation}
+                    setZoom={setZoom}
+                  />
+                </LoadScript>
               </>
             ) : (
               isMainPage && <p>Waiting for map to load...</p>
