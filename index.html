@@ -14,14 +14,20 @@
         font-src 'self' https://fonts.gstatic.com;
         img-src 'self' https://*.googleapis.com https://*.google.com https://*.gstatic.com data:;
         connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebaseio.com;
-        frame-src 'self' https://*.google.com;
+        frame-src 'self' https://*.google.com https://*.cloudflare.com;
       "
     />
     <title>TerraMine</title>
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us"
+      async
+    ></script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    <!-- Temporarily commented out Cloudflare challenge script to test CSP issue
     <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'93a3df4e099cb09d',t:'MTc0NjMxODQ0NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+    -->
   </body>
 </html>
