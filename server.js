@@ -3,11 +3,13 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const port = process.env.PORT || 3000;
 
-// ✅ DEVELOPMENT ONLY: Set relaxed CSP header
+// ✅ DEV ONLY: Relaxed CSP header to allow eval() for tools like Vite or Firebase
 app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
@@ -22,13 +24,14 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve static files from dist/
 app.use(express.static(path.resolve(__dirname, 'dist')));
 
-// All other routes -> index.html
+// Fallback to index.html for SPA routing
 app.get('*', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Server running on http://localhost:${port}`);
+  console.log(`✅ Server running on http://localhost:${port}`);
 });
