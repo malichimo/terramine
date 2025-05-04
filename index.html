@@ -11,14 +11,15 @@
       http-equiv="Content-Security-Policy"
       content="
         default-src 'self';
-        script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://maps.google.com https://*.googleapis.com;
+        script-src 'self' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com;
-        img-src 'self' data: https://*.googleapis.com https://*.google.com https://*.gstatic.com;
-        connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebaseio.com;
-        frame-src 'self' https://*.google.com https://*.cloudflare.com;
+        img-src 'self' data: https:;
+        connect-src 'self' https:;
+        frame-src 'self' https:;
       "
     />
+  
   
   
     <title>TerraMine</title>
