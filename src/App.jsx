@@ -4,7 +4,6 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot } from "firebase/firestore";
-// import { GoogleMap, Marker, Polygon } from "@react-google-maps/api";
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import CheckInGallery from "./components/CheckInGallery";
@@ -20,10 +19,9 @@ import "./App.css";
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
 const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
-const libraries = ["places"];
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.51b - Temporarily disabled Google Maps to debug $n error");
+console.log("🌍 TerraMine v1.52b - Switched to raw Google Maps API");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -46,91 +44,87 @@ function App() {
 
   const isDevelopment = process.env.NODE_ENV === "development";
   const mapRef = useRef(null);
+  const googleMapInstance = useRef(null);
   const fetchTerracresRef = useRef(false);
   const geolocationRequestedRef = useRef(false);
 
-  // Temporarily disable Google Maps script loading
-  // useEffect(() => {
-  //   console.log("🗺️ Executing useEffect for Google Maps API script loading");
-  //   const loadGoogleMapsScript = () => {
-  //     try {
-  //       if (
-  //         window.google &&
-  //         window.google.maps &&
-  //         window.google.maps.Map &&
-  //         window.google.maps.Marker &&
-  //         window.google.maps.Polygon &&
-  //         window.google.maps.Point &&
-  //         window.google.maps.SymbolPath
-  //       ) {
-  //         console.log("🗺️ Google Maps API already fully loaded");
-  //         setIsGoogleMapsLoaded(true);
-  //         return;
-  //       }
-  //
-  //       console.log("🗺️ Loading Google Maps API script...");
-  //       const script = document.createElement("script");
-  //       script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=${libraries.join(",")}&callback=initGoogleMaps`;
-  //       script.async = true;
-  //       script.defer = true;
-  //       script.onerror = (err) => {
-  //         console.error("🗺️ Failed to load Google Maps API script:", err);
-  //         setMapLoadError("Failed to load Google Maps API script. Please check your API key, network connection, or Content Security Policy settings.");
-  //       };
-  //       document.head.appendChild(script);
-  //       console.log("🗺️ Google Maps API script appended to DOM");
-  //
-  //       window.initGoogleMaps = () => {
-  //         console.log("🗺️ Google Maps API script loaded, starting readiness polling...");
-  //         const checkGoogleMapsReady = () => {
-  //           if (
-  //             window.google &&
-  //             window.google.maps &&
-  //             window.google.maps.Map &&
-  //             window.google.maps.Marker &&
-  //             window.google.maps.Polygon &&
-  //             window.google.maps.Point &&
-  //             window.google.maps.SymbolPath
-  //           ) {
-  //             console.log("🗺️ Google Maps API fully ready for rendering");
-  //             setIsGoogleMapsLoaded(true);
-  //           } else {
-  //             console.log("🗺️ Google Maps API not fully ready, polling...");
-  //             setTimeout(checkGoogleMapsReady, 100);
-  //           }
-  //         };
-  //         checkGoogleMapsReady();
-  //       };
-  //
-  //       const timeout = setTimeout(() => {
-  //         if (!isGoogleMapsLoaded) {
-  //           console.error("🗺️ Google Maps API script loading timed out after 10 seconds");
-  //           setMapLoadError("Google Maps API script failed to load within 10 seconds. Please check your API key or network connection.");
-  //           if (isDevelopment) {
-  //             console.warn("🛠️ Development mode: Skipping map rendering due to script loading failure");
-  //             setIsGoogleMapsLoaded(true);
-  //           }
-  //         }
-  //       }, 10000);
-  //
-  //       return () => {
-  //         clearTimeout(timeout);
-  //       };
-  //     } catch (err) {
-  //       console.error("🗺️ Error in loadGoogleMapsScript:", err);
-  //       setMapLoadError("Failed to initialize Google Maps API script loading: " + err.message);
-  //     }
-  //   };
-  //
-  //   loadGoogleMapsScript();
-  //
-  //   return () => {
-  //     console.log("🧹 Cleaning up Google Maps API script and callback");
-  //     delete window.initGoogleMaps;
-  //     const scripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
-  //     scripts.forEach((script) => script.remove());
-  //   };
-  // }, [isDevelopment]);
+  useEffect(() => {
+    console.log("🗺️ Executing useEffect for Google Maps API script loading");
+    const loadGoogleMapsScript = () => {
+      try {
+        if (
+          window.google &&
+          window.google.maps &&
+          window.google.maps.Map &&
+          window.google.maps.Marker &&
+          window.google.maps.Polygon
+        ) {
+          console.log("🗺️ Google Maps API already fully loaded");
+          setIsGoogleMapsLoaded(true);
+          return;
+        }
+
+        console.log("🗺️ Loading Google Maps API script...");
+        const script = document.createElement("script");
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initGoogleMaps`;
+        script.async = true;
+        script.defer = true;
+        script.onerror = (err) => {
+          console.error("🗺️ Failed to load Google Maps API script:", err);
+          setMapLoadError("Failed to load Google Maps API script. Please check your API key or network connection.");
+        };
+        document.head.appendChild(script);
+        console.log("🗺️ Google Maps API script appended to DOM");
+
+        window.initGoogleMaps = () => {
+          console.log("🗺️ Google Maps API script loaded, starting readiness polling...");
+          const checkGoogleMapsReady = () => {
+            if (
+              window.google &&
+              window.google.maps &&
+              window.google.maps.Map &&
+              window.google.maps.Marker &&
+              window.google.maps.Polygon
+            ) {
+              console.log("🗺️ Google Maps API fully ready for rendering");
+              setIsGoogleMapsLoaded(true);
+            } else {
+              console.log("🗺️ Google Maps API not fully ready, polling...");
+              setTimeout(checkGoogleMapsReady, 100);
+            }
+          };
+          checkGoogleMapsReady();
+        };
+
+        const timeout = setTimeout(() => {
+          if (!isGoogleMapsLoaded) {
+            console.error("🗺️ Google Maps API script loading timed out after 10 seconds");
+            setMapLoadError("Google Maps API script failed to load within 10 seconds. Please check your API key or network connection.");
+            if (isDevelopment) {
+              console.warn("🛠️ Development mode: Skipping map rendering due to script loading failure");
+              setIsGoogleMapsLoaded(true);
+            }
+          }
+        }, 10000);
+
+        return () => {
+          clearTimeout(timeout);
+        };
+      } catch (err) {
+        console.error("🗺️ Error in loadGoogleMapsScript:", err);
+        setMapLoadError("Failed to initialize Google Maps API script loading: " + err.message);
+      }
+    };
+
+    loadGoogleMapsScript();
+
+    return () => {
+      console.log("🧹 Cleaning up Google Maps API script and callback");
+      delete window.initGoogleMaps;
+      const scripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
+      scripts.forEach((script) => script.remove());
+    };
+  }, [isDevelopment]);
 
   const roundCoordinate = (value) => {
     const rounded = Number(value.toFixed(COORDINATE_PRECISION));
@@ -264,7 +258,6 @@ function App() {
         if (userSnap.exists()) {
           const data = userSnap.data();
           console.log("🔥 Fetched user data:", data);
-          // Only update state if data has changed to prevent excessive re-renders
           setUser((prev) => {
             const prevData = JSON.stringify({ ...prev, ...data });
             const newData = JSON.stringify({ ...prev, ...data });
@@ -391,18 +384,21 @@ function App() {
   }, [calculateTotalEarnings]);
 
   const getGridLines = useCallback((center) => {
-    if (!center || !mapRef.current) return [];
-    const bounds = mapRef.current.getBounds();
-    if (!bounds) return [];
-    const ne = bounds.getNorthEast();
-    const sw = bounds.getSouthWest();
+    if (!center) return [];
     const metersPerDegreeLat = 111000;
     const metersPerDegreeLng = metersPerDegreeLat * Math.cos((center.lat * Math.PI) / 180);
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
+
+    // Define bounds for the grid (a small area around the center)
+    const latRange = deltaLat * 10; // 10 cells in each direction
+    const lngRange = deltaLng * 10;
+    const sw = { lat: center.lat - latRange, lng: center.lng - lngRange };
+    const ne = { lat: center.lat + latRange, lng: center.lng + lngRange };
+
     const grid = [];
-    for (let lat = sw.lat(); lat < ne.lat(); lat += deltaLat) {
-      for (let lng = sw.lng(); lng < ne.lng(); lng += deltaLng) {
+    for (let lat = sw.lat; lat < ne.lat; lat += deltaLat) {
+      for (let lng = sw.lng; lng < ne.lng; lng += deltaLng) {
         const baseLat = Math.floor(lat / deltaLat) * deltaLat;
         const baseLng = Math.floor(lng / deltaLng) * deltaLng;
         const centerLat = roundCoordinate(baseLat + deltaLat / 2);
@@ -450,8 +446,8 @@ function App() {
   let gridCells = [];
   try {
     gridCells = useMemo(
-      () => (mapLoaded && userLocation ? getGridLines(userLocation) : []),
-      [userLocation, mapLoaded, getGridLines]
+      () => (userLocation ? getGridLines(userLocation) : []),
+      [userLocation, getGridLines]
     );
   } catch (err) {
     console.error("🔥 Error computing gridCells:", err);
@@ -497,177 +493,117 @@ function App() {
     }
   };
 
-  if (authLoading) {
-    console.log("⏳ Rendering auth loading state");
-    return <div>Loading authentication...</div>;
+  function MapComponent({ userLocation, gridCells, ownedTerracres, zoom, user, setUserLocation, setZoom }) {
+    const mapContainerRef = useRef(null);
+
+    useEffect(() => {
+      if (!isGoogleMapsLoaded || !userLocation || !mapContainerRef.current) {
+        console.log("🗺️ MapComponent: Not ready to render", { isGoogleMapsLoaded, userLocation });
+        return;
+      }
+
+      console.log("🗺️ Initializing Google Map with raw API");
+      const map = new window.google.maps.Map(mapContainerRef.current, {
+        center: userLocation,
+        zoom: zoom,
+        mapTypeId: "roadmap",
+      });
+      googleMapInstance.current = map;
+
+      // Handle zoom changes
+      map.addListener("zoom_changed", () => {
+        const z = map.getZoom();
+        setZoom(z);
+        console.log("🔎 Zoom changed to:", z);
+      });
+
+      // Handle center changes
+      map.addListener("center_changed", () => {
+        const center = map.getCenter();
+        setUserLocation({ lat: center.lat(), lng: center.lng() });
+      });
+
+      // Draw grid cells
+      gridCells.forEach((cell, index) => {
+        new window.google.maps.Polyline({
+          path: cell.paths,
+          geodesic: true,
+          strokeColor: "#999",
+          strokeOpacity: 0.8,
+          strokeWeight: 1,
+          map: map,
+        });
+      });
+
+      // Draw terracre markers
+      const metersPerDegreeLat = 111000;
+      const metersPerDegreeLng = userLocation
+        ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
+        : metersPerDegreeLat;
+      const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
+      const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
+
+      ownedTerracres.forEach((t) => {
+        const offsetLat = t.lat + 0.5 * deltaLat;
+        const offsetLng = t.lng - 0.5 * deltaLng;
+        console.log("🏞️ Rendering TerracreMarker for:", t.id, { offsetLat, offsetLng });
+        new window.google.maps.Marker({
+          position: { lat: offsetLat, lng: offsetLng },
+          map: map,
+          icon: {
+            path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
+            scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
+            fillColor: t.ownerId === user?.uid ? "blue" : "green",
+            fillOpacity: 1,
+            strokeWeight: 2,
+            strokeColor: "#fff",
+            anchor: new window.google.maps.Point(0, 0),
+          },
+          zIndex: 50,
+        });
+      });
+
+      // Draw user marker
+      if (userLocation && snappedUserGridCenter) {
+        new window.google.maps.Marker({
+          position: snappedUserGridCenter,
+          map: map,
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: "#4285F4",
+            fillOpacity: 1,
+            strokeWeight: 2,
+            strokeColor: "#fff",
+          },
+          title: "You",
+          zIndex: 100,
+        });
+      }
+
+      setMapLoaded(true);
+      console.log("🗺️ Google Map initialized successfully");
+
+      return () => {
+        console.log("🧹 Cleaning up Google Map instance");
+        googleMapInstance.current = null;
+      };
+    }, [isGoogleMapsLoaded, userLocation, gridCells, ownedTerracres, zoom, user, setUserLocation, setZoom]);
+
+    return (
+      <div
+        ref={mapContainerRef}
+        style={{
+          width: "min(80vw, 500px)",
+          height: "min(80vw, 500px)",
+          aspectRatio: "1 / 1",
+          margin: "10px auto",
+        }}
+      />
+    );
   }
 
-  if (error) {
-    console.log("❌ Rendering error state");
-    return <div>Error: {error}</div>;
-  }
-
-  if (!user && !isDevelopment) {
-    console.log("🔒 Rendering Login component");
-    return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
-
-  console.log("🎮 Rendering main UI", { user, userLocation });
-
-  return (
-    <Router>
-      <ErrorBoundary>
-        <Routes>
-          <Route
-            path="/ta/:terracreId"
-            element={
-              <TAProfile user={user} setUser={setUser} setCheckInStatus={setCheckInStatus} />
-            }
-          />
-          <Route
-            path="*"
-            element={<MainContent />}
-          />
-        </Routes>
-      </ErrorBoundary>
-    </Router>
-  );
-
-  // Temporarily remove MapComponent to isolate the $n error
-  // function MapComponent({ userLocation, gridCells, ownedTerracres, zoom, user, setUserLocation, setZoom }) {
-  //   const [mapReady, setMapReady] = useState(false);
-  //   const metersPerDegreeLat = 111000;
-  //   const metersPerDegreeLng = userLocation
-  //     ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
-  //     : metersPerDegreeLat;
-  //   const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
-  //   const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
-  //
-  //   useEffect(() => {
-  //     console.log("🗺️ MapComponent mounted with props:", { userLocation, gridCells, ownedTerracres, zoom, user });
-  //     console.log("🗺️ Checking Google Maps API readiness:", {
-  //       google: !!window.google,
-  //       maps: !!window.google?.maps,
-  //       Map: !!window.google?.maps?.Map,
-  //       Marker: !!window.google?.maps?.Marker,
-  //       Polygon: !!window.google?.maps?.Polygon,
-  //       Point: !!window.google?.maps?.Point,
-  //       SymbolPath: !!window.google?.maps?.SymbolPath,
-  //     });
-  //   }, []);
-  //
-  //   useEffect(() => {
-  //     if (mapReady && window.google && window.google.maps && window.google.maps.event) {
-  //       console.log("🗺️ Setting up zoom_changed event listener");
-  //       try {
-  //         const map = mapRef.current;
-  //         const listener = window.google.maps.event.addListener(map, "zoom_changed", () => {
-  //           const z = map.getZoom();
-  //           setZoom(z);
-  //           console.log("🔎 Zoom changed to:", z);
-  //         });
-  //
-  //         return () => {
-  //           console.log("🧹 Cleaning up zoom_changed event listener");
-  //           window.google.maps.event.removeListener(listener);
-  //         };
-  //       } catch (err) {
-  //         console.error("🗺️ Failed to set up zoom_changed listener:", err);
-  //         setError("Failed to set up map event listeners.");
-  //       }
-  //     }
-  //   }, [mapReady, setZoom]);
-  //
-  //   if (
-  //     !window.google ||
-  //     !window.google.maps ||
-  //     !window.google.maps.Map ||
-  //     !window.google.maps.Marker ||
-  //     !window.google.maps.Polygon ||
-  //     !window.google.maps.Point ||
-  //     !window.google.maps.SymbolPath
-  //   ) {
-  //     console.log("🗺️ MapComponent: Google Maps API not fully ready, skipping render");
-  //     return <div>Waiting for map to load...</div>;
-  //   }
-  //
-  //   return (
-  //     <GoogleMap
-  //       mapContainerClassName="map-container"
-  //       center={userLocation}
-  //       zoom={zoom}
-  //       onLoad={(map) => {
-  //         console.log("🗺️ Google Map component loaded");
-  //         mapRef.current = map;
-  //         setMapLoaded(true);
-  //         setMapReady(true);
-  //       }}
-  //       onBoundsChanged={() => {
-  //         if (mapRef.current) {
-  //           const c = mapRef.current.getCenter();
-  //           setUserLocation({ lat: c.lat(), lng: c.lng() });
-  //         }
-  //       }}
-  //       mapContainerStyle={{
-  //         width: "min(80vw, 500px)",
-  //         height: "min(80vw, 500px)",
-  //         aspectRatio: "1 / 1",
-  //         margin: "10px auto",
-  //       }}
-  //     >
-  //       {gridCells.map((cell, index) => (
-  //         <Polygon
-  //           key={`polygon-${index}`}
-  //           paths={cell.paths}
-  //           options={{
-  //             fillColor: "transparent",
-  //             strokeColor: "#999",
-  //             strokeOpacity: 0.8,
-  //             strokeWeight: 1,
-  //           }}
-  //         />
-  //       ))}
-  //       {user && ownedTerracres.length > 0 && ownedTerracres.map((t) => {
-  //         const offsetLat = t.lat + 0.5 * deltaLat;
-  //         const offsetLng = t.lng - 0.5 * deltaLng;
-  //         console.log("🏞️ Rendering TerracreMarker for:", t.id, { offsetLat, offsetLng });
-  //         return (
-  //           <Marker
-  //             key={`terracre-${t.id}`}
-  //             position={{ lat: offsetLat, lng: offsetLng }}
-  //             icon={{
-  //               path: "M -34,-34 L 34,-34 L 34,34 L -34,34 Z",
-  //               scale: Math.max(1, Math.min(4, Math.pow(2, zoom - 18))),
-  //               fillColor: t.ownerId === user?.uid ? "blue" : "green",
-  //               fillOpacity: 1,
-  //               strokeWeight: 2,
-  //               strokeColor: "#fff",
-  //               anchor: new window.google.maps.Point(0, 0),
-  //             }}
-  //             zIndex={50}
-  //           />
-  //         );
-  //       })}
-  //       {userLocation && snappedUserGridCenter && (
-  //         <Marker
-  //           position={snappedUserGridCenter}
-  //           icon={{
-  //             path: window.google.maps.SymbolPath.CIRCLE,
-  //             scale: 8,
-  //             fillColor: "#4285F4",
-  //             fillOpacity: 1,
-  //             strokeWeight: 2,
-  //             strokeColor: "#fff",
-  //           }}
-  //           title="You"
-  //           zIndex={100}
-  //         />
-  //       )}
-  //     </GoogleMap>
-  //   );
-  // }
-  //
-  // const MemoizedMapComponent = React.memo(MapComponent);
+  const MemoizedMapComponent = React.memo(MapComponent);
 
   function MainContent() {
     const location = useLocation();
@@ -712,6 +648,21 @@ function App() {
           )}
         </div>
       );
+    }
+
+    if (authLoading) {
+      console.log("⏳ Rendering auth loading state");
+      return <div>Loading authentication...</div>;
+    }
+
+    if (error) {
+      console.log("❌ Rendering error state");
+      return <div>Error: {error}</div>;
+    }
+
+    if (!user && !isDevelopment) {
+      console.log("🔒 Rendering Login component");
+      return <Login onLoginSuccess={handleLoginSuccess} />;
     }
 
     console.log("🎨 Rendering MainContent UI components");
@@ -759,8 +710,8 @@ function App() {
             <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
             {isMainPage && isGoogleMapsLoaded && isDomReady && userLocation ? (
               <>
-                <p>Map rendering disabled for debugging...</p>
-                {/* <MemoizedMapComponent
+                <p>Rendering map...</p>
+                <MemoizedMapComponent
                   userLocation={userLocation}
                   gridCells={gridCells}
                   ownedTerracres={ownedTerracres}
@@ -768,10 +719,10 @@ function App() {
                   user={user}
                   setUserLocation={setUserLocation}
                   setZoom={setZoom}
-                /> */}
+                />
               </>
             ) : (
-              isMainPage && <p>Map rendering disabled for debugging...</p>
+              isMainPage && <p>Waiting for map to load...</p>
             )}
 
             <div className="greeting">
