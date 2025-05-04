@@ -9,7 +9,7 @@
       http-equiv="Content-Security-Policy"
       content="
         default-src 'self';
-        script-src 'self' https://maps.googleapis.com https://maps.google.com https://*.googleapis.com 'unsafe-inline';
+        script-src 'self' https://maps.googleapis.com https://maps.google.com https://*.googleapis.com 'unsafe-inline' 'unsafe-eval';
         style-src 'self' https://fonts.googleapis.com 'unsafe-inline';
         font-src 'self' https://fonts.gstatic.com;
         img-src 'self' https://*.googleapis.com https://*.google.com https://*.gstatic.com data:;
@@ -17,6 +17,7 @@
         frame-src 'self' https://*.google.com https://*.cloudflare.com;
       "
     />
+  
     <title>TerraMine</title>
   </head>
   <body>
