@@ -11,4 +11,8 @@ export default defineConfig({
   server: {
     hmr: true,
   },
+  preview: {
+    host: 'terramine.onrender.com',
+    allowedHosts: ['terramine.onrender.com', 'localhost'],
+  },
 });
