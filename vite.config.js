@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  base: './', // ensures relative paths are used for deployment
+  base: './',
   plugins: [react()],
   build: {
     minify: 'esbuild',
@@ -13,7 +13,7 @@ export default defineConfig({
     hmr: true,
   },
   preview: {
-    host: 'terramine.onrender.com',
-    allowedHosts: ['terramine.onrender.com', 'localhost'],
+    host: true,      // ← this tells Vite to use 0.0.0.0
+    port: 4173       // optional, default
   }
 });
