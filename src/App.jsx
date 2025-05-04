@@ -21,7 +21,7 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.52b - Switched to raw Google Maps API with improved loading");
+console.log("🌍 TerraMine v1.52b - Switched to raw Google Maps API with CSP and increased timeout");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -75,7 +75,7 @@ function App() {
         };
         script.onerror = (err) => {
           console.error("🗺️ Failed to load Google Maps API script:", err);
-          setMapLoadError("Failed to load Google Maps API script. Please check your API key or network connection.");
+          setMapLoadError("Failed to load Google Maps API script. Please check your API key, network connection, or CSP settings.");
         };
         document.head.appendChild(script);
 
@@ -89,19 +89,22 @@ function App() {
             window.google.maps.Polygon
           ) {
             setIsGoogleMapsLoaded(true);
+          } else {
+            console.error("🗺️ Google Maps API callback fired, but API objects are not fully available");
+            setMapLoadError("Google Maps API loaded but is not fully initialized. Please refresh the page.");
           }
         };
 
         const timeout = setTimeout(() => {
           if (!isGoogleMapsLoaded) {
-            console.error("🗺️ Google Maps API script loading timed out after 10 seconds");
-            setMapLoadError("Google Maps API script failed to load within 10 seconds. Please check your API key or network connection.");
+            console.error("🗺️ Google Maps API script loading timed out after 20 seconds");
+            setMapLoadError("Google Maps API script failed to load within 20 seconds. Please check your network connection or CSP settings.");
             if (isDevelopment) {
               console.warn("🛠️ Development mode: Skipping map rendering due to script loading failure");
               setIsGoogleMapsLoaded(true);
             }
           }
-        }, 10000);
+        }, 20000); // Increased to 20 seconds
 
         return () => {
           clearTimeout(timeout);
@@ -178,7 +181,7 @@ function App() {
           console.error("📍 Geolocation failed:", err);
           setError("Failed to get location. Using default location.");
           setUserLocation(defaultCenter);
-          geolocationRequestedRef.current = false;
+          setGeolocationRequestedRef.current = false;
         }
       );
     }
