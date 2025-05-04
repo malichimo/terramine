@@ -3,18 +3,15 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
-  base: './',
+  root: '.', // Ensures index.html is read from project root
   plugins: [react()],
   build: {
-    minify: 'esbuild',
-    target: 'esnext',
-    sourcemap: true,
+    outDir: 'dist',
+    emptyOutDir: true,
     rollupOptions: {
-      input: path.resolve(__dirname, 'src/main.jsx') // ✅ Tell Vite where the entry point is
-    }
+      input: path.resolve(__dirname, 'index.html'),
+    },
   },
-  server: {
-    hmr: true,
-  },
+  publicDir: 'public', // Include static assets
 });
 
