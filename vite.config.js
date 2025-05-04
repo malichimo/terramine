@@ -13,7 +13,8 @@ export default defineConfig({
     hmr: true,
   },
   preview: {
-    host: true,      // ← this tells Vite to use 0.0.0.0
-    port: 4173       // optional, default
-  }
+    host: true,
+    port: 4173,
+    allowedHosts: ['terramine.onrender.com'], // ✅ Add your Render domain
+  },
 });
