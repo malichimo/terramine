@@ -630,15 +630,16 @@ function App() {
       </div>
     );
   }
+  return (
+    <ErrorBoundary>
+      <Router>
+        <Routes>
+          <Route path="/*" element={<MainContent />} />
+        </Routes>
+      </Router>
+    </ErrorBoundary>
+  );
 }
-return (
-  <ErrorBoundary>
-    <Router>
-      <Routes>
-        <Route path="/*" element={<MainContent />} />
-      </Routes>
-    </Router>
-  </ErrorBoundary>
-);
+
 
 export default App;
