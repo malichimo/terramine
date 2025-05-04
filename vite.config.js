@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// Use ES Module export syntax
 export default defineConfig({
   plugins: [react()],
   build: {
@@ -10,9 +11,5 @@ export default defineConfig({
   },
   server: {
     hmr: true,
-  },
-  preview: {
-    host: 'terramine.onrender.com',
-    allowedHosts: ['terramine.onrender.com', 'localhost'],
   },
 });
