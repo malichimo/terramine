@@ -1,37 +1,38 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import "./PurchaseButton.css";
 
 const PurchaseButton = ({ user, userLocation, setUser, onPurchase, gridCenter }) => {
+  const [localMessage, setLocalMessage] = useState("");
+
+  useEffect(() => {
+    if (localMessage) {
+      const timer = setTimeout(() => setLocalMessage(""), 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [localMessage]);
+
   const handlePurchaseClick = async () => {
     if (!user || !gridCenter) return;
 
-    const messageEl = document.createElement("div");
-    messageEl.className = "purchase-message";
-
     try {
-      const result = await onPurchase(gridCenter); // expect this to return string message if successful
+      const result = await onPurchase(gridCenter);
       if (result?.message) {
-        messageEl.textContent = result.message;
-        document.body.appendChild(messageEl);
+        setLocalMessage(result.message);
       }
     } catch (err) {
       console.error("❌ Purchase failed:", err);
-      messageEl.textContent = "Purchase failed. Please try again.";
-      document.body.appendChild(messageEl);
+      setLocalMessage("Purchase failed. Please try again.");
     }
-
-    setTimeout(() => {
-      if (messageEl.parentNode) {
-        messageEl.parentNode.removeChild(messageEl);
-      }
-    }, 6000);
   };
 
   return (
-    <button className="purchase-button" onClick={handlePurchaseClick}>
-      Purchase TA
-    </button>
+    <>
+      <button className="purchase-button" onClick={handlePurchaseClick}>
+        Purchase TA
+      </button>
+      {localMessage && <div className="purchase-message">{localMessage}</div>}
+    </>
   );
 };
 
