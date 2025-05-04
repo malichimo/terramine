@@ -10,6 +10,7 @@
   "dependencies": {
     "@react-google-maps/api": "^2.19.2",
     "express": "^4.18.2",
+    "firebase": "^11.6.1",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-router-dom": "^6.23.0"
