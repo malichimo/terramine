@@ -12,9 +12,5 @@ export default defineConfig({
   server: {
     hmr: true,
   },
-  preview: {
-    host: true,
-    port: 4173,
-    allowedHosts: ['terramine.onrender.com'], // ✅ Add your Render domain
-  },
+
 });
