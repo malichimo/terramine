@@ -21,7 +21,7 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyB3m0U9xxwvyl5pax4gKtWEt8PAf8qe9us";
 const TERRACRE_SIZE_METERS = 30;
 const COORDINATE_PRECISION = 4;
 
-console.log("🌍 TerraMine v1.52b - Switched to raw Google Maps API");
+console.log("🌍 TerraMine v1.52b - Switched to raw Google Maps API with improved loading");
 
 function App() {
   const [user, setUser] = useState(null);
@@ -69,31 +69,27 @@ function App() {
         script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initGoogleMaps`;
         script.async = true;
         script.defer = true;
+        script.onload = () => {
+          console.log("🗺️ Google Maps API script loaded successfully");
+          setIsGoogleMapsLoaded(true);
+        };
         script.onerror = (err) => {
           console.error("🗺️ Failed to load Google Maps API script:", err);
           setMapLoadError("Failed to load Google Maps API script. Please check your API key or network connection.");
         };
         document.head.appendChild(script);
-        console.log("🗺️ Google Maps API script appended to DOM");
 
         window.initGoogleMaps = () => {
-          console.log("🗺️ Google Maps API script loaded, starting readiness polling...");
-          const checkGoogleMapsReady = () => {
-            if (
-              window.google &&
-              window.google.maps &&
-              window.google.maps.Map &&
-              window.google.maps.Marker &&
-              window.google.maps.Polygon
-            ) {
-              console.log("🗺️ Google Maps API fully ready for rendering");
-              setIsGoogleMapsLoaded(true);
-            } else {
-              console.log("🗺️ Google Maps API not fully ready, polling...");
-              setTimeout(checkGoogleMapsReady, 100);
-            }
-          };
-          checkGoogleMapsReady();
+          console.log("🗺️ Google Maps API initialized via callback");
+          if (
+            window.google &&
+            window.google.maps &&
+            window.google.maps.Map &&
+            window.google.maps.Marker &&
+            window.google.maps.Polygon
+          ) {
+            setIsGoogleMapsLoaded(true);
+          }
         };
 
         const timeout = setTimeout(() => {
@@ -109,6 +105,9 @@ function App() {
 
         return () => {
           clearTimeout(timeout);
+          delete window.initGoogleMaps;
+          const scripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
+          scripts.forEach((script) => script.remove());
         };
       } catch (err) {
         console.error("🗺️ Error in loadGoogleMapsScript:", err);
@@ -117,13 +116,6 @@ function App() {
     };
 
     loadGoogleMapsScript();
-
-    return () => {
-      console.log("🧹 Cleaning up Google Maps API script and callback");
-      delete window.initGoogleMaps;
-      const scripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
-      scripts.forEach((script) => script.remove());
-    };
   }, [isDevelopment]);
 
   const roundCoordinate = (value) => {
@@ -390,8 +382,7 @@ function App() {
     const deltaLat = TERRACRE_SIZE_METERS / metersPerDegreeLat;
     const deltaLng = TERRACRE_SIZE_METERS / metersPerDegreeLng;
 
-    // Define bounds for the grid (a small area around the center)
-    const latRange = deltaLat * 10; // 10 cells in each direction
+    const latRange = deltaLat * 10;
     const lngRange = deltaLng * 10;
     const sw = { lat: center.lat - latRange, lng: center.lng - lngRange };
     const ne = { lat: center.lat + latRange, lng: center.lng + lngRange };
@@ -510,20 +501,17 @@ function App() {
       });
       googleMapInstance.current = map;
 
-      // Handle zoom changes
       map.addListener("zoom_changed", () => {
         const z = map.getZoom();
         setZoom(z);
         console.log("🔎 Zoom changed to:", z);
       });
 
-      // Handle center changes
       map.addListener("center_changed", () => {
         const center = map.getCenter();
         setUserLocation({ lat: center.lat(), lng: center.lng() });
       });
 
-      // Draw grid cells
       gridCells.forEach((cell, index) => {
         new window.google.maps.Polyline({
           path: cell.paths,
@@ -535,7 +523,6 @@ function App() {
         });
       });
 
-      // Draw terracre markers
       const metersPerDegreeLat = 111000;
       const metersPerDegreeLng = userLocation
         ? metersPerDegreeLat * Math.cos((userLocation.lat * Math.PI) / 180)
@@ -563,7 +550,6 @@ function App() {
         });
       });
 
-      // Draw user marker
       if (userLocation && snappedUserGridCenter) {
         new window.google.maps.Marker({
           position: snappedUserGridCenter,
