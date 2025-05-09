@@ -8,7 +8,6 @@
     "start": "vite preview --port $PORT --host"
   },
   "dependencies": {
-    "@react-google-maps/api": "^2.19.2",
     "express": "^4.18.2",
     "firebase": "^11.6.1",
     "html5-qrcode": "^2.3.8",
