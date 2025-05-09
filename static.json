@@ -1,0 +1,8 @@
+{
+    "headers": {
+      "/**": {
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.firebaseio.com https://firestore.googleapis.com; frame-src 'self';"
+      }
+    }
+  }
+  
