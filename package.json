@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start": "node server.js"
+    "start": "vite preview --port $PORT --host"
+
   },
   "dependencies": {
     "@react-google-maps/api": "^2.19.2",
