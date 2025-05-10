@@ -586,17 +586,10 @@ function App() {
             {isMainPage && isDomReady && userLocation ? (
               <>
                 <p>Rendering map...</p>
-                <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-                  <MemoizedMapComponent
-                    userLocation={userLocation}
-                    gridCells={gridCells}
-                    ownedTerracres={ownedTerracres}
-                    zoom={zoom}
-                    user={user}
-                    setUserLocation={setUserLocation}
-                    setZoom={setZoom}
-                  />
-                </LoadScript>
+                <div style={{ width: "100%", height: "300px", background: "#eee" }}>
+                  [Map temporarily removed while upgrading]
+                </div>
+
               </>
             ) : (
               isMainPage && <p>Waiting for map to load...</p>
