@@ -29,7 +29,8 @@ function App() {
   const [showUserPage, setShowUserPage] = useState(false);
   const [error, setError] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const isDevelopment = process.env.NODE_ENV === "development";
+  const isDevelopment = import.meta.env.MODE === "development";
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(
@@ -111,7 +112,7 @@ function App() {
               Welcome, {user?.displayName || "User"}! You have {user?.terrabucks ?? 0} TB.
             </div>
             <div className="button-container">
-              <CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} />
+              {/*<CheckInButton user={user} userLocation={userLocation} setCheckInStatus={setCheckInStatus} />*/}
               <PurchaseButton user={user} userLocation={userLocation} setUser={setUser} onPurchase={() => {}} gridCenter={userLocation} />
             </div>
             {checkInStatus && <p>{checkInStatus}</p>}
