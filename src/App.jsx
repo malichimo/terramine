@@ -18,8 +18,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import "./App.css";
 
 const defaultCenter = { lat: 37.7749, lng: -122.4194 };
-const GOOGLE_MAPS_API_KEY = "AIzaSyD-7VBjD3yK2EJXkKJUkx-wIE3JML8N0DA";
-
+const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const TERRACRE_SIZE_METERS = 30;
 const COORDINATE_PRECISION = 4;
 
