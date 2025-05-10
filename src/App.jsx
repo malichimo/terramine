@@ -4,7 +4,7 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot } from "firebase/firestore";
-import { GoogleMap, LoadScript, Marker, Polyline } from "@react-google-maps/api";
+
 import Login from "./components/Login";
 import CheckInButton from "./components/CheckInButton";
 import CheckInGallery from "./components/CheckInGallery";
