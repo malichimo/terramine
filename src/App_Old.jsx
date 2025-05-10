@@ -263,14 +263,10 @@ function App() {
           <header className="app-header"><h1>TerraMine</h1></header>
           <div className="earnings">Earnings from Mining: ${totalEarnings.toFixed(2)}</div>
           <Suspense fallback={<p>Loading map...</p>}>
-            <LoadScript
-              googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-              libraries={libraries}
-              onLoad={() => {
-                setApiLoaded(true);
-                setMapLoaded(true);
-              }}
-            >
+          <div style={{ width: "100%", height: "300px", background: "#eee" }}>
+            [Map temporarily removed while upgrading]
+          </div>
+
               {apiLoaded && userLocation && (
                 <GoogleMap
                   key={mapKey}
@@ -327,7 +323,7 @@ function App() {
                   )}
                 </GoogleMap>
               )}
-            </LoadScript>
+
           </Suspense>
 
           <div className="greeting">Welcome, {user.displayName || "User"}! You have {user.terrabucks ?? 0} TB.</div>
