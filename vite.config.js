@@ -5,8 +5,8 @@ export default {
     strictPort: true,
   },
   preview: {
-    allowedHosts: ['terramine.onrender.com'],
-  },
+  allowedHosts: ['terramine.onrender.com'],
+},
   build: {
     target: 'esnext',
   },
