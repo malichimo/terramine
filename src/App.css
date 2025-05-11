@@ -1,3 +1,9 @@
+@font-face {
+  font-family: 'DominoBrick';
+  src: url('/DominoBrick.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
 
 body {
   margin: 0;
