@@ -39,3 +39,50 @@ body {
   width: 120px;
   margin-bottom: 20px;
 }
+body {
+  margin: 0;
+  font-family: 'SuperNormal', sans-serif;
+  background: linear-gradient(135deg, #b7e2e5, #a0d9c6);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.landing-screen {
+  text-align: center;
+}
+
+.landing-box {
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.landing-logo {
+  width: 120px;
+  margin-bottom: 20px;
+}
+
+.landing-title {
+  font-family: 'DominoBrick', cursive;
+  font-size: 3rem;
+  margin: 0 0 20px;
+  color: #333;
+}
+
+.google-login-button {
+  font-size: 18px;
+  padding: 12px 24px;
+  background-color: #4285F4;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.google-login-button:hover {
+  background-color: #357ae8;
+}
