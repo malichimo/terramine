@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "./App.css";
+import "../App.css";
 
 function UserSetupPage({ user, onComplete }) {
   const [nickname, setNickname] = useState("");
