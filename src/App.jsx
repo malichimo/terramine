@@ -1,8 +1,9 @@
 import React from "react";
 import "./App.css";
 import logo from "./assets/terramine logo.png";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
 import { auth } from "./firebase";
+import SignOutButton from "./components/SignOutButton";
 
 function App() {
   const handleGoogleLogin = async () => {
@@ -14,8 +15,20 @@ function App() {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      window.location.reload();
+    } catch (err) {
+      console.error("Sign-out failed:", err);
+    }
+  };
+
   return (
     <div className="landing-screen">
+      <div className="top-right">
+        <SignOutButton onSignOut={handleSignOut} />
+      </div>
       <div className="landing-box">
         <img src={logo} alt="TerraMine Logo" className="landing-logo" />
         <h1 className="landing-title">Welcome to TerraMine</h1>
@@ -28,4 +41,3 @@ function App() {
 }
 
 export default App;
-
