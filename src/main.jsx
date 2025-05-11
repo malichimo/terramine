@@ -1,6 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
-import "./index.css";
+
+const App = () => (
+  <div style={{ padding: "2rem", fontSize: "24px" }}>
+    ✅ Hello from TerraMine!
+  </div>
+);
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
