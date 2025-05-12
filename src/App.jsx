@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -7,6 +7,7 @@ import { db } from "./firebase";
 import SignOutButton from "./components/SignOutButton";
 import MainPage from "./pages/MainPage";
 import UserSetupPage from "./pages/UserSetupPage";
+import Login from "./components/Login";
 import "./App.css";
 
 function App() {
@@ -22,7 +23,7 @@ function App() {
         if (userSnap.exists()) {
           setNeedsSetup(false);
         } else {
-          // Create a placeholder user record to signal setup in progress
+          // Create placeholder to flag setup
           await setDoc(userRef, {
             email: firebaseUser.email,
             createdAt: new Date().toISOString(),
@@ -32,9 +33,11 @@ function App() {
         setUser(firebaseUser);
       } else {
         setUser(null);
+        setNeedsSetup(false);
       }
       setLoading(false);
     });
+
     return () => unsubscribe();
   }, []);
 
@@ -51,45 +54,19 @@ function App() {
             path="/"
             element={
               user ? (
-                needsSetup ? (
-                  <Navigate to="/setup" />
-                ) : (
-                  <Navigate to="/main" />
-                )
+                needsSetup ? <Navigate to="/setup" /> : <Navigate to="/main" />
               ) : (
-                <WelcomeScreen />
+                <Login onLoginSuccess={() => window.location.reload()} />
               )
             }
           />
           <Route path="/setup" element={<UserSetupPage user={user} setUser={setUser} />} />
           <Route path="/main" element={<MainPage user={user} />} />
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>
     </Router>
   );
 }
 
-function WelcomeScreen() {
-  const navigate = useNavigate();
-
-  const handleLogin = async () => {
-    const provider = new auth.GoogleAuthProvider();
-    await auth.signInWithPopup(provider);
-    navigate("/");
-  };
-
-  return (
-    <div className="centered-container">
-      <div className="card">
-        <img src="/terramine logo.png" alt="TerraMine Logo" className="logo" />
-        <h1 className="welcome-title">Welcome to TerraMine</h1>
-        <button onClick={handleLogin} className="google-button">
-          Login with Google
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default App;
-
