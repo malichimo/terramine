@@ -1,49 +1,49 @@
+// src/pages/UserSetupPage.jsx
 import React, { useState } from "react";
-import "../App.css";
+import "../App.css"; // ensure this path is correct
+import { useNavigate } from "react-router-dom";
+import { db } from "../firebase";
+import { doc, setDoc } from "firebase/firestore";
 
-function UserSetupPage({ user, onComplete }) {
+function UserSetupPage({ user }) {
   const [nickname, setNickname] = useState("");
-  const [email] = useState(user?.email || "");
-  const [submitted, setSubmitted] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Placeholder for saving user setup to Firebase
-    console.log("Saving user profile:", { email, nickname });
-
-    // Simulate success
-    setSubmitted(true);
-
-    // Call onComplete to move to main page
-    if (onComplete) onComplete();
+    try {
+      const userRef = doc(db, "users", user.uid);
+      await setDoc(userRef, {
+        uid: user.uid,
+        email: user.email,
+        nickname: nickname || user.displayName || "User",
+        terrabucks: 1000,
+        createdAt: new Date().toISOString(),
+      });
+      navigate("/main");
+    } catch (err) {
+      console.error("Error setting up user:", err);
+      alert("Setup failed. Try again.");
+    }
   };
 
-  if (submitted) {
-    return (
-      <div className="user-setup">
-        <h2>Thank you, {nickname || user?.displayName || "user"}!</h2>
-        <p>Your profile has been saved. Redirecting to your dashboard...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="user-setup">
-      <h2>Welcome to TerraMine!</h2>
-      <p>Please confirm your email and choose a nickname (optional):</p>
-      <form onSubmit={handleSubmit} className="setup-form">
-        <label>Email Address:</label>
-        <input type="email" value={email} disabled />
-
-        <label>Nickname (optional):</label>
-        <input
-          type="text"
-          placeholder="Enter nickname"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-        />
-
-        <button type="submit">Save and Continue</button>
+    <div className="setup-container">
+      <h2>User Setup</h2>
+      <form onSubmit={handleSubmit}>
+        <label>
+          Email:
+          <input value={user.email} disabled />
+        </label>
+        <label>
+          Nickname (optional):
+          <input
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            placeholder="Enter a nickname"
+          />
+        </label>
+        <button type="submit">Complete Setup</button>
       </form>
     </div>
   );
