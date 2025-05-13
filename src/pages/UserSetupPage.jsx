@@ -3,16 +3,17 @@ import { useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { auth } from "../firebase";
-import "./UserSetupPage.css"; // optional styling
+import "./UserSetupPage.css";
 
 const UserSetupPage = () => {
   const [nickname, setNickname] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const user = auth.currentUser;
-
     if (!user) return;
 
     const userRef = doc(db, "users", user.uid);
@@ -26,10 +27,14 @@ const UserSetupPage = () => {
     };
 
     try {
+      setLoading(true);
       await setDoc(userRef, data);
       navigate("/main");
     } catch (err) {
       console.error("Error saving user setup:", err);
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -37,15 +42,18 @@ const UserSetupPage = () => {
     <div className="setup-container">
       <h2>Complete Your Profile</h2>
       <form onSubmit={handleSubmit}>
-        <label>
-          Nickname (optional):
-          <input
-            type="text"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-          />
-        </label>
-        <button type="submit">Start Mining!</button>
+        <label htmlFor="nickname">Nickname (optional):</label>
+        <input
+          id="nickname"
+          type="text"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          placeholder="Enter a nickname"
+        />
+        <button type="submit" disabled={loading}>
+          {loading ? "Saving..." : "Start Mining!"}
+        </button>
+        {error && <p className="error-text">{error}</p>}
       </form>
     </div>
   );
