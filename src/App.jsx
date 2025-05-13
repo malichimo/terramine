@@ -1,11 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  useNavigate,
-  Navigate,
-} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -17,6 +11,7 @@ import UserSetupPage from "./pages/UserSetupPage";
 
 import "./App.css";
 
+// --- Handles internal routing and conditional redirect
 function AppRoutes({ user, setUser }) {
   const [loading, setLoading] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -26,27 +21,33 @@ function AppRoutes({ user, setUser }) {
     const checkUserDocument = async () => {
       if (!user?.uid) return;
 
-      const userRef = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userRef);
+      try {
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
 
-      if (userSnap.exists()) {
-        setNeedsSetup(false);
-      } else {
-        setNeedsSetup(true);
+        if (userSnap.exists()) {
+          setNeedsSetup(false);
+        } else {
+          setNeedsSetup(true);
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error("Error checking user document:", err);
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     checkUserDocument();
   }, [user]);
 
+  // 🚀 Redirect to the correct page as soon as setup status is known
   useEffect(() => {
     if (!loading) {
       if (needsSetup) {
-        navigate("/setup");
+        navigate("/setup", { replace: true });
       } else {
-        navigate("/main");
+        navigate("/main", { replace: true });
       }
     }
   }, [loading, needsSetup, navigate]);
@@ -66,13 +67,13 @@ function AppRoutes({ user, setUser }) {
       <Routes>
         <Route path="/main" element={<MainPage user={user} />} />
         <Route path="/setup" element={<UserSetupPage user={user} />} />
-        <Route path="*" element={<MainPage user={user} />} />
+        <Route path="*" element={<Navigate to={needsSetup ? "/setup" : "/main"} />} />
       </Routes>
     </>
   );
 }
 
-
+// --- Top-level app wrapper that handles auth state
 function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
