@@ -2,10 +2,9 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 import { doc, setDoc } from "firebase/firestore";
-import { auth } from "../firebase";
 import "./UserSetupPage.css";
 
-const UserSetupPage = () => {
+const UserSetupPage = ({ user }) => {
   const [nickname, setNickname] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -13,7 +12,6 @@ const UserSetupPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const user = auth.currentUser;
     if (!user) return;
 
     const userRef = doc(db, "users", user.uid);
