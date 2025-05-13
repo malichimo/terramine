@@ -1,0 +1,31 @@
+/* src/pages/UserSetupPage.css */
+.setup-container {
+  max-width: 400px;
+  margin: 80px auto;
+  padding: 2rem;
+  background-color: #ffffffcc;
+  border-radius: 8px;
+  box-shadow: 0 0 10px #00000030;
+  text-align: center;
+}
+
+.setup-container form {
+  display: flex;
+  flex-direction: column;
+}
+
+.setup-container input {
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.setup-container button {
+  padding: 0.5rem;
+  background-color: #2a9d8f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
