@@ -1,58 +1,54 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { db } from "../firebase";
-import "../App.css";
+import { doc, setDoc } from "firebase/firestore";
+import { auth } from "../firebase";
+import "./UserSetupPage.css"; // optional styling
 
-function UserSetupPage({ user }) {
-  const navigate = useNavigate();
+const UserSetupPage = () => {
   const [nickname, setNickname] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
+    const user = auth.currentUser;
+
+    if (!user) return;
+
+    const userRef = doc(db, "users", user.uid);
+    const data = {
+      uid: user.uid,
+      email: user.email,
+      nickname: nickname || user.displayName || "User",
+      terrabucks: 1000,
+      earnings: 0,
+      updatedAt: new Date().toISOString(),
+    };
 
     try {
-      const userRef = doc(db, "users", user.uid);
-      await setDoc(userRef, {
-        uid: user.uid,
-        email: user.email,
-        nickname: nickname || user.displayName || "",
-        terrabucks: 1000,
-        createdAt: Timestamp.now(),
-      });
+      await setDoc(userRef, data);
       navigate("/main");
     } catch (err) {
-      console.error("Setup failed:", err);
-      setError("Failed to complete setup. Please try again.");
-    } finally {
-      setLoading(false);
+      console.error("Error saving user setup:", err);
     }
   };
 
   return (
-    <div className="centered-container">
-      <div className="card">
-        <h2>Complete Your Profile</h2>
-        <form onSubmit={handleSubmit}>
-          <p>Email: <strong>{user.email}</strong></p>
+    <div className="setup-container">
+      <h2>Complete Your Profile</h2>
+      <form onSubmit={handleSubmit}>
+        <label>
+          Nickname (optional):
           <input
             type="text"
-            placeholder="Optional nickname"
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
           />
-          <button type="submit" disabled={loading}>
-            {loading ? "Submitting..." : "Finish Setup"}
-          </button>
-        </form>
-        {error && <p className="error-text">{error}</p>}
-      </div>
+        </label>
+        <button type="submit">Start Mining!</button>
+      </form>
     </div>
   );
-}
+};
 
 export default UserSetupPage;

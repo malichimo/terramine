@@ -1,70 +1,88 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { auth } from "./firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "./firebase";
+import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth, db } from "./firebase";
+import { doc, getDoc } from "firebase/firestore";
+import Login from "./components/Login";
 import SignOutButton from "./components/SignOutButton";
 import MainPage from "./pages/MainPage";
 import UserSetupPage from "./pages/UserSetupPage";
-import Login from "./components/Login";
 import "./App.css";
+
+function AppRoutes({ user, setUser }) {
+  const [loading, setLoading] = useState(true);
+  const [needsSetup, setNeedsSetup] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkUserDocument = async () => {
+      if (!user?.uid) return;
+
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        setNeedsSetup(false);
+        navigate("/main");
+      } else {
+        setNeedsSetup(true);
+        navigate("/setup");
+      }
+
+      setLoading(false);
+    };
+
+    checkUserDocument();
+  }, [user, navigate]);
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <p>Welcome, new user!</p>
+        <p>Redirecting...</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <SignOutButton onSignOut={() => signOut(auth).then(() => setUser(null))} />
+      <Routes>
+        {needsSetup ? (
+          <Route path="/setup" element={<UserSetupPage user={user} />} />
+        ) : (
+          <Route path="/main" element={<MainPage user={user} />} />
+        )}
+        <Route path="*" element={<MainPage user={user} />} />
+      </Routes>
+    </>
+  );
+}
 
 function App() {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [needsSetup, setNeedsSetup] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const userRef = doc(db, "users", firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          setNeedsSetup(false);
-        } else {
-          // Create placeholder to flag setup
-          await setDoc(userRef, {
-            email: firebaseUser.email,
-            createdAt: new Date().toISOString(),
-          });
-          setNeedsSetup(true);
-        }
-        setUser(firebaseUser);
-      } else {
-        setUser(null);
-        setNeedsSetup(false);
-      }
-      setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setAuthChecked(true);
     });
 
     return () => unsubscribe();
   }, []);
 
-  if (loading) {
-    return <div className="centered-text">Loading...</div>;
+  if (!authChecked) {
+    return <div className="loading-screen">Checking authentication...</div>;
   }
 
   return (
     <Router>
-      <div className="App">
-        {user && <SignOutButton />}
-        <Routes>
-          <Route
-            path="/"
-            element={
-              user ? (
-                needsSetup ? <Navigate to="/setup" /> : <Navigate to="/main" />
-              ) : (
-                <Login onLoginSuccess={() => window.location.reload()} />
-              )
-            }
-          />
-          <Route path="/setup" element={<UserSetupPage user={user} setUser={setUser} />} />
-          <Route path="/main" element={<MainPage user={user} />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </div>
+      {user ? (
+        <AppRoutes user={user} setUser={setUser} />
+      ) : (
+        <Login onLoginSuccess={(user) => setUser(user)} />
+      )}
     </Router>
   );
 }
