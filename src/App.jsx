@@ -19,7 +19,7 @@ import "./App.css";
 
 function AppRoutes({ user, setUser }) {
   const [loading, setLoading] = useState(true);
-  const [needsSetup, setNeedsSetup] = useState(null); // null means still checking
+  const [needsSetup, setNeedsSetup] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -41,7 +41,17 @@ function AppRoutes({ user, setUser }) {
     checkUserDocument();
   }, [user]);
 
-  if (loading || needsSetup === null) {
+  useEffect(() => {
+    if (!loading) {
+      if (needsSetup) {
+        navigate("/setup");
+      } else {
+        navigate("/main");
+      }
+    }
+  }, [loading, needsSetup, navigate]);
+
+  if (loading) {
     return (
       <div className="loading-screen">
         <p>Welcome, new user!</p>
@@ -54,23 +64,14 @@ function AppRoutes({ user, setUser }) {
     <>
       <SignOutButton onSignOut={() => signOut(auth).then(() => setUser(null))} />
       <Routes>
-        <Route
-          path="/main"
-          element={!needsSetup ? <MainPage user={user} /> : <Navigate to="/setup" />}
-        />
-        <Route
-          path="/setup"
-          element={needsSetup ? <UserSetupPage user={user} /> : <Navigate to="/main" />}
-        />
-        {/* Redirect unknown routes based on setup status */}
-        <Route
-          path="*"
-          element={<Navigate to={needsSetup ? "/setup" : "/main"} />}
-        />
+        <Route path="/main" element={<MainPage user={user} />} />
+        <Route path="/setup" element={<UserSetupPage user={user} />} />
+        <Route path="*" element={<MainPage user={user} />} />
       </Routes>
     </>
   );
 }
+
 
 function App() {
   const [user, setUser] = useState(null);
