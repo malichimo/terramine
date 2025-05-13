@@ -1,17 +1,25 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useNavigate,
+  Navigate,
+} from "react-router-dom";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
+
 import Login from "./components/Login";
 import SignOutButton from "./components/SignOutButton";
 import MainPage from "./pages/MainPage";
 import UserSetupPage from "./pages/UserSetupPage";
+
 import "./App.css";
 
 function AppRoutes({ user, setUser }) {
   const [loading, setLoading] = useState(true);
-  const [needsSetup, setNeedsSetup] = useState(false);
+  const [needsSetup, setNeedsSetup] = useState(null); // null means still checking
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,23 +31,21 @@ function AppRoutes({ user, setUser }) {
 
       if (userSnap.exists()) {
         setNeedsSetup(false);
-        navigate("/main");
       } else {
         setNeedsSetup(true);
-        navigate("/setup");
       }
 
       setLoading(false);
     };
 
     checkUserDocument();
-  }, [user, navigate]);
+  }, [user]);
 
-  if (loading) {
+  if (loading || needsSetup === null) {
     return (
       <div className="loading-screen">
         <p>Welcome, new user!</p>
-        <p>Redirecting...</p>
+        <p>Redirecting to setup page...</p>
       </div>
     );
   }
@@ -48,12 +54,19 @@ function AppRoutes({ user, setUser }) {
     <>
       <SignOutButton onSignOut={() => signOut(auth).then(() => setUser(null))} />
       <Routes>
-        {needsSetup ? (
-          <Route path="/setup" element={<UserSetupPage user={user} />} />
-        ) : (
-          <Route path="/main" element={<MainPage user={user} />} />
-        )}
-        <Route path="*" element={<MainPage user={user} />} />
+        <Route
+          path="/main"
+          element={!needsSetup ? <MainPage user={user} /> : <Navigate to="/setup" />}
+        />
+        <Route
+          path="/setup"
+          element={needsSetup ? <UserSetupPage user={user} /> : <Navigate to="/main" />}
+        />
+        {/* Redirect unknown routes based on setup status */}
+        <Route
+          path="*"
+          element={<Navigate to={needsSetup ? "/setup" : "/main"} />}
+        />
       </Routes>
     </>
   );
