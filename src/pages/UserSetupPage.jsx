@@ -1,60 +1,26 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { db } from "../firebase";
-import { doc, setDoc } from "firebase/firestore";
+import React from "react";
 import "./UserSetupPage.css";
 
-const UserSetupPage = ({ user }) => {
-  const [nickname, setNickname] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const navigate = useNavigate();
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!user) return;
-
-    const userRef = doc(db, "users", user.uid);
-    const data = {
-      uid: user.uid,
-      email: user.email,
-      nickname: nickname || user.displayName || "User",
-      terrabucks: 1000,
-      earnings: 0,
-      updatedAt: new Date().toISOString(),
-    };
-
-    try {
-      setLoading(true);
-      await setDoc(userRef, data);
-      navigate("/main");
-    } catch (err) {
-      console.error("Error saving user setup:", err);
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+export default function UserSetupPage({ user }) {
   return (
-    <div className="setup-container">
-      <h2>Complete Your Profile</h2>
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="nickname">Nickname (optional):</label>
-        <input
-          id="nickname"
-          type="text"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          placeholder="Enter a nickname"
-        />
-        <button type="submit" disabled={loading}>
-          {loading ? "Saving..." : "Start Mining!"}
-        </button>
-        {error && <p className="error-text">{error}</p>}
+    <div className="setup-page">
+      <h1>User Setup</h1>
+      <p>Welcome, {user?.email || "unknown user"}!</p>
+
+      <form className="setup-form">
+        <label>
+          Nickname (optional):
+          <input type="text" name="nickname" placeholder="Enter your nickname" />
+        </label>
+
+        <label>
+          Email Address:
+          <input type="email" value={user?.email} disabled />
+        </label>
+
+        <button type="submit">Finish Setup</button>
       </form>
     </div>
   );
-};
+}
 
-export default UserSetupPage;
