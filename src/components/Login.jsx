@@ -3,6 +3,8 @@ import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 import "./Login.css";
 
+<img src="/logo.png" alt="Logo" className="logo" />
+
 export default function Login({ onLoginSuccess }) {
   const handleGoogleSignIn = async () => {
     try {

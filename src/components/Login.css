@@ -94,3 +94,9 @@ html, body {
     width: 6em; /* Adjust width for smaller screens */
   }
 }
+
+.logo {
+  width: 150px;
+  height: auto;
+  margin-bottom: 1rem;
+}
