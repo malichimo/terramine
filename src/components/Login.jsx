@@ -1,40 +1,31 @@
 // src/components/Login.jsx
-import React, { useRef, useEffect } from "react";
-import { signInWithPopup, signInWithRedirect } from "firebase/auth";
+import React from "react";
+import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 import "./Login.css";
 
-function Login({ onLoginSuccess }) {
-  const loginButtonRef = useRef(null);
-
-  useEffect(() => {
-    if (loginButtonRef.current) {
-      loginButtonRef.current.focus();
-    }
-  }, []);
-
+const Login = ({ onLoginSuccess }) => {
   const handleGoogleSignIn = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      onLoginSuccess(result.user);
+      if (onLoginSuccess) {
+        onLoginSuccess(result.user);
+      }
     } catch (error) {
       console.error("Login failed:", error);
+      alert("Google login failed. Please try again.");
     }
   };
 
   return (
     <div className="login-container">
-      <h1>Welcome to TerraMine</h1>
-      <img src="terramine logo.png" alt="Login" className="login-image" />
-      <button
-        ref={loginButtonRef}
-        className="login-button"
-        onClick={handleGoogleSignIn}
-      >
+      <h1 className="login-title">Welcome to TerraMine</h1>
+      <img src="/terramine logo.png" alt="TerraMine Logo" className="logo" />
+      <button className="google-button" onClick={handleGoogleSignIn}>
         Sign in with Google
       </button>
     </div>
   );
-}
+};
 
 export default Login;
