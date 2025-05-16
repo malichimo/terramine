@@ -19,3 +19,5 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
+
+console.log("✅ Firebase API Key:", import.meta.env.VITE_API_KEY);
