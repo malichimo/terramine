@@ -1,25 +1,25 @@
 import React from "react";
-import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
+import { signInWithRedirect } from "firebase/auth";
 import "./Login.css";
 
-<img src="/logo.png" alt="Logo" className="logo" />
-
-export default function Login({ onLoginSuccess }) {
-  const handleGoogleSignIn = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      onLoginSuccess(result.user);
-    } catch (error) {
-      console.error("Login failed:", error);
-    }
+export default function Login() {
+  const handleGoogleSignIn = () => {
+    signInWithRedirect(auth, googleProvider)
+      .then(() => {
+        console.log("Redirecting to Google login...");
+      })
+      .catch((error) => {
+        console.error("Login failed:", error);
+      });
   };
 
   return (
     <div className="login-container">
       <h1>Welcome to TerraMine</h1>
-      <img src="/logo.png" alt="Logo" />
-      <button onClick={handleGoogleSignIn}>Sign in with Google</button>
+      <img src="/Terramine logo.png" alt="Logo" className="logo" />
+      <button onClick={handleGoogleSignIn}>SIGN IN WITH GOOGLE</button>
     </div>
   );
 }
+
