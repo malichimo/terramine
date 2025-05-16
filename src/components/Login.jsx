@@ -17,7 +17,7 @@ export default function Login() {
   return (
     <div className="login-container">
       <h1>Welcome to TerraMine</h1>
-      <img src="/Terramine logo.png" alt="Logo" className="logo" />
+      <img src="/logo.png" alt="Logo" className="logo" />
       <button onClick={handleGoogleSignIn}>SIGN IN WITH GOOGLE</button>
     </div>
   );
