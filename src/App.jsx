@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { onAuthStateChanged, signOut, getRedirectResult } from "firebase/auth";
 import { auth, db } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -13,6 +13,7 @@ import "./App.css";
 function AppRoutes({ user, setUser }) {
   const [loading, setLoading] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkUserDocument = async () => {
@@ -22,23 +23,28 @@ function AppRoutes({ user, setUser }) {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
 
-        setNeedsSetup(!userSnap.exists());
-      } catch (error) {
-        console.error("Error checking user setup:", error);
-        setNeedsSetup(true);
+        if (userSnap.exists()) {
+          setNeedsSetup(false);
+          navigate("/main");
+        } else {
+          setNeedsSetup(true);
+          navigate("/setup");
+        }
+      } catch (err) {
+        console.error("❌ Failed to check user document:", err);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     checkUserDocument();
-  }, [user]);
+  }, [user, navigate]);
 
   if (loading) {
     return (
       <div className="loading-screen">
         <p>Welcome, new user!</p>
-        <p>Redirecting to setup page...</p>
+        <p>Redirecting...</p>
       </div>
     );
   }
@@ -49,7 +55,7 @@ function AppRoutes({ user, setUser }) {
       <Routes>
         <Route path="/main" element={<MainPage user={user} />} />
         <Route path="/setup" element={<UserSetupPage user={user} />} />
-        <Route path="*" element={<Navigate to={needsSetup ? "/setup" : "/main"} replace />} />
+        <Route path="*" element={<Navigate to={needsSetup ? "/setup" : "/main"} />} />
       </Routes>
     </>
   );
@@ -60,7 +66,20 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
+    // Handle redirect result from Google login
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          console.log("✅ Google login redirect result:", result.user);
+          setUser(result.user);
+        }
+      })
+      .catch((error) => {
+        console.error("❌ Redirect login failed:", error);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      console.log("👤 Auth state changed:", firebaseUser);
       setUser(firebaseUser);
       setAuthChecked(true);
     });
