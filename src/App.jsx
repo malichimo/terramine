@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { onAuthStateChanged, signOut, getRedirectResult } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
-
 import Login from "./components/Login";
 import SignOutButton from "./components/SignOutButton";
 import MainPage from "./pages/MainPage";
@@ -24,14 +23,16 @@ function AppRoutes({ user, setUser }) {
         const userSnap = await getDoc(userRef);
 
         if (userSnap.exists()) {
+          console.log("✅ User document exists. Redirecting to main.");
           setNeedsSetup(false);
           navigate("/main");
         } else {
+          console.log("👤 New user detected. Redirecting to setup.");
           setNeedsSetup(true);
           navigate("/setup");
         }
-      } catch (err) {
-        console.error("❌ Failed to check user document:", err);
+      } catch (error) {
+        console.error("🔥 Error checking user document:", error);
       } finally {
         setLoading(false);
       }
@@ -66,20 +67,8 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    // Handle redirect result from Google login
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          console.log("✅ Google login redirect result:", result.user);
-          setUser(result.user);
-        }
-      })
-      .catch((error) => {
-        console.error("❌ Redirect login failed:", error);
-      });
-
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      console.log("👤 Auth state changed:", firebaseUser);
+      console.log("👥 Auth state changed:", firebaseUser);
       setUser(firebaseUser);
       setAuthChecked(true);
     });
