@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, getRedirectResult, signOut } from "firebase/auth";
 import { auth, db } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
 import Login from "./components/Login";
@@ -67,13 +67,29 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      console.log("👥 Auth state changed:", firebaseUser);
-      setUser(firebaseUser);
-      setAuthChecked(true);
-    });
+    // Handle redirect result FIRST
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          console.log("✅ Google redirect result:", result.user);
+          setUser(result.user);
+        } else {
+          console.log("ℹ️ No redirect result found.");
+        }
+      })
+      .catch((error) => {
+        console.error("❌ Redirect login error:", error);
+      })
+      .finally(() => {
+        // Set up auth state listener
+        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+          console.log("👥 Auth state changed:", firebaseUser);
+          setUser(firebaseUser);
+          setAuthChecked(true);
+        });
 
-    return () => unsubscribe();
+        return () => unsubscribe();
+      });
   }, []);
 
   if (!authChecked) {
