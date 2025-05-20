@@ -20,3 +20,4 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
+console.log("✅ Loaded env key:", import.meta.env.VITE_FIREBASE_API_KEY);
