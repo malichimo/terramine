@@ -1,17 +1,6 @@
-// App.jsx
 import React, { useEffect, useState } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-  useNavigate,
-} from "react-router-dom";
-import {
-  onAuthStateChanged,
-  getRedirectResult,
-  signOut,
-} from "firebase/auth";
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { onAuthStateChanged, getRedirectResult, signOut } from "firebase/auth";
 import { auth, db } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
 import Login from "./components/Login";
@@ -67,10 +56,7 @@ function AppRoutes({ user, setUser }) {
       <Routes>
         <Route path="/main" element={<MainPage user={user} />} />
         <Route path="/setup" element={<UserSetupPage user={user} />} />
-        <Route
-          path="*"
-          element={<Navigate to={needsSetup ? "/setup" : "/main"} />}
-        />
+        <Route path="*" element={<Navigate to={needsSetup ? "/setup" : "/main"} />} />
       </Routes>
     </>
   );
@@ -81,29 +67,27 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    // Listen for auth changes
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("👥 Auth state changed:", firebaseUser);
-      if (!firebaseUser) {
-        try {
-          const result = await getRedirectResult(auth);
-          if (result?.user) {
-            console.log("🔁 Retrieved user from redirect result:", result.user);
-            setUser(result.user);
-          } else {
-            console.log("⚠️ No redirect result found.");
-          }
-        } catch (err) {
-          console.error("❌ Error getting redirect result:", err);
+    // First try to finalize redirect result
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          console.log("✅ Firebase redirect result user:", result.user);
+          setUser(result.user);
+        } else {
+          console.log("ℹ️ No redirect result found.");
         }
-      } else {
-        setUser(firebaseUser);
-      }
-
-      setAuthChecked(true);
-    });
-
-    return () => unsubscribe();
+      })
+      .catch((error) => {
+        console.error("❌ Error during redirect login:", error);
+      })
+      .finally(() => {
+        // Regardless of result, start listening to auth state
+        onAuthStateChanged(auth, (firebaseUser) => {
+          console.log("👥 Auth state changed:", firebaseUser);
+          setUser(firebaseUser);
+          setAuthChecked(true);
+        });
+      });
   }, []);
 
   if (!authChecked) {
@@ -115,7 +99,7 @@ function App() {
       {user ? (
         <AppRoutes user={user} setUser={setUser} />
       ) : (
-        <Login onLoginSuccess={(user) => setUser(user)} />
+        <Login />
       )}
     </Router>
   );

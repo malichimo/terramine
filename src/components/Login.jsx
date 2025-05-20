@@ -1,25 +1,10 @@
 // src/components/Login.jsx
-import React, { useEffect } from "react";
-import { signInWithRedirect, getRedirectResult } from "firebase/auth";
+import React from "react";
+import { signInWithRedirect } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 import "./Login.css";
 
-const Login = ({ onLoginSuccess }) => {
-  useEffect(() => {
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          console.log("✅ Redirect result found:", result.user);
-          onLoginSuccess(result.user); // ✅ Pass the user back to App.jsx
-        } else {
-          console.log("ℹ️ No redirect result found.");
-        }
-      })
-      .catch((error) => {
-        console.error("❌ Error during redirect sign-in:", error);
-      });
-  }, []);
-
+const Login = () => {
   const handleLogin = () => {
     signInWithRedirect(auth, googleProvider);
   };
