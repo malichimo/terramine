@@ -1,6 +1,17 @@
+// App.jsx
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { onAuthStateChanged, getRedirectResult, signOut } from "firebase/auth";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
+import {
+  onAuthStateChanged,
+  getRedirectResult,
+  signOut,
+} from "firebase/auth";
 import { auth, db } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
 import Login from "./components/Login";
@@ -56,7 +67,10 @@ function AppRoutes({ user, setUser }) {
       <Routes>
         <Route path="/main" element={<MainPage user={user} />} />
         <Route path="/setup" element={<UserSetupPage user={user} />} />
-        <Route path="*" element={<Navigate to={needsSetup ? "/setup" : "/main"} />} />
+        <Route
+          path="*"
+          element={<Navigate to={needsSetup ? "/setup" : "/main"} />}
+        />
       </Routes>
     </>
   );
@@ -67,29 +81,29 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    // Handle redirect result FIRST
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          console.log("✅ Google redirect result:", result.user);
-          setUser(result.user);
-        } else {
-          console.log("ℹ️ No redirect result found.");
+    // Listen for auth changes
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("👥 Auth state changed:", firebaseUser);
+      if (!firebaseUser) {
+        try {
+          const result = await getRedirectResult(auth);
+          if (result?.user) {
+            console.log("🔁 Retrieved user from redirect result:", result.user);
+            setUser(result.user);
+          } else {
+            console.log("⚠️ No redirect result found.");
+          }
+        } catch (err) {
+          console.error("❌ Error getting redirect result:", err);
         }
-      })
-      .catch((error) => {
-        console.error("❌ Redirect login error:", error);
-      })
-      .finally(() => {
-        // Set up auth state listener
-        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-          console.log("👥 Auth state changed:", firebaseUser);
-          setUser(firebaseUser);
-          setAuthChecked(true);
-        });
+      } else {
+        setUser(firebaseUser);
+      }
 
-        return () => unsubscribe();
-      });
+      setAuthChecked(true);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   if (!authChecked) {
