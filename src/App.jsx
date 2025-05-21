@@ -23,16 +23,16 @@ function AppRoutes({ user, setUser }) {
         const userSnap = await getDoc(userRef);
 
         if (userSnap.exists()) {
-          console.log("✅ User document exists. Redirecting to main.");
+          console.log("✅ User document found, redirecting to /main");
           setNeedsSetup(false);
           navigate("/main");
         } else {
-          console.log("👤 New user detected. Redirecting to setup.");
+          console.log("👤 New user detected, redirecting to /setup");
           setNeedsSetup(true);
           navigate("/setup");
         }
       } catch (error) {
-        console.error("🔥 Error checking user document:", error);
+        console.error("❌ Error checking user document:", error);
       } finally {
         setLoading(false);
       }
@@ -67,27 +67,28 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    // First try to finalize redirect result
+    // First check redirect result
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
-          console.log("✅ Firebase redirect result user:", result.user);
+          console.log("✅ Redirect login user:", result.user);
           setUser(result.user);
         } else {
-          console.log("ℹ️ No redirect result found.");
+          console.log("ℹ️ No redirect user found.");
         }
       })
       .catch((error) => {
-        console.error("❌ Error during redirect login:", error);
-      })
-      .finally(() => {
-        // Regardless of result, start listening to auth state
-        onAuthStateChanged(auth, (firebaseUser) => {
-          console.log("👥 Auth state changed:", firebaseUser);
-          setUser(firebaseUser);
-          setAuthChecked(true);
-        });
+        console.error("❌ Error in getRedirectResult:", error.message);
       });
+
+    // Then listen for auth state
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      console.log("👥 Auth state changed:", firebaseUser);
+      setUser(firebaseUser);
+      setAuthChecked(true);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   if (!authChecked) {
@@ -99,7 +100,7 @@ function App() {
       {user ? (
         <AppRoutes user={user} setUser={setUser} />
       ) : (
-        <Login />
+        <Login onLoginSuccess={(user) => setUser(user)} />
       )}
     </Router>
   );
