@@ -1,3 +1,4 @@
+/* App.css */
 @font-face {
   font-family: 'DominoBrick';
   src: url('/DominoBrick.ttf') format('truetype');
@@ -5,90 +6,90 @@
   font-style: normal;
 }
 
-body {
-  margin: 0;
-  font-family: 'SuperNormal', sans-serif;
-  background: linear-gradient(135deg, #b7e2e5, #a0d9c6);
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-  min-height: 100vh;
+@font-face {
+  font-family: 'SuperNormal';
+  src: url('/SuperNormal.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
 }
 
-.app-container {
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'SuperNormal', Arial, sans-serif;
+  background: linear-gradient(135deg, #e0f7fa 0%, #80deea 100%);
+}
+
+#root {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Login Page Layout */
+.login-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
   height: 100vh;
+  padding: 2em 0;
+}
+
+.login-container h1 {
+  font-family: 'DominoBrick', sans-serif;
+  font-size: 4em;
+  color: #333;
+  margin-bottom: 0.3em;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
   text-align: center;
 }
 
-.app-header h1 {
-  font-family: 'DominoBrick', cursive;
-  font-size: 3rem;
-  color: #333;
+.login-container .logo {
+  width: 100px;
+  height: auto;
+  margin-bottom: 1.5rem;
 }
 
 .google-login-button {
-  font-size: 16px;
-  padding: 10px 20px;
-  margin-top: 20px;
-  background-color: #4285F4;
+  font-family: 'SuperNormal', Arial, sans-serif;
+  background: linear-gradient(135deg, #4285F4 0%, #34A853 100%);
   color: white;
+  padding: 0.5em 1.5em;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  font-family: 'Trebuchet MS', sans-serif;
-}
-
-.logo {
-  width: 120px;
-  margin-bottom: 20px;
-}
-body {
-  margin: 0;
-  font-family: 'SuperNormal', sans-serif;
-  background: linear-gradient(135deg, #b7e2e5, #a0d9c6);
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.landing-screen {
-  text-align: center;
-}
-
-.landing-box {
-  background-color: rgba(255, 255, 255, 0.9);
-  padding: 40px;
-  border-radius: 20px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-}
-
-.landing-logo {
-  width: 120px;
-  margin-bottom: 20px;
-}
-
-.landing-title {
-  font-family: 'DominoBrick', cursive;
-  font-size: 3rem;
-  margin: 0 0 20px;
-  color: #333;
-}
-
-.google-login-button {
-  font-size: 18px;
-  padding: 12px 24px;
-  background-color: #4285F4;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s;
+  font-size: 1.2em;
+  transition: background-color 0.3s, transform 0.3s;
+  margin-top: 1.5em;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .google-login-button:hover {
-  background-color: #357ae8;
+  background: linear-gradient(135deg, #357ABD 0%, #2E7D32 100%);
+  transform: translateY(-2px);
+}
+
+.google-login-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.5);
+}
+
+/* Responsive image resizing */
+@media (max-width: 768px) {
+  .login-container .logo {
+    width: 80px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-container .logo {
+    width: 60px;
+  }
 }

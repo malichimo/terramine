@@ -1,15 +1,12 @@
+// src/components/Login.jsx
 import React, { useEffect } from "react";
-import {
-  signInWithRedirect,
-  getRedirectResult,
-  setPersistence,
-  browserSessionPersistence
-} from "firebase/auth";
+import { signInWithRedirect, getRedirectResult } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 import "./Login.css";
 
-const Login = ({ onLoginSuccess }) => {
+export default function Login({ onLoginSuccess }) {
   useEffect(() => {
+    // Check for redirect result on initial load
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
@@ -20,18 +17,17 @@ const Login = ({ onLoginSuccess }) => {
         }
       })
       .catch((error) => {
-        console.error("❌ Error during redirect sign-in:", error);
+        console.error("❌ Redirect error:", error.message);
       });
-  }, []);
+  }, [onLoginSuccess]);
 
   const handleLogin = () => {
-    setPersistence(auth, browserSessionPersistence)
-      .then(() => {
-        signInWithRedirect(auth, googleProvider);
-      })
-      .catch((err) => {
-        console.error("❌ Error setting persistence:", err);
-      });
+    console.log("🔁 Initiating Google sign-in...");
+    try {
+      signInWithRedirect(auth, googleProvider);
+    } catch (error) {
+      console.error("❌ Error initiating redirect:", error.message);
+    }
   };
 
   return (
@@ -40,11 +36,11 @@ const Login = ({ onLoginSuccess }) => {
       <img
         src="/terramine logo.png"
         alt="TerraMine Logo"
-        style={{ width: "100px", marginBottom: "20px" }}
+        className="login-image logo"
       />
-      <button onClick={handleLogin}>Sign In with Google</button>
+      <button onClick={handleLogin} className="login-button">
+        Sign In with Google
+      </button>
     </div>
   );
-};
-
-export default Login;
+}
