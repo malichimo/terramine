@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { onAuthStateChanged, getRedirectResult, signOut } from "firebase/auth";
-import { auth, db } from "./firebase";
+import { onAuthStateChanged, getRedirectResult, signOut, signInWithRedirect } from "firebase/auth";
+import { auth, db, googleProvider } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
 import Login from "./components/Login";
 import SignOutButton from "./components/SignOutButton";
@@ -100,7 +100,12 @@ function App() {
       {user ? (
         <AppRoutes user={user} setUser={setUser} />
       ) : (
-        <Login onLoginSuccess={(user) => setUser(user)} />
+        <>
+          <Login onLoginSuccess={(user) => setUser(user)} />
+          <button onClick={() => signInWithRedirect(auth, googleProvider)}>
+            Minimal Google Sign-In
+          </button>
+        </>
       )}
     </Router>
   );
