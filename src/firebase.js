@@ -18,6 +18,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
+console.log("Firebase API Key:",import.meta.env.VITE_FIREBASE_API_KEY);
+
 export const auth = getAuth(app);
 setPersistence(auth, browserLocalPersistence);
 
