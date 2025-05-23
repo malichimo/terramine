@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { onAuthStateChanged, getRedirectResult, signOut } from "firebase/auth";
+import { onAuthStateChanged, getRedirectResult, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { auth, db } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
 import Login from "./components/Login";
@@ -67,8 +67,12 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    // First check redirect result
-    getRedirectResult(auth)
+    // Set Firebase Auth persistence before anything else
+    setPersistence(auth, browserLocalPersistence)
+      .then(() => {
+        // First check redirect result
+        return getRedirectResult(auth);
+      })
       .then((result) => {
         if (result?.user) {
           console.log("✅ Redirect login user:", result.user);
@@ -78,7 +82,7 @@ function App() {
         }
       })
       .catch((error) => {
-        console.error("❌ Error in getRedirectResult:", error.message);
+        console.error("❌ Error in getRedirectResult or setPersistence:", error.message);
       });
 
     // Then listen for auth state
