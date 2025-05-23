@@ -1,9 +1,7 @@
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
-  GoogleAuthProvider,
-  setPersistence,
-  browserSessionPersistence
+  GoogleAuthProvider
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
@@ -19,11 +17,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-
-// 🔐 Force session-based auth
-setPersistence(auth, browserSessionPersistence).catch((err) => {
-  console.error("❌ Error setting session persistence:", err);
-});
 
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
