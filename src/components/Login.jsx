@@ -1,7 +1,7 @@
 // src/components/Login.jsx
 import React, { useEffect } from "react";
-import { signInWithRedirect, getRedirectResult } from "firebase/auth";
-import { auth, googleProvider } from "../firebase";
+import { signInWithRedirect, getRedirectResult, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { auth } from "../firebase";
 import "./Login.css";
 
 export default function Login({ onLoginSuccess }) {
@@ -21,10 +21,12 @@ export default function Login({ onLoginSuccess }) {
       });
   }, [onLoginSuccess]);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     console.log("🔁 Initiating Google sign-in...");
     try {
-      signInWithRedirect(auth, googleProvider);
+      await setPersistence(auth, browserLocalPersistence);
+      const provider = new GoogleAuthProvider();
+      await signInWithRedirect(auth, provider);
     } catch (error) {
       console.error("❌ Error initiating redirect:", error.message);
     }
