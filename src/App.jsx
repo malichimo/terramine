@@ -1,6 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { onAuthStateChanged, getRedirectResult, signOut, signInWithRedirect } from "firebase/auth";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
+import {
+  onAuthStateChanged,
+  getRedirectResult,
+  signOut,
+  signInWithRedirect,
+} from "firebase/auth";
 import { auth, db, googleProvider } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
 import Login from "./components/Login";
@@ -56,7 +67,8 @@ function AppRoutes({ user, setUser }) {
       <Routes>
         <Route path="/main" element={<MainPage user={user} />} />
         <Route path="/setup" element={<UserSetupPage user={user} />} />
-        <Route path="*" element={<Navigate to={needsSetup ? "/setup" : "/main"} />} />
+        <Route path="/" element={<Navigate to={needsSetup ? "/setup" : "/main"} />} />
+        <Route path="*" element={<Navigate to="/main" />} />
       </Routes>
     </>
   );
@@ -67,7 +79,6 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    // Only check redirect result, do not set persistence here
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
@@ -81,7 +92,6 @@ function App() {
         console.error("❌ Error in getRedirectResult:", error.message);
       });
 
-    // Listen for auth state
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       console.log("👥 Auth state changed:", firebaseUser);
       setUser(firebaseUser);
