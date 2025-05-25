@@ -6,7 +6,7 @@ import {
   Navigate,
   useNavigate,
 } from "react-router-dom";
-
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db, googleProvider } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
 import Login from "./components/Login";
@@ -73,6 +73,14 @@ function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
 
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    console.log("👥 Auth state changed:", firebaseUser);
+    setUser(firebaseUser);
+    setAuthChecked(true);
+  });
+  return () => unsubscribe();
+}, []);
 
 
   return (
