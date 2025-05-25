@@ -1,4 +1,4 @@
-// src/components/Login.jsx
+
 import React, { useState, useEffect } from "react";
 import {
   signInWithPopup,
@@ -26,7 +26,7 @@ export default function Login({ onLoginSuccess }) {
   }, [onLoginSuccess]);
 
   const handleLogin = async () => {
-    console.log("🔁 Starting login flow"); // NEW
+    console.log("🔁 Starting login flow");
     try {
       await setPersistence(auth, browserLocalPersistence);
       const provider = new GoogleAuthProvider();
@@ -37,7 +37,7 @@ export default function Login({ onLoginSuccess }) {
       onLoginSuccess(result.user);
     } catch (error) {
       console.error("❌ Popup login error:", error.message);
-    } 
+    }
   };
 
   const handleSignOut = async () => {
@@ -54,10 +54,11 @@ export default function Login({ onLoginSuccess }) {
         alt="TerraMine Logo"
         className="login-image logo"
       />
-      <button onClick={handleLogin} className="login-button">
-        Sign In with Google
-      </button>
-      {user && (
+      {!user ? (
+        <button onClick={handleLogin} className="login-button">
+          Sign In with Google
+        </button>
+      ) : (
         <button onClick={handleSignOut} className="logout-button">
           Sign Out
         </button>
