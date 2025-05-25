@@ -26,6 +26,7 @@ export default function Login({ onLoginSuccess }) {
   }, [onLoginSuccess]);
 
   const handleLogin = async () => {
+    console.log("🔁 Starting login flow"); // NEW
     try {
       await setPersistence(auth, browserLocalPersistence);
       const provider = new GoogleAuthProvider();
@@ -36,7 +37,7 @@ export default function Login({ onLoginSuccess }) {
       onLoginSuccess(result.user);
     } catch (error) {
       console.error("❌ Popup login error:", error.message);
-    }
+    } 
   };
 
   const handleSignOut = async () => {
