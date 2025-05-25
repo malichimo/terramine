@@ -1,16 +1,24 @@
-// src/components/Login.jsx
-import React, { useEffect } from "react";
-import { signInWithRedirect, getRedirectResult, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
+import React, { useEffect, useState } from "react";
+import {
+  signInWithRedirect,
+  getRedirectResult,
+  GoogleAuthProvider,
+  setPersistence,
+  browserLocalPersistence,
+  signOut,
+} from "firebase/auth";
 import { auth } from "../firebase";
 import "./Login.css";
 
 export default function Login({ onLoginSuccess }) {
+  const [user, setUser] = useState(null);
+
   useEffect(() => {
-    // Check for redirect result on initial load
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
           console.log("✅ Redirect result found:", result.user);
+          setUser(result.user);
           onLoginSuccess(result.user);
         } else {
           console.log("ℹ️ No redirect result found.");
@@ -26,10 +34,16 @@ export default function Login({ onLoginSuccess }) {
     try {
       await setPersistence(auth, browserLocalPersistence);
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" }); // 👈 forces popup
       await signInWithRedirect(auth, provider);
     } catch (error) {
       console.error("❌ Error initiating redirect:", error.message);
     }
+  };
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    setUser(null);
   };
 
   return (
@@ -43,6 +57,11 @@ export default function Login({ onLoginSuccess }) {
       <button onClick={handleLogin} className="login-button">
         Sign In with Google
       </button>
+      {user && (
+        <button onClick={handleSignOut} className="logout-button">
+          Sign Out
+        </button>
+      )}
     </div>
   );
 }
