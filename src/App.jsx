@@ -79,26 +79,30 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    getRedirectResult(auth)
-      .then((result) => {
+    const processRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
         if (result?.user) {
-          console.log("✅ Redirect login user:", result.user);
+          console.log("✅ Redirect result found:", result.user);
           setUser(result.user);
         } else {
-          console.log("ℹ️ No redirect user found.");
+          console.log("ℹ️ No redirect result found.");
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error("❌ Error in getRedirectResult:", error.message);
+      }
+
+      // Now listen for auth state
+      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        console.log("👥 Auth state changed:", firebaseUser);
+        setUser(firebaseUser);
+        setAuthChecked(true);
       });
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      console.log("👥 Auth state changed:", firebaseUser);
-      setUser(firebaseUser);
-      setAuthChecked(true);
-    });
+      return () => unsubscribe();
+    };
 
-    return () => unsubscribe();
+    processRedirect();
   }, []);
 
   if (!authChecked) {
@@ -110,12 +114,7 @@ function App() {
       {user ? (
         <AppRoutes user={user} setUser={setUser} />
       ) : (
-        <>
-          <Login onLoginSuccess={(user) => setUser(user)} />
-          <button onClick={() => signInWithRedirect(auth, googleProvider)}>
-            Minimal Google Sign-In
-          </button>
-        </>
+        <Login onLoginSuccess={(user) => setUser(user)} />
       )}
     </Router>
   );
