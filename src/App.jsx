@@ -6,12 +6,7 @@ import {
   Navigate,
   useNavigate,
 } from "react-router-dom";
-import {
-  onAuthStateChanged,
-  getRedirectResult,
-  signOut,
-  signInWithRedirect,
-} from "firebase/auth";
+
 import { auth, db, googleProvider } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
 import Login from "./components/Login";
@@ -78,36 +73,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
 
-  useEffect(() => {
-    const processRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result?.user) {
-          console.log("✅ Redirect result found:", result.user);
-          setUser(result.user);
-        } else {
-          console.log("ℹ️ No redirect result found.");
-        }
-      } catch (error) {
-        console.error("❌ Error in getRedirectResult:", error.message);
-      }
 
-      // Now listen for auth state
-      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-        console.log("👥 Auth state changed:", firebaseUser);
-        setUser(firebaseUser);
-        setAuthChecked(true);
-      });
-
-      return () => unsubscribe();
-    };
-
-    processRedirect();
-  }, []);
-
-  if (!authChecked) {
-    return <div className="loading-screen">Checking authentication...</div>;
-  }
 
   return (
     <Router>
