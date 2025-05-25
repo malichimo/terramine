@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from "react";
+// src/components/Login.jsx
+import React, { useState, useEffect } from "react";
 import {
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   GoogleAuthProvider,
   setPersistence,
   browserLocalPersistence,
   signOut,
+  onAuthStateChanged,
 } from "firebase/auth";
 import { auth } from "../firebase";
 import "./Login.css";
@@ -14,36 +15,34 @@ export default function Login({ onLoginSuccess }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          console.log("✅ Redirect result found:", result.user);
-          setUser(result.user);
-          onLoginSuccess(result.user);
-        } else {
-          console.log("ℹ️ No redirect result found.");
-        }
-      })
-      .catch((error) => {
-        console.error("❌ Redirect error:", error.message);
-      });
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      console.log("👥 Auth state changed:", firebaseUser);
+      setUser(firebaseUser);
+      if (firebaseUser) {
+        onLoginSuccess(firebaseUser);
+      }
+    });
+    return () => unsubscribe();
   }, [onLoginSuccess]);
 
   const handleLogin = async () => {
-    console.log("🔁 Initiating Google sign-in...");
     try {
       await setPersistence(auth, browserLocalPersistence);
       const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" }); // 👈 forces popup
-      await signInWithRedirect(auth, provider);
+      provider.setCustomParameters({ prompt: "select_account" });
+      const result = await signInWithPopup(auth, provider);
+      console.log("✅ Popup login successful:", result.user);
+      setUser(result.user);
+      onLoginSuccess(result.user);
     } catch (error) {
-      console.error("❌ Error initiating redirect:", error.message);
+      console.error("❌ Popup login error:", error.message);
     }
   };
 
   const handleSignOut = async () => {
     await signOut(auth);
     setUser(null);
+    console.log("👋 User signed out");
   };
 
   return (
