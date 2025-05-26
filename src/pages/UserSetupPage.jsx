@@ -1,58 +1,47 @@
 import React, { useState } from "react";
-import { doc, setDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
-import { db } from "../firebase";
-import "./UserSetupPage.css";
+import { doc, setDoc } from "firebase/firestore";
+import { auth, db } from "../firebase";
 
-export default function UserSetupPage({ user }) {
-  const [nickname, setNickname] = useState("");
+export default function UserSetupPage() {
   const navigate = useNavigate();
+  const user = auth.currentUser;
+  const [nickname, setNickname] = useState("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!user?.uid) return;
-
+  const handleFinishSetup = async () => {
+    if (!user) return;
     try {
-      const userRef = doc(db, "users", user.uid);
-      await setDoc(userRef, {
-        nickname: nickname.trim() || user.displayName || "Anonymous",
+      await setDoc(doc(db, "users", user.uid), {
         email: user.email,
-        terrabucks: 1000,
+        nickname,
         createdAt: new Date().toISOString(),
+        terrabucks: 1000
       });
-
-      console.log("✅ User setup complete. Waiting before redirect...");
-      setTimeout(() => {
-        navigate("/main");
-      }, 500);
-    } catch (err) {
-      console.error("❌ Error saving user setup:", err.message);
+      console.log("✅ User setup complete. Redirecting to /main");
+      navigate("/main");
+    } catch (error) {
+      console.error("❌ Error saving user setup:", error);
     }
   };
 
   return (
-    <div className="setup-page">
-      <h1>User Setup</h1>
-      <p>Welcome, {user?.email || "unknown user"}!</p>
-
-      <form className="setup-form" onSubmit={handleSubmit}>
-        <label>
-          Nickname (optional):
-          <input
-            type="text"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            placeholder="Enter your nickname"
-          />
-        </label>
-
-        <label>
-          Email Address:
-          <input type="email" value={user?.email} disabled />
-        </label>
-
-        <button type="submit">Finish Setup</button>
-      </form>
+    <div className="login-container">
+      <h2>USER SETUP</h2>
+      <p>WELCOME, {user?.email?.toUpperCase()}!</p>
+      <label>
+        NICKNAME (OPTIONAL):
+        <input
+          type="text"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          placeholder="Enter your nickname"
+        />
+      </label>
+      <label>
+        EMAIL ADDRESS:
+        <input type="text" value={user?.email} disabled />
+      </label>
+      <button onClick={handleFinishSetup}>Finish Setup</button>
     </div>
   );
 }

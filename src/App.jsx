@@ -1,79 +1,50 @@
 import React, { useEffect, useState } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { BrowserRouter as Router } from "react-router-dom";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "./firebase";
-import { doc, getDoc } from "firebase/firestore";
-import Login from "./components/Login";
-import SignOutButton from "./components/SignOutButton";
-import MainPage from "./pages/MainPage";
-import UserSetupPage from "./pages/UserSetupPage";
-import "./App.css";
+import { AppRoutes } from "./AppRoutes";
+import LoadingScreen from "./components/LoadingScreen";
 
-export function AppRoutes({ user, needsSetup }) {
-  return (
-    <Routes>
-      {needsSetup ? (
-        <Route path="*" element={<Navigate to="/setup" replace />} />
-      ) : (
-        <>
-          <Route path="/main" element={<MainPage user={user} />} />
-          <Route path="*" element={<Navigate to="/main" replace />} />
-        </>
-      )}
-    </Routes>
-  );
-}
-
-
-function App() {
+export default function App() {
   const [user, setUser] = useState(null);
-  const [authChecked, setAuthChecked] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
-  const [setupChecked, setSetupChecked] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       console.log("👥 Auth state changed:", firebaseUser);
       setUser(firebaseUser);
       setAuthChecked(true);
+    });
 
-      if (firebaseUser) {
-        const userRef = doc(db, "users", firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      const docRef = doc(db, "users", user.uid);
+      const unsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
           console.log("✅ User doc found. Ready to load /main");
           setNeedsSetup(false);
         } else {
           console.log("👤 No user doc. Redirecting to /setup");
           setNeedsSetup(true);
         }
-        setSetupChecked(true);
-      }
-    });
+      });
 
-    return () => unsubscribe();
-  }, []);
+      return () => unsubscribe();
+    }
+  }, [user]);
 
-  if (!authChecked || (user && !setupChecked)) {
-    return <div className="loading-screen">Checking authentication...</div>;
+  if (!authChecked) {
+    return <LoadingScreen />;
   }
 
   return (
     <Router>
-      {user ? (
-        <AppRoutes user={user} setUser={setUser} needsSetup={needsSetup} />
-      ) : (
-        <Login onLoginSuccess={(user) => setUser(user)} />
-      )}
+      <AppRoutes user={user} needsSetup={needsSetup} />
     </Router>
   );
 }
-
-
-
-export default App;
