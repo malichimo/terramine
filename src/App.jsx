@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
-import { AppRoutes } from "./AppRoutes";
-import LoadingScreen from "./components/LoadingScreen";
-import "./App.css";
+import Login from "./components/Login";
+import MainPage from "./pages/MainPage";
+import UserSetupPage from "./pages/UserSetupPage";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -14,47 +14,42 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("👥 Auth state changed:", firebaseUser);
-
       if (firebaseUser) {
+        setUser(firebaseUser);
         const userDocRef = doc(db, "users", firebaseUser.uid);
         const userSnap = await getDoc(userDocRef);
 
         if (userSnap.exists()) {
-          console.log("✅ User doc found. Ready to load /main");
+          console.log("✅ User doc found. Redirecting to /main");
           setNeedsSetup(false);
         } else {
           console.log("👤 No user doc. Redirecting to /setup");
           setNeedsSetup(true);
         }
-
-        setUser(firebaseUser);
       } else {
         setUser(null);
         setNeedsSetup(false);
       }
-
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const handleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      console.log("🔁 Starting login flow");
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("❌ Login failed:", error.message);
-    }
-  };
-
-  if (loading) return <LoadingScreen />;
+  if (loading) return <div>Loading...</div>;
 
   return (
     <Router>
-      <AppRoutes user={user} needsSetup={needsSetup} onLogin={handleLogin} />
+      <Routes>
+        {!user && <Route path="*" element={<Login />} />}
+        {user && needsSetup && <Route path="*" element={<UserSetupPage user={user} />} />}
+        {user && !needsSetup && (
+          <>
+            <Route path="/main" element={<MainPage user={user} />} />
+            <Route path="*" element={<Navigate to="/main" replace />} />
+          </>
+        )}
+      </Routes>
     </Router>
   );
 }

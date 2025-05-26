@@ -1,43 +1,37 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, db } from "../firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { signOut } from "firebase/auth";
+import { auth, db } from "../firebase";
 
-export default function UserSetupPage() {
-  const user = auth.currentUser;
+export default function UserSetupPage({ user }) {
   const [nickname, setNickname] = useState("");
   const navigate = useNavigate();
 
-  const handleFinishSetup = async () => {
+  const handleSubmit = async () => {
     if (!user) return;
 
-    try {
-      const userRef = doc(db, "users", user.uid);
-      await setDoc(userRef, {
-        email: user.email,
-        nickname: nickname.trim() || null,
-        createdAt: serverTimestamp(),
-        terraBucks: 1000, // Set initial TB here
-      });
+    const userDoc = {
+      email: user.email,
+      nickname: nickname.trim() || "",
+      createdAt: serverTimestamp(),
+      terraBucks: 1000, // ✅ Initial grant
+    };
 
+    try {
+      await setDoc(doc(db, "users", user.uid), userDoc);
       console.log("✅ User setup complete. Redirecting to /main");
       navigate("/main");
     } catch (error) {
-      console.error("❌ Failed to set up user:", error.message);
+      console.error("❌ Error setting up user:", error);
     }
-  };
-
-  const handleSignOut = async () => {
-    await signOut(auth);
   };
 
   return (
     <div className="login-container">
       <h2>USER SETUP</h2>
-      <p>WELCOME, <strong>{user?.email?.toUpperCase()}</strong>!</p>
+      <p>WELCOME, {user.email.toUpperCase()}!</p>
       <label>
-        NICKNAME (OPTIONAL):
+        NICKNAME (OPTIONAL):{" "}
         <input
           type="text"
           value={nickname}
@@ -45,12 +39,12 @@ export default function UserSetupPage() {
           placeholder="Enter your nickname"
         />
       </label>
+      <br />
       <label>
-        EMAIL ADDRESS:
-        <input value={user?.email} disabled />
+        EMAIL ADDRESS: <input type="text" value={user.email} disabled />
       </label>
-      <button onClick={handleFinishSetup}>Finish Setup</button>
-      <button onClick={handleSignOut}>Sign Out</button>
+      <br />
+      <button onClick={handleSubmit}>Finish Setup</button>
     </div>
   );
 }
