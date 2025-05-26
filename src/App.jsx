@@ -14,25 +14,27 @@ import MainPage from "./pages/MainPage";
 import UserSetupPage from "./pages/UserSetupPage";
 import "./App.css";
 
-function AppRoutes({ user, needsSetup, setUser }) {
+export function AppRoutes({ user, needsSetup }) {
   return (
-    <>
-      <SignOutButton onSignOut={() => signOut(auth).then(() => setUser(null))} />
-      <Routes>
-        <Route path="/main" element={<MainPage user={user} />} />
-        <Route path="/setup" element={<UserSetupPage user={user} />} />
-        <Route path="/" element={<Navigate to={needsSetup ? "/setup" : "/main"} />} />
-        <Route path="*" element={<Navigate to={needsSetup ? "/setup" : "/main"} />} />
-      </Routes>
-    </>
+    <Routes>
+      {needsSetup ? (
+        <Route path="*" element={<Navigate to="/setup" replace />} />
+      ) : (
+        <>
+          <Route path="/main" element={<MainPage user={user} />} />
+          <Route path="*" element={<Navigate to="/main" replace />} />
+        </>
+      )}
+    </Routes>
   );
 }
+
 
 function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
-  const [setupChecked, setSetupChecked] = useState(false); // <-- NEW FLAG
+  const [setupChecked, setSetupChecked] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -50,7 +52,7 @@ function App() {
           console.log("👤 No user doc. Redirecting to /setup");
           setNeedsSetup(true);
         }
-        setSetupChecked(true); // <-- Set when Firestore check is done
+        setSetupChecked(true);
       }
     });
 
@@ -71,6 +73,7 @@ function App() {
     </Router>
   );
 }
+
 
 
 export default App;
