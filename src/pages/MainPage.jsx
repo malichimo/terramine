@@ -1,30 +1,24 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebase";
 import "../App.css";
 
 function MainPage({ user }) {
   const [terraBucks, setTerraBucks] = useState(0);
-  const [isNewUser, setIsNewUser] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) return;
+    const fetchUserData = async () => {
+      if (!user?.uid) return;
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        setTerraBucks(data.terrabucks || 0);
+      }
+    };
 
-    // Fake logic to simulate check – replace with Firestore lookup if needed
-    const hasData = user?.terrabucks !== undefined;
-
-    if (hasData) {
-      setTerraBucks(user.terrabucks);
-    } else {
-      setIsNewUser(true);
-    }
+    fetchUserData();
   }, [user]);
-
-  useEffect(() => {
-    if (isNewUser) {
-      navigate("/setup");
-    }
-  }, [isNewUser, navigate]);
 
   return (
     <div className="main-page">

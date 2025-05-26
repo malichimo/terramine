@@ -17,8 +17,10 @@ export default function UserSetupPage({ user }) {
       await setDoc(userRef, {
         nickname: nickname.trim() || user.displayName || "Anonymous",
         email: user.email,
+        terrabucks: 1000,
         createdAt: new Date().toISOString(),
       });
+
       console.log("✅ User setup complete. Redirecting to /main");
       navigate("/main");
     } catch (err) {
