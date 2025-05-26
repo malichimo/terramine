@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import Login from "./components/Login";
@@ -12,20 +12,17 @@ export default function App() {
   const [needsSetup, setNeedsSetup] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const checkUserDoc = async (firebaseUser) => {
+    const userDocRef = doc(db, "users", firebaseUser.uid);
+    const docSnap = await getDoc(userDocRef);
+    setNeedsSetup(!docSnap.exists());
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        const userDocRef = doc(db, "users", firebaseUser.uid);
-        const userSnap = await getDoc(userDocRef);
-
-        if (userSnap.exists()) {
-          console.log("✅ User doc found. Redirecting to /main");
-          setNeedsSetup(false);
-        } else {
-          console.log("👤 No user doc. Redirecting to /setup");
-          setNeedsSetup(true);
-        }
+        await checkUserDoc(firebaseUser);
       } else {
         setUser(null);
         setNeedsSetup(false);
@@ -42,7 +39,12 @@ export default function App() {
     <Router>
       <Routes>
         {!user && <Route path="*" element={<Login />} />}
-        {user && needsSetup && <Route path="*" element={<UserSetupPage user={user} />} />}
+        {user && needsSetup && (
+          <Route
+            path="*"
+            element={<UserSetupPage user={user} onSetupComplete={() => setNeedsSetup(false)} />}
+          />
+        )}
         {user && !needsSetup && (
           <>
             <Route path="/main" element={<MainPage user={user} />} />
