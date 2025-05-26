@@ -32,11 +32,13 @@ function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
+  const [setupChecked, setSetupChecked] = useState(false); // <-- NEW FLAG
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log("👥 Auth state changed:", firebaseUser);
       setUser(firebaseUser);
+      setAuthChecked(true);
 
       if (firebaseUser) {
         const userRef = doc(db, "users", firebaseUser.uid);
@@ -48,15 +50,14 @@ function App() {
           console.log("👤 No user doc. Redirecting to /setup");
           setNeedsSetup(true);
         }
+        setSetupChecked(true); // <-- Set when Firestore check is done
       }
-
-      setAuthChecked(true);
     });
 
     return () => unsubscribe();
   }, []);
 
-  if (!authChecked) {
+  if (!authChecked || (user && !setupChecked)) {
     return <div className="loading-screen">Checking authentication...</div>;
   }
 
@@ -70,5 +71,6 @@ function App() {
     </Router>
   );
 }
+
 
 export default App;
