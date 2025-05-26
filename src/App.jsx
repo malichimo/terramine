@@ -1,50 +1,60 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, onSnapshot } from "firebase/firestore";
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { AppRoutes } from "./AppRoutes";
 import LoadingScreen from "./components/LoadingScreen";
+import "./App.css";
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [needsSetup, setNeedsSetup] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log("👥 Auth state changed:", firebaseUser);
-      setUser(firebaseUser);
-      setAuthChecked(true);
-    });
 
-    return () => unsubscribe();
-  }, []);
+      if (firebaseUser) {
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        const userSnap = await getDoc(userDocRef);
 
-  useEffect(() => {
-    if (user) {
-      const docRef = doc(db, "users", user.uid);
-      const unsubscribe = onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
+        if (userSnap.exists()) {
           console.log("✅ User doc found. Ready to load /main");
           setNeedsSetup(false);
         } else {
           console.log("👤 No user doc. Redirecting to /setup");
           setNeedsSetup(true);
         }
-      });
 
-      return () => unsubscribe();
+        setUser(firebaseUser);
+      } else {
+        setUser(null);
+        setNeedsSetup(false);
+      }
+
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      console.log("🔁 Starting login flow");
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("❌ Login failed:", error.message);
     }
-  }, [user]);
+  };
 
-  if (!authChecked) {
-    return <LoadingScreen />;
-  }
+  if (loading) return <LoadingScreen />;
 
   return (
     <Router>
-      <AppRoutes user={user} needsSetup={needsSetup} />
+      <AppRoutes user={user} needsSetup={needsSetup} onLogin={handleLogin} />
     </Router>
   );
 }
