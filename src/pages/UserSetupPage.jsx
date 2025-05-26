@@ -21,8 +21,10 @@ export default function UserSetupPage({ user }) {
         createdAt: new Date().toISOString(),
       });
 
-      console.log("✅ User setup complete. Redirecting to /main");
-      navigate("/main");
+      console.log("✅ User setup complete. Waiting before redirect...");
+      setTimeout(() => {
+        navigate("/main");
+      }, 500);
     } catch (err) {
       console.error("❌ Error saving user setup:", err.message);
     }
