@@ -8,44 +8,52 @@ export default function UserSetupPage({ user }) {
   const [nickname, setNickname] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = async () => {
+  const handleFinishSetup = async () => {
     if (!user) return;
 
     const userRef = doc(firestore, "users", user.uid);
-    await setDoc(userRef, {
-      email: user.email,
-      nickname: nickname || "",
-      createdAt: new Date().toISOString(),
-      terraBucks: 1000,
-    });
 
-    console.log("✅ User setup complete. Redirecting to /main");
-    navigate("/main");
+    try {
+      console.log("📦 Creating user doc with TB...");
+      await setDoc(userRef, {
+        email: user.email,
+        nickname: nickname || "",
+        createdAt: new Date().toISOString(),
+        terraBucks: 1000,
+      });
+
+      console.log("✅ User setup complete. Redirecting to /main");
+      navigate("/main");
+    } catch (error) {
+      console.error("❌ Error writing user document:", error);
+    }
   };
 
-  const handleSignOut = async () => {
-    await signOut(auth);
-    navigate("/");
+  const handleLogout = () => {
+    signOut(auth);
   };
 
   return (
-    <div className="login-container">
-      <h2>USER SETUP</h2>
-      <p>Welcome, <strong>{user.email.toUpperCase()}</strong>!</p>
+    <div className="user-setup-container">
+      <h1>User Setup</h1>
+      <p>Welcome, {user?.email?.toUpperCase()}!</p>
       <label>
-        NICKNAME (OPTIONAL):
+        Nickname (optional):{" "}
         <input
           type="text"
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
         />
       </label>
+      <br />
       <label>
-        EMAIL ADDRESS:
-        <input type="text" value={user.email} readOnly />
+        Email Address: <input type="text" value={user?.email} disabled />
       </label>
-      <button onClick={handleSubmit}>Finish Setup</button>
-      <button onClick={handleSignOut} style={{ backgroundColor: "red" }}>Sign Out</button>
+      <br />
+      <button onClick={handleFinishSetup}>Finish Setup</button>
+      <button onClick={handleLogout} style={{ marginLeft: "10px" }}>
+        Sign Out
+      </button>
     </div>
   );
 }
