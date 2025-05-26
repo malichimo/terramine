@@ -6,44 +6,48 @@ import { auth, db } from "./firebase";
 import Login from "./components/Login";
 import MainPage from "./pages/MainPage";
 import UserSetupPage from "./pages/UserSetupPage";
+import LoadingScreen from "./components/LoadingScreen";
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const checkUserDoc = async (firebaseUser) => {
-    const userDocRef = doc(db, "users", firebaseUser.uid);
-    const docSnap = await getDoc(userDocRef);
-    setNeedsSetup(!docSnap.exists());
-  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("👥 Auth state changed:", firebaseUser);
+      setUser(firebaseUser);
+
       if (firebaseUser) {
-        setUser(firebaseUser);
-        await checkUserDoc(firebaseUser);
-      } else {
-        setUser(null);
-        setNeedsSetup(false);
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          console.log("✅ User doc found. Ready to load /main");
+          setNeedsSetup(false);
+        } else {
+          console.log("👤 No user doc. Redirecting to /setup");
+          setNeedsSetup(true);
+        }
       }
-      setLoading(false);
+
+      setAuthChecked(true);
     });
 
     return () => unsubscribe();
   }, []);
 
-  if (loading) return <div>Loading...</div>;
+  if (!authChecked) return <LoadingScreen />;
 
   return (
     <Router>
       <Routes>
         {!user && <Route path="*" element={<Login />} />}
         {user && needsSetup && (
-          <Route
-            path="*"
-            element={<UserSetupPage user={user} onSetupComplete={() => setNeedsSetup(false)} />}
-          />
+          <>
+            <Route path="/setup" element={<UserSetupPage user={user} />} />
+            <Route path="*" element={<Navigate to="/setup" replace />} />
+          </>
         )}
         {user && !needsSetup && (
           <>

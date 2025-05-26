@@ -1,25 +1,28 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
+import { signOut } from "firebase/auth";
 
-export default function UserSetupPage({ user, onSetupComplete }) {
+export default function UserSetupPage({ user }) {
   const [nickname, setNickname] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = async () => {
-    const userDoc = {
-      email: user.email,
-      nickname: nickname.trim(),
-      createdAt: serverTimestamp(),
-      terraBucks: 1000,
-    };
+  const handleSetup = async () => {
+    if (!user) return;
+
+    const userDocRef = doc(db, "users", user.uid);
 
     try {
-      await setDoc(doc(db, "users", user.uid), userDoc);
-      console.log("✅ User setup complete.");
-      onSetupComplete(); // Tell App.jsx to update
-      navigate("/main"); // Redirect to /main
+      await setDoc(userDocRef, {
+        email: user.email,
+        nickname: nickname || "",
+        createdAt: serverTimestamp(),
+        terraBucks: 1000,
+      });
+
+      console.log("✅ User setup complete. Redirecting to /main");
+      navigate("/main");
     } catch (error) {
       console.error("❌ Error setting up user:", error);
     }
@@ -28,24 +31,21 @@ export default function UserSetupPage({ user, onSetupComplete }) {
   return (
     <div className="login-container">
       <h2>USER SETUP</h2>
-      <p>WELCOME, {user.email.toUpperCase()}!</p>
-      <label htmlFor="nickname">
-        NICKNAME (OPTIONAL):{" "}
+      <p>WELCOME, {user.email?.toUpperCase()}!</p>
+      <label>
+        NICKNAME (OPTIONAL):
         <input
-          id="nickname"
-          type="text"
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
           placeholder="Enter your nickname"
         />
       </label>
-      <br />
-      <label htmlFor="email">
-        EMAIL ADDRESS:{" "}
-        <input id="email" type="text" value={user.email} disabled />
+      <label>
+        EMAIL ADDRESS:
+        <input value={user.email} disabled />
       </label>
-      <br />
-      <button onClick={handleSubmit}>Finish Setup</button>
+      <button onClick={handleSetup}>Finish Setup</button>
+      <button onClick={() => signOut(auth)}>Sign Out</button>
     </div>
   );
 }
