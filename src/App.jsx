@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { auth, googleProvider, db } from "./firebase";
+import { auth, db } from "./firebase";
 
 import MainPage from "./pages/MainPage";
 import UserSetupPage from "./pages/UserSetupPage";
@@ -17,19 +17,26 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log("👥 Auth state changed:", firebaseUser);
       setUser(firebaseUser);
-      setAuthChecked(true);
 
       if (firebaseUser) {
-        const userRef = doc(db, "users", firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          console.log("✅ User doc found. Ready to load /main");
-          setNeedsSetup(false);
-        } else {
-          console.log("👤 No user doc. Redirecting to /setup");
+        try {
+          const userRef = doc(db, "users", firebaseUser.uid);
+          const userSnap = await getDoc(userRef);
+
+          if (userSnap.exists()) {
+            console.log("✅ User doc found. Ready to load /main");
+            setNeedsSetup(false);
+          } else {
+            console.log("👤 No user doc. Redirecting to /setup");
+            setNeedsSetup(true);
+          }
+        } catch (err) {
+          console.error("🔥 Error checking user doc:", err);
           setNeedsSetup(true);
         }
       }
+
+      setAuthChecked(true); // ✅ Only mark auth as checked at the end
     });
 
     return () => unsubscribe();
