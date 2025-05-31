@@ -6,7 +6,7 @@ import { auth, googleProvider, db } from "./firebase";
 
 import MainPage from "./pages/MainPage";
 import UserSetupPage from "./pages/UserSetupPage";
-import Login from "./Login";
+import Login from "./Login.jsx";
 
 export default function App() {
   const [user, setUser] = useState(null);
