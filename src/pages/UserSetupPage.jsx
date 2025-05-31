@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { doc, setDoc } from "firebase/firestore";
-import { db } from "./firebase";
+import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
 
 export default function UserSetupPage({ user, onSetupComplete }) {
