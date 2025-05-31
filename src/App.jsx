@@ -23,7 +23,7 @@ useEffect(() => {
       const userRef = doc(db, "users", firebaseUser.uid);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
-        const userData = userSnap.data(); // ✅ define userData before using it
+        const userData = userSnap.data(); // ✅ This line is missing in your current version
         console.log("✅ User doc found. Ready to load /main");
         console.log("✅ User data ready:", userData);
         setNeedsSetup(false);
@@ -36,6 +36,7 @@ useEffect(() => {
 
   return () => unsubscribe();
 }, []);
+
 
   if (!authChecked || needsSetup === null) return <div>Loading...</div>;
 
