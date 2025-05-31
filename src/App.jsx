@@ -6,12 +6,12 @@ import { auth, db } from "./firebase";
 
 import MainPage from "./pages/MainPage";
 import UserSetupPage from "./pages/UserSetupPage";
-import Login from "./components/Login.jsx";
+import Login from "./components/Login";
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [needsSetup, setNeedsSetup] = useState(false);
+  const [needsSetup, setNeedsSetup] = useState(null); // null = unknown
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -19,30 +19,26 @@ export default function App() {
       setUser(firebaseUser);
 
       if (firebaseUser) {
-        try {
-          const userRef = doc(db, "users", firebaseUser.uid);
-          const userSnap = await getDoc(userRef);
-
-          if (userSnap.exists()) {
-            console.log("✅ User doc found. Ready to load /main");
-            setNeedsSetup(false);
-          } else {
-            console.log("👤 No user doc. Redirecting to /setup");
-            setNeedsSetup(true);
-          }
-        } catch (err) {
-          console.error("🔥 Error checking user doc:", err);
+        const userRef = doc(db, "users", firebaseUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          console.log("✅ Existing user found.");
+          setNeedsSetup(false);
+        } else {
+          console.log("👤 New user. Needs setup.");
           setNeedsSetup(true);
         }
+      } else {
+        setNeedsSetup(false); // No user logged in
       }
 
-      setAuthChecked(true); // ✅ Only mark auth as checked at the end
+      setAuthChecked(true);
     });
 
     return () => unsubscribe();
   }, []);
 
-  if (!authChecked) return <div>Loading...</div>;
+  if (!authChecked || needsSetup === null) return <div>Loading...</div>;
 
   return (
     <Routes>
@@ -54,7 +50,10 @@ export default function App() {
           element={
             <UserSetupPage
               user={user}
-              onSetupComplete={() => setNeedsSetup(false)}
+              onSetupComplete={() => {
+                console.log("🎉 Setup complete");
+                setNeedsSetup(false);
+              }}
             />
           }
         />

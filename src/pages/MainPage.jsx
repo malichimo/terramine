@@ -3,6 +3,8 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import "../App.css";
 
+<h2>Welcome, {userData?.nickname || user?.displayName || "User"}</h2>
+
 function MainPage({ user }) {
   const [terraBucks, setTerraBucks] = useState(0);
 
