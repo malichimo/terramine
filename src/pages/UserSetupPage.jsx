@@ -1,59 +1,40 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { doc, setDoc } from "firebase/firestore";
-import { auth, firestore } from "../firebase";
-import { signOut } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
+import { db } from "./firebase";
 
-export default function UserSetupPage({ user }) {
+export default function UserSetupPage({ user, onSetupComplete }) {
   const [nickname, setNickname] = useState("");
   const navigate = useNavigate();
 
-  const handleFinishSetup = async () => {
-    if (!user) return;
-
-    const userRef = doc(firestore, "users", user.uid);
-
+  const handleSetup = async () => {
+    if (!nickname.trim()) return alert("Please enter a nickname.");
     try {
-      console.log("📦 Creating user doc with TB...");
-      await setDoc(userRef, {
+      await setDoc(doc(db, "users", user.uid), {
         email: user.email,
-        nickname: nickname || "",
-        createdAt: new Date().toISOString(),
+        nickname: nickname.trim(),
         terraBucks: 1000,
       });
-
       console.log("✅ User setup complete. Redirecting to /main");
-      navigate("/main");
+      onSetupComplete(); // Update App state to reflect setup is done
+      navigate("/main"); // Redirect
     } catch (error) {
-      console.error("❌ Error writing user document:", error);
+      console.error("❌ Error during user setup:", error.message);
+      alert("Error setting up user. Please try again.");
     }
   };
 
-  const handleLogout = () => {
-    signOut(auth);
-  };
-
   return (
-    <div className="user-setup-container">
-      <h1>User Setup</h1>
-      <p>Welcome, {user?.email?.toUpperCase()}!</p>
-      <label>
-        Nickname (optional):{" "}
-        <input
-          type="text"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-        />
-      </label>
-      <br />
-      <label>
-        Email Address: <input type="text" value={user?.email} disabled />
-      </label>
-      <br />
-      <button onClick={handleFinishSetup}>Finish Setup</button>
-      <button onClick={handleLogout} style={{ marginLeft: "10px" }}>
-        Sign Out
-      </button>
+    <div>
+      <h1>Welcome, {user.email}</h1>
+      <p>Please choose a nickname to get started:</p>
+      <input
+        type="text"
+        value={nickname}
+        onChange={(e) => setNickname(e.target.value)}
+        placeholder="Enter nickname"
+      />
+      <button onClick={handleSetup}>Finish Setup</button>
     </div>
   );
 }

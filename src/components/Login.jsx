@@ -1,49 +1,16 @@
+import React from "react";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "./firebase";
 
-import React, { useState, useEffect } from "react";
-import {
-  signInWithPopup,
-  GoogleAuthProvider,
-  setPersistence,
-  browserLocalPersistence,
-  signOut,
-  onAuthStateChanged,
-} from "firebase/auth";
-import { auth } from "../firebase";
-import "./Login.css";
-
-export default function Login({ onLoginSuccess }) {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      console.log("👥 Auth state changed:", firebaseUser);
-      setUser(firebaseUser);
-      if (firebaseUser) {
-        onLoginSuccess(firebaseUser);
-      }
-    });
-    return () => unsubscribe();
-  }, [onLoginSuccess]);
-
+export default function Login() {
   const handleLogin = async () => {
-    console.log("🔁 Starting login flow");
     try {
-      await setPersistence(auth, browserLocalPersistence);
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
-      const result = await signInWithPopup(auth, provider);
-      console.log("✅ Popup login successful:", result.user);
-      setUser(result.user);
-      onLoginSuccess(result.user);
+      console.log("🔁 Starting login flow");
+      await signInWithPopup(auth, googleProvider);
     } catch (error) {
-      console.error("❌ Popup login error:", error.message);
+      console.error("❌ Login error:", error.message);
+      alert("Login failed. Please try again.");
     }
-  };
-
-  const handleSignOut = async () => {
-    await signOut(auth);
-    setUser(null);
-    console.log("👋 User signed out");
   };
 
   return (
@@ -54,15 +21,7 @@ export default function Login({ onLoginSuccess }) {
         alt="TerraMine Logo"
         className="login-image logo"
       />
-      {!user ? (
-        <button onClick={handleLogin} className="login-button">
-          Sign In with Google
-        </button>
-      ) : (
-        <button onClick={handleSignOut} className="logout-button">
-          Sign Out
-        </button>
-      )}
+      <button onClick={handleLogin}>Sign in with Google</button>
     </div>
   );
 }
