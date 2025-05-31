@@ -1,38 +1,36 @@
 import React, { useState } from "react";
 import { doc, setDoc } from "firebase/firestore";
-import { useNavigate } from "react-router-dom";
 import { db } from "./firebase";
+import { useNavigate } from "react-router-dom";
 
 export default function UserSetupPage({ user, onSetupComplete }) {
   const [nickname, setNickname] = useState("");
   const navigate = useNavigate();
 
   const handleSetup = async () => {
-    if (!nickname.trim()) return alert("Please enter a nickname.");
     try {
-      await setDoc(doc(db, "users", user.uid), {
+      const userRef = doc(db, "users", user.uid);
+      await setDoc(userRef, {
         email: user.email,
-        nickname: nickname.trim(),
-        terraBucks: 1000,
+        nickname: nickname,
+        terraBucks: 1000, // 🎁 grant new users 1000 TB
       });
       console.log("✅ User setup complete. Redirecting to /main");
-      onSetupComplete(); // Update App state to reflect setup is done
-      navigate("/main"); // Redirect
+      onSetupComplete(); // 🔁 Triggers App.jsx state update
+      navigate("/main"); // 🚀 Go to MainPage
     } catch (error) {
-      console.error("❌ Error during user setup:", error.message);
-      alert("Error setting up user. Please try again.");
+      console.error("❌ Error setting up user:", error.message);
     }
   };
 
   return (
     <div>
       <h1>Welcome, {user.email}</h1>
-      <p>Please choose a nickname to get started:</p>
       <input
         type="text"
         value={nickname}
         onChange={(e) => setNickname(e.target.value)}
-        placeholder="Enter nickname"
+        placeholder="Enter your nickname"
       />
       <button onClick={handleSetup}>Finish Setup</button>
     </div>
