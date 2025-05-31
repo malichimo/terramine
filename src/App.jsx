@@ -13,30 +13,29 @@ export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(null); // null = unknown
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("👥 Auth state changed:", firebaseUser);
-      setUser(firebaseUser);
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    console.log("👥 Auth state changed:", firebaseUser);
+    setUser(firebaseUser);
+    setAuthChecked(true);
 
-      if (firebaseUser) {
-        const userRef = doc(db, "users", firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          console.log("✅ Existing user found.");
-          setNeedsSetup(false);
-        } else {
-          console.log("👤 New user. Needs setup.");
-          setNeedsSetup(true);
-        }
+    if (firebaseUser) {
+      const userRef = doc(db, "users", firebaseUser.uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const userData = userSnap.data(); // ✅ define userData before using it
+        console.log("✅ User doc found. Ready to load /main");
+        console.log("✅ User data ready:", userData);
+        setNeedsSetup(false);
       } else {
-        setNeedsSetup(false); // No user logged in
+        console.log("👤 No user doc. Redirecting to /setup");
+        setNeedsSetup(true);
       }
+    }
+  });
 
-      setAuthChecked(true);
-    });
-
-    return () => unsubscribe();
-  }, []);
+  return () => unsubscribe();
+}, []);
 
   if (!authChecked || needsSetup === null) return <div>Loading...</div>;
 
