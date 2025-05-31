@@ -23,7 +23,7 @@ useEffect(() => {
       const userRef = doc(db, "users", firebaseUser.uid);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
-        const userData = userSnap.data(); // ✅ This line is missing in your current version
+        const userData = userSnap.data(); // ✅ Define the variable before using it
         console.log("✅ User doc found. Ready to load /main");
         console.log("✅ User data ready:", userData);
         setNeedsSetup(false);
