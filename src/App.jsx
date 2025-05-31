@@ -4,8 +4,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, googleProvider, db } from "./firebase";
 
-import MainPage from "./MainPage";
-import UserSetupPage from "./UserSetupPage";
+import MainPage from "./pages/MainPage";
+import UserSetupPage from "./pages/UserSetupPage";
 import Login from "./Login";
 
 export default function App() {
