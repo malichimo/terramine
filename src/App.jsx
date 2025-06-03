@@ -42,7 +42,7 @@ export default function App() {
     const timeout = setTimeout(() => {
       if (!authChecked) {
         console.error("🔥 onAuthStateChanged did not fire within 5 seconds");
-        setAuthChecked(true); // Force proceed to avoid infinite loading
+        setAuthChecked(true);
       }
     }, 5000);
 
@@ -52,9 +52,10 @@ export default function App() {
     };
   }, []);
 
-  if (!authChecked || needsSetup === null) {
-    return <div>Loading...</div>;
-  }
+  // Temporarily bypass loading state to test Login component
+  // if (!authChecked || needsSetup === null) {
+  //   return <div>Loading...</div>;
+  // }
 
   return (
     <Routes>
