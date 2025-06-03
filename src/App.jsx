@@ -11,7 +11,7 @@ import Login from "./components/Login";
 export default function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [needsSetup, setNeedsSetup] = useState(null); // null = unknown
+  const [needsSetup, setNeedsSetup] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -34,16 +34,26 @@ export default function App() {
           }
         } catch (error) {
           console.error("🔥 Error checking user in Firestore:", error);
-          setNeedsSetup(true); // Fallback to setup if Firestore fails
+          setNeedsSetup(true);
         }
       }
     });
 
-    return () => unsubscribe();
+    const timeout = setTimeout(() => {
+      if (!authChecked) {
+        console.error("🔥 onAuthStateChanged did not fire within 5 seconds");
+        setAuthChecked(true); // Force proceed to avoid infinite loading
+      }
+    }, 5000);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   if (!authChecked || needsSetup === null) {
-    return <div>Loading...</div>; // Show loading while checking auth
+    return <div>Loading...</div>;
   }
 
   return (
