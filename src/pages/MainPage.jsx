@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import SignOutButton from "../components/SignOutButton";
 import "../App.css";
 
 function MainPage({ user }) {
@@ -22,8 +23,19 @@ function MainPage({ user }) {
     fetchUserData();
   }, [user]);
 
+  const handleSignOut = async () => {
+    try {
+      await auth.signOut(); // Assumes 'auth' is imported from firebase.js
+      console.log("👤 User signed out successfully");
+      // Optionally redirect to login page (handled by App.jsx routing)
+    } catch (error) {
+      console.error("🔥 Error signing out:", error);
+    }
+  };
+
   return (
     <div className="main-page">
+      <SignOutButton onSignOut={handleSignOut} />
       <h2>Welcome, {userData?.nickname || user?.displayName || "User"}</h2>
       <p>You have {terraBucks} TB available.</p>
       <div className="map-placeholder">[Interactive Map Placeholder]</div>
