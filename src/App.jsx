@@ -14,6 +14,7 @@ export default function App() {
   const [needsSetup, setNeedsSetup] = useState(null);
 
   useEffect(() => {
+    console.log("🔄 Setting up auth state listener...");
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log("👥 Auth state changed:", firebaseUser);
       setUser(firebaseUser);
@@ -52,10 +53,9 @@ export default function App() {
     };
   }, []);
 
-  // Temporarily bypass loading state to test Login component
-  // if (!authChecked || needsSetup === null) {
-  //   return <div>Loading...</div>;
-  // }
+  if (!authChecked || needsSetup === null) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <Routes>
