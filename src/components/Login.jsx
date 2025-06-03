@@ -1,29 +1,27 @@
 import React from "react";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
-import "./Login.css"; // Optional: keep if you have styling
+import "../App.css";
 
-export default function Login() {
-  const handleLogin = async () => {
+const Login = () => {
+  const signInWithGoogle = async () => {
+    console.log("🔐 Attempting Google Sign-In...");
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      console.log("✅ Logged in:", result.user);
-      // Firebase onAuthStateChanged in App.jsx will handle redirect
+      await signInWithPopup(auth, googleProvider);
+      console.log("✅ Google Sign-In successful");
     } catch (error) {
-      console.error("❌ Login error:", error.message);
-      alert("Login failed. Please try again.");
+      console.error("🔥 Error during Google Sign-In:", error.message);
     }
   };
 
   return (
     <div className="login-container">
-      <h1>Welcome to TerraMine</h1>
-      <img
-        src="/terramine logo.png"
-        alt="TerraMine Logo"
-        className="login-image logo"
-      />
-      <button onClick={handleLogin}>Sign in with Google</button>
+      <h2>Welcome to Terramine</h2>
+      <button className="google-signin-button" onClick={signInWithGoogle}>
+        Sign in with Google
+      </button>
     </div>
   );
-}
+};
+
+export default Login;
