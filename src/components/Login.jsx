@@ -5,12 +5,12 @@ import "../App.css";
 
 const Login = () => {
   const signInWithGoogle = async () => {
-    console.log("🔐 Attempting Google Sign-In...");
+    console.log("🔐 Attempting Google Sign-In with auth:", auth, "provider:", googleProvider);
     try {
-      await signInWithPopup(auth, googleProvider);
-      console.log("✅ Google Sign-In successful");
+      const result = await signInWithPopup(auth, googleProvider);
+      console.log("✅ Google Sign-In successful, user:", result.user);
     } catch (error) {
-      console.error("🔥 Error during Google Sign-In:", error.message);
+      console.error("🔥 Error during Google Sign-In:", error.message, error.code);
     }
   };
 
