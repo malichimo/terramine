@@ -13,40 +13,46 @@ export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(null); // null = unknown
 
-useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-    console.log("👥 Auth state changed:", firebaseUser);
-    setUser(firebaseUser);
-    setAuthChecked(true);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("👥 Auth state changed:", firebaseUser);
+      setUser(firebaseUser);
+      setAuthChecked(true);
 
-    if (firebaseUser) {
-      const userRef = doc(db, "users", firebaseUser.uid);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        const userData = userSnap.data(); // ✅ Define the variable before using it
-        console.log("✅ User doc found. Ready to load /main");
-        console.log("✅ User data ready:", userData);
-        setNeedsSetup(false);
-      } else {
-        console.log("👤 No user doc. Redirecting to /setup");
-        setNeedsSetup(true);
+      if (firebaseUser) {
+        try {
+          const userRef = doc(db, "users", firebaseUser.uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            console.log("✅ User doc found. Ready to load /main");
+            console.log("✅ User data ready:", userData);
+            setNeedsSetup(false);
+          } else {
+            console.log("👤 No user doc. Redirecting to /setup");
+            setNeedsSetup(true);
+          }
+        } catch (error) {
+          console.error("🔥 Error checking user in Firestore:", error);
+          setNeedsSetup(true); // Fallback to setup if Firestore fails
+        }
       }
-    }
-  });
+    });
 
-  return () => unsubscribe();
-}, []);
+    return () => unsubscribe();
+  }, []);
 
-
-  if (!authChecked || needsSetup === null) return <div>Loading...</div>;
+  if (!authChecked || needsSetup === null) {
+    return <div>Loading...</div>; // Show loading while checking auth
+  }
 
   return (
     <Routes>
       {!user ? (
-        <Route path="*" element={<Login />} />
+        <Route path="/" element={<Login />} />
       ) : needsSetup ? (
         <Route
-          path="*"
+          path="/setup"
           element={
             <UserSetupPage
               user={user}
@@ -60,6 +66,7 @@ useEffect(() => {
       ) : (
         <>
           <Route path="/main" element={<MainPage user={user} />} />
+          <Route path="/" element={<Navigate to="/main" replace />} />
           <Route path="*" element={<Navigate to="/main" replace />} />
         </>
       )}

@@ -3,10 +3,9 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import "../App.css";
 
-<h2>Welcome, {userData?.nickname || user?.displayName || "User"}</h2>
-
 function MainPage({ user }) {
   const [terraBucks, setTerraBucks] = useState(0);
+  const [userData, setUserData] = useState(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -15,6 +14,7 @@ function MainPage({ user }) {
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         const data = userSnap.data();
+        setUserData(data);
         setTerraBucks(data.terrabucks || 0);
       }
     };
@@ -24,7 +24,7 @@ function MainPage({ user }) {
 
   return (
     <div className="main-page">
-      <h2>Welcome, {user?.nickname || user?.displayName || "User"}</h2>
+      <h2>Welcome, {userData?.nickname || user?.displayName || "User"}</h2>
       <p>You have {terraBucks} TB available.</p>
       <div className="map-placeholder">[Interactive Map Placeholder]</div>
     </div>
