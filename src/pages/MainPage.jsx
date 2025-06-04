@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
-import { auth } from "../firebase"; // Ensure this import is present
+import { auth } from "../firebase";
 import { db } from "../firebase";
 import SignOutButton from "../components/SignOutButton";
 import "../App.css";
@@ -31,9 +31,9 @@ function MainPage({ user }) {
         throw new Error("Firebase auth object is undefined");
       }
       await auth.signOut();
-      console.log("👤 User signed out successfully");
+      console.log("✅ User signed out successfully");
     } catch (error) {
-      console.error("🔥 Error signing out:", error.message);
+      console.error("🔥 Sign-Out failed:", error.message, error.code);
     }
   };
 
